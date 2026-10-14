@@ -201,8 +201,8 @@
 ### 安装
 
 ```bash
-git clone https://github.com/<your-username>/compliance-radar.git
-cd compliance-radar
+git clone https://github.com/cristiano138/Chinese-Enterprises-Going-Global-Radar.git
+cd Chinese-Enterprises-Going-Global-Radar
 pip install -r requirements.txt
 ```
 
