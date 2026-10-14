@@ -232,7 +232,8 @@ python app.py
 ```
 compliance-radar/
 ├── README.md                   本文件
-├── LICENSE                     开源许可
+├── LICENSE                     开源许可（MIT）
+├── THIRD_PARTY_NOTICES.md      ⭐ 第三方组件许可清单（12 个依赖，全部宽松许可）
 ├── requirements.txt            依赖清单
 ├── .env.example                环境变量模板
 ├── .gitignore
@@ -248,7 +249,8 @@ compliance-radar/
 │   ├── check_links.py          链接有效性检测（OK / WAF / BAD 三级判定）
 │   ├── make_overview.py        生成数据总览
 │   ├── make_todo_eu.py         生成待补清单
-│   └── audit_guide.py          文档链接与数据批量核对器
+│   ├── audit_guide.py          文档链接与数据批量核对器
+│   └── check_licenses.py       依赖许可证核查（读 requirements.txt 查 PyPI）
 │
 ├── data/                       ✅ 语料数据（88 条）
 │   ├── 语料核对表_完整版.csv     ⭐ 主底表：88 条 × 18 列
@@ -401,7 +403,7 @@ compliance-radar/
 
 - 本项目仅使用**公开的法规数据**（欧盟 EUR-Lex、美国监管机构官网等官方公开渠道），**不采集任何个人信息**。
 - 本项目输出的合规清单**仅供参考，不构成法律意见**，使用者应咨询专业机构并由专业人员复核。
-- 项目代码与文档为团队原创；使用的第三方开源组件均保留其 LICENSE 记录。
+- 项目代码与文档为团队原创；使用的第三方开源组件均保留其 LICENSE 记录，完整清单见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 - 最终知识产权归参赛选手所有；提交即授予赛事宣传许可。
 
 ---
@@ -423,7 +425,7 @@ compliance-radar/
 
 ## 许可
 
-本项目采用 MIT License，详见 [LICENSE](LICENSE)。
+本项目采用 MIT License，详见 [LICENSE](LICENSE)。所依赖的 12 个第三方开源组件（全部为宽松许可，无传染性许可）见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
 
 ---
 
