@@ -1,0 +1,53 @@
+# ===== 敏感配置：绝不提交 =====
+.env
+.env.*
+!.env.example
+
+# ===== 凭证与密钥 =====
+*.pem
+*.key
+*.p12
+secrets/
+credentials.json
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+venv/
+env/
+.venv/
+ENV/
+
+# ===== 测试与缓存 =====
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# ===== 数据文件（体积大，按需另行分发） =====
+data/raw/
+data/cache/
+*.sqlite
+*.db
+
+# ===== 编辑器与系统 =====
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ===== 日志与临时文件 =====
+*.log
+logs/
+tmp/
+temp/
