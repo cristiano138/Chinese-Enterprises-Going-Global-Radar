@@ -8,7 +8,7 @@
 
 ## 一、一句话结论
 
-本项目共依赖 **12 个第三方开源组件**，**全部采用宽松许可证**（Apache-2.0 / BSD-3-Clause / MIT 系列），**不含任何传染性许可证**（无 GPL / AGPL / LGPL / MPL / SSPL）。
+本项目共依赖 **10 个第三方开源组件**，**全部采用宽松许可证**（Apache-2.0 / BSD-3-Clause / MIT 系列），**不含任何传染性许可证**（无 GPL / AGPL / LGPL / MPL / SSPL）。
 
 因此：
 
@@ -24,20 +24,18 @@
 
 | # | 组件 | 版本约束 | 许可证 | 用途 | 当前使用状态 |
 |---|---|---|---|---|---|
-| 1 | `gradio` | `>=4.44.0` | Apache-2.0 | Web 交互界面 | 待代码线使用 |
-| 2 | `requests` | `>=2.32.0` | Apache-2.0 | 同步 HTTP 请求 | 待代码线使用 |
-| 3 | `httpx` | `>=0.27.0` | BSD-3-Clause | 异步 HTTP 请求 | 待代码线使用 |
-| 4 | `beautifulsoup4` | `>=4.12.0` | MIT | HTML 解析 | 待代码线使用 |
-| 5 | `lxml` | `>=5.2.0` | BSD-3-Clause | HTML/XML 解析引擎（bs4 后端） | 待代码线使用 |
-| 6 | `pandas` | `>=2.2.0` | BSD-3-Clause | 表格数据处理 | 待代码线使用 |
-| 7 | `openpyxl` | `>=3.1.0` | MIT | Excel 读写（语料核对表） | 待代码线使用 |
-| 8 | `openai` | `>=1.40.0` | Apache-2.0 | 调用大模型 API（兼容 OpenAI 协议） | ✅ 已使用 |
-| 9 | `numpy` | `>=1.26.0` | BSD-3-Clause（另含 0BSD/MIT/Zlib/CC0-1.0） | 数值计算 | 待代码线使用 |
-| 10 | `scikit-learn` | `>=1.5.0` | BSD-3-Clause | 相似度计算 | 待代码线使用 |
-| 11 | `python-dotenv` | `>=1.0.0` | BSD-3-Clause | 读取 `.env` 配置 | ✅ 已使用 |
-| 12 | `tenacity` | `>=8.5.0` | Apache-2.0 | 请求重试与限速 | 待代码线使用 |
+| 1 | `gradio` | `>=4.44.0` | Apache-2.0 | Web 交互界面 | ✅ 已使用（`app.py`） |
+| 2 | `requests` | `>=2.32.0` | Apache-2.0 | 同步 HTTP 请求 | 待后续模块使用 |
+| 3 | `httpx` | `>=0.27.0` | BSD-3-Clause | 异步 HTTP 请求 | 待后续模块使用 |
+| 4 | `beautifulsoup4` | `>=4.12.0` | MIT | HTML 解析 | 待后续模块使用 |
+| 5 | `lxml` | `>=5.2.0` | BSD-3-Clause | HTML/XML 解析引擎（bs4 后端） | 待后续模块使用 |
+| 6 | `pandas` | `>=2.2.0` | BSD-3-Clause | 表格数据处理 | 待后续模块使用 |
+| 7 | `openpyxl` | `>=3.1.0` | MIT | Excel 读写（语料核对表） | 待后续模块使用 |
+| 8 | `openai` | `>=1.40.0` | Apache-2.0 | 调用大模型 API（兼容 OpenAI 协议） | ✅ 已使用（`core/llm.py`） |
+| 9 | `python-dotenv` | `>=1.0.0` | BSD-3-Clause | 读取 `.env` 配置 | ✅ 已使用 |
+| 10 | `tenacity` | `>=8.5.0` | Apache-2.0 | 请求重试与限速 | ✅ 已使用（`scripts/enrich_cn.py`） |
 
-> 「当前使用状态」依据对仓库内全部 `.py` 文件的实际 import 扫描得出（2026-10-14）。
+> 「当前使用状态」依据对仓库内全部 `.py` 文件的实际 import 扫描得出（2026-10-14，M1 整合后）。
 > 数据抓取脚本刻意只依赖**标准库**（`urllib`），因此抓取链路不引入任何第三方依赖。
 
 ---
@@ -53,7 +51,7 @@
 
 额外好处：**附带专利授权** —— 原作者不能事后用专利来卡你。对企业使用最友好的一类。
 
-### BSD-3-Clause —— 6 个（`httpx`、`lxml`、`pandas`、`numpy`、`scikit-learn`、`python-dotenv`）
+### BSD-3-Clause —— 4 个（`httpx`、`lxml`、`pandas`、`python-dotenv`）
 
 能商用、能修改、能闭源。要求两条：
 
@@ -63,16 +61,6 @@
 ### MIT —— 2 个（`beautifulsoup4`、`openpyxl`）
 
 最宽松的一类。保留版权声明即可，其余基本没有限制。
-
-### 复合许可证 —— `numpy`
-
-`numpy` 由来源不同的多个文件组成，官方标注为：
-
-```
-BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
-```
-
-**五个全部是宽松许可证**（`CC0-1.0` 甚至等同放弃版权），可放心使用。
 
 ---
 
@@ -101,16 +89,14 @@ BSD-3-Clause AND 0BSD AND MIT AND Zlib AND CC0-1.0
 
 ---
 
-## 六、依赖精简建议（诚实记录）
+## 六、依赖精简记录
 
-经 `scripts/check_licenses.py` 与仓库内实际 import 扫描核查：**当前数据线脚本只用到标准库 + `python-dotenv` + `openai`**；上表中标注「待代码线使用」的组件，是为 Web 界面与检索模块预留的。
+早期 `requirements.txt` 曾包含 `numpy` 与 `scikit-learn`（为向量检索预留）。经代码评审确认：
+本项目语料是「小规模 + 强结构化」，采用**按「类目 + 市场」标签精确筛选**，不引入向量检索 ——
+这两个包已在 **2026-10-14 的修复轮次中正式移除**，减少部署时的安装体积与构建失败风险。
 
-由此带来两点提示：
-
-1. 若检索模块最终采用**结构化标签筛选**（不引入向量检索），则 `scikit-learn` 可移除；
-2. `numpy` 即使不显式列出，`pandas` 也会自动带入，保留与否影响不大。
-
-**移除未用依赖可减少部署时的安装体积与构建失败风险**（创空间构建时间有限）。**建议**由代码线负责人在功能定型后做一次真实的导入检查，再决定是否精简。
+> 2026-10-14（M1 整合后）的 import 扫描：已实际使用 `gradio` / `openai` / `python-dotenv` / `tenacity`；
+> 抓取链路只用标准库 `urllib`；其余为 M2–M4 功能预留，若最终未用上应继续精简。
 
 ---
 

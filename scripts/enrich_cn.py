@@ -17,15 +17,18 @@
 
 用法：
     python scripts/enrich_cn.py
+
+变更记录（2026-10-14 修复，对应《代码审查报告》问题13）：
+    - 原来手写 urllib + 手写重试，与 test_connection.py 用 openai SDK 的风格不一致，
+      且 requirements.txt 引入的 tenacity 一直没用上。现统一改用 openai SDK，
+      重试交给 tenacity。
+    - 修正提示词自相矛盾：原提示词写「每条三行」，但示例格式是一行。
 """
 
 import csv
-import json
 import os
 import sys
 import time
-import urllib.request
-import urllib.error
 
 if sys.platform == "win32":
     try:
@@ -48,43 +51,53 @@ MODEL = os.getenv("MODEL_NAME", "").strip()
 BATCH = 8          # 每批几条（省 token 的平衡点）
 INTERVAL = 4       # 批次间隔，避免触发限流
 
+# ── LLM 客户端（统一用 openai SDK + tenacity 重试）──────────────
+try:
+    from openai import OpenAI
+except ImportError:
+    print("缺少 openai 库：pip install openai python-dotenv tenacity")
+    sys.exit(1)
 
-def call_model(prompt, max_tokens=8000, retries=3):
-    """调魔搭模型。
+try:
+    from tenacity import retry, stop_after_attempt, wait_exponential
+except ImportError:
+    # 没有 tenacity 时退化为「只试一次」，不阻塞主流程
+    def retry(*a, **k):
+        def deco(fn):
+            return fn
+        return deco
+
+    def stop_after_attempt(*a, **k):
+        return None
+
+    def wait_exponential(*a, **k):
+        return None
+
+_client = None
+
+
+def client():
+    global _client
+    if _client is None:
+        _client = OpenAI(api_key=TOKEN, base_url=BASE, timeout=180)
+    return _client
+
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10), reraise=True)
+def call_model(prompt, max_tokens=8000):
+    """调模型。
 
     ⚠️ max_tokens 必须给足 8000：
-        DeepSeek-V4.1-Flash 是推理模型，实测思考过程可达 10000+ 字符，
+        推理模型（如 DeepSeek 系列）的思考过程可达 10000+ 字符，
         给少了会返回空字符串。
     """
-    url = f"{BASE}/chat/completions"
-    payload = {
-        "model": MODEL,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": max_tokens,
-        "temperature": 0.2,
-    }
-    for i in range(retries):
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Authorization": f"Bearer {TOKEN}",
-                    "Content-Type": "application/json",
-                },
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=180) as r:
-                d = json.loads(r.read().decode("utf-8"))
-            return d["choices"][0]["message"]["content"]
-        except urllib.error.HTTPError as e:
-            body = e.read()[:200].decode("utf-8", "ignore")
-            print(f"    [!] HTTP {e.code}: {body}")
-            time.sleep(3 * (i + 1))
-        except Exception as e:
-            print(f"    [!] {type(e).__name__}: {str(e)[:80]}")
-            time.sleep(3 * (i + 1))
-    return ""
+    resp = client().chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=0.2,
+    )
+    return resp.choices[0].message.content or ""
 
 
 PROMPT_TMPL = """你是跨境电商合规专家。下面是一批官方法规的英文标题。
@@ -93,10 +106,10 @@ PROMPT_TMPL = """你是跨境电商合规专家。下面是一批官方法规的
 1. 法规中文名：标准的中文译名（如 "Regulation (EU) 2025/2509" → 《玩具安全条例》）
 2. 作用说明：一句话（30 字以内）说明这条法规管什么、卖家要注意什么
 
-严格按下面的格式输出，每条三行，不要用 markdown 表格，不要加解释：
+严格按下面的格式输出，**每条一行**，不要用 markdown 表格，不要加解释：
 编号|||中文名|||作用说明
 
-法规清单：
+法规清单（每行：编号|||英文标题）：
 {items}
 """
 
@@ -122,7 +135,6 @@ def parse(out):
         key = parts[0].strip().strip("`* ")
         name = parts[1].strip()
         desc = parts[2].strip()
-        # 去掉可能的编号前缀，如 "16 CFR Part 1250"
         if key:
             res[key] = (name, desc)
     return res
@@ -152,7 +164,11 @@ def main():
     for bi, batch in enumerate(batches, 1):
         print(f"  批次 {bi}/{len(batches)} ...", end=" ", flush=True)
         prompt = PROMPT_TMPL.format(items=build_items(batch))
-        out = call_model(prompt)
+        try:
+            out = call_model(prompt)
+        except Exception as e:
+            print(f"失败：{type(e).__name__}: {str(e)[:80]}")
+            out = ""
         got = parse(out)
         result.update(got)
         print(f"解析出 {len(got)} 条")
@@ -162,7 +178,7 @@ def main():
     print(f"  共拿到 {len(result)} 条翻译（目标 {len(rows)} 条）")
     print()
 
-    # 回填
+    # 回填（只补「法规中文名」空值；说明追加到备注最前）
     hit = 0
     for r in rows:
         key = r["CELEX号"] or r["官方编号"]
@@ -170,7 +186,6 @@ def main():
             name, desc = result[key]
             if not r["法规中文名"].strip():
                 r["法规中文名"] = name
-            # 备注：保留原始技术信息，前面加一句作用说明
             old = r["备注／问题"].strip()
             r["备注／问题"] = f"{desc}｜{old}" if desc else old
             hit += 1

@@ -14,6 +14,13 @@
 
 用法：
     python scripts/fetch_us.py
+
+变更记录（2026-10-14 修复，对应《代码审查报告》问题1）：
+    - 修复重复抓取：原 TARGETS 中 part_keys 有重叠（16 CFR Part 1120 出现在两条
+      「电子电器/CPSC」target、21 CFR Part 740 出现在两条「美妆个护/FDA」target），
+      同一 Part 被追加两次，导致下游 88 行里只有 86 个唯一键。
+      现：① 合并同 (title, agency, category) 的 target；② 用全局 seen 集合按
+      (title, part) 去重，双保险。
 """
 
 import csv
@@ -149,38 +156,32 @@ def build_url(chain, date):
 
 # ── 我们要抓的目标（按品类组织） ─────────────────────────────
 # 只抓跟项目品类直接相关的 Part，不全量抓（避免几千条）
+# ⚠️ 注意：同一 (title, agency, category) 下不要重复列同一个 part_keys，
+#    否则会重复入库（本脚本已用 seen 兜底，但 TARGETS 保持干净更好）。
 TARGETS = [
     # ── 儿童玩具（CPSC） ──
-    {"title": 16, "category": "儿童玩具", "agency": "CPSC", "part_keys": ["1250", "1303", "1307", "1500", "1501"]},
-    # ── 电子电器（FCC + CPSC） ──
-    {"title": 47, "category": "电子电器", "agency": "FCC", "part_keys": ["15", "18"]},
-    {"title": 16, "category": "电子电器", "agency": "CPSC", "part_keys": ["1505", "1120"]},
-    # ── 纺织服装（FTC 标签法规） ──
-    {"title": 16, "category": "纺织服装", "agency": "FTC", "part_keys": ["300", "301", "303", "423"]},
-    # ── 美妆个护（FDA） ──
-    {"title": 21, "category": "美妆个护", "agency": "FDA", "part_keys": ["700", "710", "720", "740"]},
-    # ── 食品接触材料（FDA） ──
-    {"title": 21, "category": "食品接触材料", "agency": "FDA", "part_keys": ["174", "175", "176", "177", "178", "180"]},
-
-    # ═══ 扩充部分（10.14 晚补足到 40 条）═══
-    # ── 儿童玩具：玩具安全法规全集 ──
     {"title": 16, "category": "儿童玩具", "agency": "CPSC",
      "part_keys": ["1112", "1113", "1200", "1201", "1202", "1203", "1204",
                    "1205", "1207", "1209", "1210", "1211", "1212", "1213",
-                   "1220", "1224", "1230", "1241", "1243", "1251", "1252"]},
-    # ── 电子电器：家用电器安全 + 电池 ──
+                   "1220", "1224", "1230", "1241", "1243", "1250", "1251",
+                   "1252", "1303", "1307", "1500", "1501"]},
+    # ── 电子电器（FCC + CPSC） ──
+    {"title": 47, "category": "电子电器", "agency": "FCC", "part_keys": ["15", "18"]},
     {"title": 16, "category": "电子电器", "agency": "CPSC",
-     "part_keys": ["1101", "1105", "1107", "1109", "1110", "1120"]},
-    # ── 纺织服装：阻燃与服装安全 ──
+     "part_keys": ["1101", "1105", "1107", "1109", "1110", "1120", "1505"]},
+    # ── 纺织服装（FTC 标签法规 + CPSC 阻燃） ──
+    {"title": 16, "category": "纺织服装", "agency": "FTC",
+     "part_keys": ["300", "301", "303", "423"]},
     {"title": 16, "category": "纺织服装", "agency": "CPSC",
      "part_keys": ["1610", "1611", "1615", "1616", "1630", "1631", "1632"]},
-    # ── 美妆个护：化妆品与化学品标签 ──
+    # ── 美妆个护（FDA） ──
     {"title": 21, "category": "美妆个护", "agency": "FDA",
-     "part_keys": ["701", "730", "740"]},
-    # ── 食品接触材料：详细章节 ──
+     "part_keys": ["700", "701", "710", "720", "730", "740"]},
+    # ── 食品接触材料（FDA） ──
     {"title": 21, "category": "食品接触材料", "agency": "FDA",
-     "part_keys": ["170", "171", "172", "173", "179", "181", "186"]},
-    # ── 通用/标签标识：公平包装与标签法 ──
+     "part_keys": ["170", "171", "172", "173", "174", "175", "176", "177",
+                   "178", "179", "180", "181", "186"]},
+    # ── 标签标识（FTC 公平包装与标签法） ──
     {"title": 16, "category": "标签标识", "agency": "FTC",
      "part_keys": ["500", "501", "502", "503"]},
 ]
@@ -201,6 +202,8 @@ def main():
 
     rows = []
     cache = {}
+    seen = set()          # (title, part) 全局去重，防止重复抓取
+    dup_n = 0
 
     for target in TARGETS:
         tnum = target["title"]
@@ -217,6 +220,7 @@ def main():
             print(f"    拉取 Title {tnum} 完整结构完成")
             # 立刻落盘缓存，避免重复拉取
             cpath = os.path.join(OUT_DIR, f"_cache_title{tnum}.json")
+            os.makedirs(OUT_DIR, exist_ok=True)
             with open(cpath, "w", encoding="utf-8") as f:
                 json.dump(cache[tnum], f, ensure_ascii=False)
 
@@ -227,6 +231,10 @@ def main():
             part_id = str(item["node"].get("identifier", "")).strip()
             if part_id not in target["part_keys"]:
                 continue
+            if (tnum, part_id) in seen:          # 已抓过，跳过（去重）
+                dup_n += 1
+                continue
+            seen.add((tnum, part_id))
 
             label = (item["node"].get("label") or item["node"].get("label_description") or "").strip()
             # label 形如 "Part 1250—Safety Standard Mandating ASTM F963 for Toys"
@@ -246,7 +254,7 @@ def main():
 
             note = "eCFR 为电子版非官方法律版，引用建议同时给 govinfo.gov 官方版"
             if recent_dates:
-                note += f"；近期修订：{ '、'.join(recent_dates) }（共 {ver_count} 条修订记录）"
+                note += f"；近期修订：{'、'.join(recent_dates)}（共 {ver_count} 条修订记录）"
 
             rows.append({
                 "类目": target["category"],
@@ -258,6 +266,7 @@ def main():
                 "ELI标识": "",
                 "官方链接": url,
                 "来源类型": "官方（eCFR）",
+                "现行效力": "现行有效（持续修订）",
                 # 美国 CFR 是持续修订的汇编，无单一"生效日"；
                 # 这里填最早修订记录，作为「首次收录参考」，性质已在备注标明
                 "生效日期": f"首次收录 {earliest}（参考）" if earliest else "",
@@ -274,19 +283,19 @@ def main():
         time.sleep(REQUEST_INTERVAL)
 
     print()
-    print(f"  共抓到 {len(rows)} 条 Part 级法规")
+    print(f"  共抓到 {len(rows)} 条 Part 级法规（去重跳过 {dup_n} 条）")
     print()
 
     # 写 CSV（给 Excel/WPS 直接打开）
     os.makedirs(OUT_DIR, exist_ok=True)
     out_csv = os.path.join(OUT_DIR, "us_regulations.csv")
     cols = ["类目", "机构", "法规中文名", "官方标题（英文）", "官方编号", "CELEX号",
-            "ELI标识", "官方链接", "来源类型", "生效日期", "最新修订日期",
+            "ELI标识", "官方链接", "来源类型", "现行效力", "生效日期", "最新修订日期",
             "链接可打开", "编号核对", "是否官方来源", "核对状态", "核对人", "核对日期", "备注／问题"]
 
     # utf-8-sig 让 Excel 正确识别中文
     with open(out_csv, "w", encoding="utf-8-sig", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=cols)
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
         w.writeheader()
         w.writerows(rows)
 

@@ -2,112 +2,100 @@
   官方链接检查报告
 ======================================================================
 
-WAF   202    EU 32025R2509             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32009L0048             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32023R0988             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32014L0053             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32011L0065             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32012L0019             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32014L0030             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32009L0125             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32011R1007             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32008R1272             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32006R1907             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32009R1223             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32004R1935             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32011R0010             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32005R0396             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32011R1169             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 31994L0011             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32014L0035             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32023R1542             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32009R0640             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32017R1369             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32023R1670             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32023R1671             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32011L0008             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32009R0450             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32022R1616             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32007R0901             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32025R0040             人机验证墙（需人工在浏览器打开）
-WAF   202    EU 32001L0095             人机验证墙（需人工在浏览器打开）
-OK    200    US 16 CFR Part 1250       可程序验证
-OK    200    US 16 CFR Part 1303       可程序验证
-OK    200    US 16 CFR Part 1307       可程序验证
-OK    200    US 16 CFR Part 1500       可程序验证
-OK    200    US 16 CFR Part 1501       可程序验证
-OK    200    US 47 CFR Part 15         可程序验证
-OK    200    US 47 CFR Part 18         可程序验证
-OK    200    US 16 CFR Part 1120       可程序验证
-OK    200    US 16 CFR Part 1505       可程序验证
-OK    200    US 16 CFR Part 300        可程序验证
-OK    200    US 16 CFR Part 301        可程序验证
-OK    200    US 16 CFR Part 303        可程序验证
-OK    200    US 16 CFR Part 423        可程序验证
-OK    200    US 21 CFR Part 700        可程序验证
-OK    200    US 21 CFR Part 710        可程序验证
-OK    200    US 21 CFR Part 720        可程序验证
-OK    200    US 21 CFR Part 740        可程序验证
-OK    200    US 21 CFR Part 174        可程序验证
-OK    200    US 21 CFR Part 175        可程序验证
-OK    200    US 21 CFR Part 176        可程序验证
-OK    200    US 21 CFR Part 177        可程序验证
-OK    200    US 21 CFR Part 178        可程序验证
-OK    200    US 21 CFR Part 180        可程序验证
-OK    200    US 16 CFR Part 1112       可程序验证
-OK    200    US 16 CFR Part 1200       可程序验证
-OK    200    US 16 CFR Part 1213       可程序验证
-OK    200    US 16 CFR Part 1220       可程序验证
-OK    200    US 16 CFR Part 1224       可程序验证
-OK    200    US 16 CFR Part 1230       可程序验证
-OK    200    US 16 CFR Part 1241       可程序验证
-OK    200    US 16 CFR Part 1243       可程序验证
-OK    200    US 16 CFR Part 1251       可程序验证
-OK    200    US 16 CFR Part 1252       可程序验证
-OK    200    US 16 CFR Part 1101       可程序验证
-OK    200    US 16 CFR Part 1105       可程序验证
-OK    200    US 16 CFR Part 1107       可程序验证
-OK    200    US 16 CFR Part 1109       可程序验证
-OK    200    US 16 CFR Part 1110       可程序验证
-OK    200    US 16 CFR Part 1120       可程序验证
-OK    200    US 16 CFR Part 1610       可程序验证
-OK    200    US 16 CFR Part 1611       可程序验证
-OK    200    US 16 CFR Part 1615       可程序验证
-OK    200    US 16 CFR Part 1616       可程序验证
-OK    200    US 16 CFR Part 1630       可程序验证
-OK    200    US 16 CFR Part 1631       可程序验证
-OK    200    US 16 CFR Part 1632       可程序验证
-OK    200    US 21 CFR Part 701        可程序验证
-OK    200    US 21 CFR Part 740        可程序验证
-OK    200    US 21 CFR Part 170        可程序验证
-OK    200    US 21 CFR Part 171        可程序验证
-BAD   429    US 21 CFR Part 172        HTTP 429
-BAD   429    US 21 CFR Part 173        HTTP 429
-BAD   429    US 21 CFR Part 179        HTTP 429
-OK    200    US 21 CFR Part 181        可程序验证
-OK    200    US 21 CFR Part 186        可程序验证
-OK    200    US 16 CFR Part 500        可程序验证
-OK    200    US 16 CFR Part 501        可程序验证
-BAD   429    US 16 CFR Part 502        HTTP 429
-BAD   429    US 16 CFR Part 503        HTTP 429
+WAF      202    EU 32025R2509             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32009L0048             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32023R0988             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32014L0053             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32011L0065             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32012L0019             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32014L0030             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32009L0125             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32011R1007             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32008R1272             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32006R1907             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32009R1223             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32004R1935             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32011R0010             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32005R0396             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32011R1169             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 31994L0011             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32014L0035             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32023R1542             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32009R0640             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32017R1369             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32023R1670             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32023R1671             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32011L0008             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32009R0450             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32022R1616             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32007R0901             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32025R0040             人机验证墙（需人工在浏览器打开）
+WAF      202    EU 32001L0095             人机验证墙（需人工在浏览器打开）
+OK       200    US 16 CFR Part 1250       可程序验证
+OK       200    US 16 CFR Part 1303       可程序验证
+OK       200    US 16 CFR Part 1307       可程序验证
+OK       200    US 16 CFR Part 1500       可程序验证
+OK       200    US 16 CFR Part 1501       可程序验证
+OK       200    US 47 CFR Part 15         可程序验证
+OK       200    US 47 CFR Part 18         可程序验证
+OK       200    US 16 CFR Part 1120       可程序验证
+OK       200    US 16 CFR Part 1505       可程序验证
+OK       200    US 16 CFR Part 300        可程序验证
+OK       200    US 16 CFR Part 301        可程序验证
+OK       200    US 16 CFR Part 303        可程序验证
+OK       200    US 16 CFR Part 423        可程序验证
+OK       200    US 21 CFR Part 700        可程序验证
+OK       200    US 21 CFR Part 710        可程序验证
+OK       200    US 21 CFR Part 720        可程序验证
+OK       200    US 21 CFR Part 740        可程序验证
+OK       200    US 21 CFR Part 174        可程序验证
+OK       200    US 21 CFR Part 175        可程序验证
+OK       200    US 21 CFR Part 176        可程序验证
+OK       200    US 21 CFR Part 177        可程序验证
+OK       200    US 21 CFR Part 178        可程序验证
+OK       200    US 21 CFR Part 180        可程序验证
+OK       200    US 16 CFR Part 1112       可程序验证
+OK       200    US 16 CFR Part 1200       可程序验证
+OK       200    US 16 CFR Part 1213       可程序验证
+OK       200    US 16 CFR Part 1220       可程序验证
+OK       200    US 16 CFR Part 1224       可程序验证
+OK       200    US 16 CFR Part 1230       可程序验证
+OK       200    US 16 CFR Part 1241       可程序验证
+OK       200    US 16 CFR Part 1243       可程序验证
+OK       200    US 16 CFR Part 1251       可程序验证
+OK       200    US 16 CFR Part 1252       可程序验证
+OK       200    US 16 CFR Part 1101       可程序验证
+OK       200    US 16 CFR Part 1105       可程序验证
+OK       200    US 16 CFR Part 1107       可程序验证
+OK       200    US 16 CFR Part 1109       可程序验证
+OK       200    US 16 CFR Part 1110       可程序验证
+OK       200    US 16 CFR Part 1610       可程序验证
+OK       200    US 16 CFR Part 1611       可程序验证
+OK       200    US 16 CFR Part 1615       可程序验证
+OK       200    US 16 CFR Part 1616       可程序验证
+OK       200    US 16 CFR Part 1630       可程序验证
+OK       200    US 16 CFR Part 1631       可程序验证
+OK       200    US 16 CFR Part 1632       可程序验证
+OK       200    US 21 CFR Part 701        可程序验证
+OK       200    US 21 CFR Part 170        可程序验证
+OK       200    US 21 CFR Part 171        可程序验证
+OK       200    US 21 CFR Part 172        可程序验证
+OK       200    US 21 CFR Part 173        可程序验证
+OK       200    US 21 CFR Part 179        可程序验证
+OK       200    US 21 CFR Part 181        可程序验证
+OK       200    US 21 CFR Part 186        可程序验证
+OK       200    US 16 CFR Part 500        可程序验证
+OK       200    US 16 CFR Part 501        可程序验证
+OK       200    US 16 CFR Part 502        可程序验证
+OK       200    US 16 CFR Part 503        可程序验证
 
 ----------------------------------------------------------------------
-可程序验证 54 / 88
-人机验证墙 29 / 88
-有问题     5 / 88
+可程序验证（首次 200） 57 / 86
+限流复测后通过         0 / 86
+人机验证墙             29 / 86
+待人工确认(202)        0 / 86
+有问题                 0 / 86
 
 说明：
   人机验证墙 = 网站对程序访问有 AWS WAF 挑战，真人在浏览器点开是正常的。
   欧盟 EUR-Lex 整站都属于这一类，所以欧盟数据一律走官方 SPARQL 数据接口验证。
-
-需要人工处理的：
-  - US 21 CFR Part 172  [429] HTTP 429
-    https://www.ecfr.gov/current/title-21/part-172
-  - US 21 CFR Part 173  [429] HTTP 429
-    https://www.ecfr.gov/current/title-21/part-173
-  - US 21 CFR Part 179  [429] HTTP 429
-    https://www.ecfr.gov/current/title-21/part-179
-  - US 16 CFR Part 502  [429] HTTP 429
-    https://www.ecfr.gov/current/title-16/part-502
-  - US 16 CFR Part 503  [429] HTTP 429
-    https://www.ecfr.gov/current/title-16/part-503

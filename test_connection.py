@@ -33,6 +33,12 @@ MODEL = os.getenv("MODEL_NAME", "").strip()
 LINE = "=" * 58
 
 
+def pause():
+    """仅在交互式终端里等待回车 —— 否则在 CI / 管道 / 定时任务中会永久阻塞。"""
+    if sys.stdin.isatty():
+        input("按回车键关闭窗口...")
+
+
 def fail(title, detail):
     print()
     print(LINE)
@@ -40,7 +46,7 @@ def fail(title, detail):
     print(LINE)
     print(detail)
     print()
-    input("按回车键关闭窗口...")
+    pause()
     sys.exit(1)
 
 
@@ -164,4 +170,4 @@ print("  说明：代码已经能正常调用魔搭模型了。")
 print("        下一步就可以让模型开始干正经活了 ——")
 print("        读法规、归类、写摘要。")
 print()
-input("按回车键关闭窗口...")
+pause()

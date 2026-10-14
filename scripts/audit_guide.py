@@ -21,6 +21,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime
 
 if sys.platform == "win32":
     try:
@@ -31,7 +32,9 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 DATA = os.path.join(PROJECT, "data")
-GUIDE = r"E:\浙客松天猫OPC赛道\官方法规网站查找指南.md"
+# 待核对的《官方法规网站查找指南》路径：优先命令行第一个参数，其次环境变量 GUIDE_PATH。
+# ⚠️ 不再硬编码本机绝对路径（原实现写死 E:\...\浙客松天猫OPC赛道\... ，换机器即失败）。
+GUIDE = (sys.argv[1] if len(sys.argv) > 1 else os.getenv("GUIDE_PATH", "")).strip()
 
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
@@ -122,13 +125,26 @@ def eu_check(celex):
             r.get("inforce", {}).get("value", ""))
 
 
-def ecfr_part_exists(title, part):
-    """查 eCFR 里 title-N 有没有 part-P。返回 (存在?, 名称)。"""
-    url = f"https://www.ecfr.gov/api/versioner/v1/titles.json"
-    # 用 structure 接口查该 title 下是否存在该 part
+def ecfr_date():
+    """从 eCFR titles.json 动态取当前数据日期（替代原来写死的 2026-10-08）。"""
     try:
         req = urllib.request.Request(
-            f"https://www.ecfr.gov/api/versioner/v1/structure/2026-10-08/title-{title}.json",
+            "https://www.ecfr.gov/api/versioner/v1/titles.json",
+            headers={"User-Agent": UA, "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return json.loads(r.read().decode("utf-8")).get("meta", {}).get("date", "")
+    except Exception:
+        return ""
+
+
+def ecfr_part_exists(title, part):
+    """查 eCFR 里 title-N 有没有 part-P。返回 (存在?, 名称)。"""
+    date = ecfr_date()
+    if not date:
+        return None, "无法确定 eCFR 数据日期"
+    try:
+        req = urllib.request.Request(
+            f"https://www.ecfr.gov/api/versioner/v1/structure/{date}/title-{title}.json",
             headers={"User-Agent": UA, "Accept": "application/json"})
         with urllib.request.urlopen(req, timeout=60) as r:
             data = json.loads(r.read().decode("utf-8"))
@@ -152,6 +168,10 @@ def ecfr_part_exists(title, part):
 
 
 def main():
+    if not GUIDE:
+        print("用法：python scripts/audit_guide.py <《官方法规网站查找指南.md》的路径>")
+        print("  或设置环境变量 GUIDE_PATH。脚本不再猜本机路径。")
+        return
     if not os.path.exists(GUIDE):
         print(f"找不到指南：{GUIDE}")
         return
@@ -236,7 +256,7 @@ def main():
     lines = []
     lines.append("# 《官方法规网站查找指南》核对报告")
     lines.append("")
-    lines.append("> 核对时间：2026-10-14 18:10")
+    lines.append(f"> 核对时间：{datetime.now().strftime('%Y-%m-%d %H:%M')}")
     lines.append(f"> 范围：文档中 {len(links)} 个链接 + 16 项法规编号/条款号")
     lines.append("")
     lines.append("---")

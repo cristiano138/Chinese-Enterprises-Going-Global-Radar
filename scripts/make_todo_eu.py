@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-生成「欧盟 17 条待补清单」——给李直接照着填的作业单。
+生成「欧盟待补清单」——给人工直接照着填的作业单（条数按实际数据动态生成）。
 
 用途：
     骨架总表是给机器读的（18 列很宽），人填的时候不好用。
@@ -65,10 +65,10 @@ def main():
         groups.setdefault(r["类目"], []).append(r)
 
     lines = []
-    lines.append("# 欧盟 17 条待补清单（给李的作业单）")
+    lines.append(f"# 欧盟 {len(rows)} 条待补清单（作业单）")
     lines.append("")
     lines.append("> 数据已经抓好，你只要**打开链接 → 读 → 填 3 个空**。")
-    lines.append("> 每条约 5 分钟，17 条约 1.5 小时。")
+    lines.append(f"> 每条约 5 分钟，{len(rows)} 条约 {len(rows) * 5 / 60:.1f} 小时。")
     lines.append("")
     lines.append("---")
     lines.append("")
@@ -122,10 +122,10 @@ def main():
 
     lines.append("## 全部填完后的检查")
     lines.append("")
-    lines.append("- [ ] 17 条都填了「法规中文名」")
-    lines.append("- [ ] 17 条都填了「备注／问题」")
-    lines.append("- [ ] 17 条都点开过链接")
-    lines.append("- [ ] 17 条都填了「核对人」「核对日期」")
+    lines.append(f"- [ ] {len(rows)} 条都填了「法规中文名」")
+    lines.append(f"- [ ] {len(rows)} 条都填了「备注／问题」")
+    lines.append(f"- [ ] {len(rows)} 条都点开过链接")
+    lines.append(f"- [ ] {len(rows)} 条都填了「核对人」「核对日期」")
     lines.append("- [ ] 特别留意：`32009L0048`（旧玩具指令，即将废止）和 `31994L0011`（包装指令，正被取代）")
     lines.append("")
 
