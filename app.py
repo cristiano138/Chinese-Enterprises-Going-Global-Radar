@@ -258,9 +258,11 @@ def build_ui():
 
 
 if __name__ == "__main__":
-    # 魔搭创空间会注入 SERVER_PORT；本机默认 7860
+    # 平台（魔搭创空间等）可能通过 SERVER_PORT / PORT 注入端口；默认 7860
     port = int(os.getenv("SERVER_PORT", os.getenv("PORT", "7860")))
-    host = "0.0.0.0" if os.getenv("SERVER_PORT") else "127.0.0.1"
+    # 统一监听 0.0.0.0：本机用 127.0.0.1:7860 照常访问；
+    # 但在容器/云平台里若监听 127.0.0.1，外部将完全访问不到（页面会一直转圈）。
+    host = "0.0.0.0"
     _major = int(gr.__version__.split(".")[0])
     launch_kwargs = {"server_name": host, "server_port": port}
     if _major < 6:
