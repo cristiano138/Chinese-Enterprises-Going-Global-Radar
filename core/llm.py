@@ -210,3 +210,128 @@ def m1_tips(rows):
     if not meta["ok"]:
         return {}, meta
     return parse_keyed_lines(text), meta
+
+
+# ── 通用解析：三列（键|||A|||B）────────────────────────────────
+def parse_keyed_triples(text):
+    """解析「键|||A|||B」格式 → {键: (A, B)}。
+
+    多余的分段并入 B（模型偶尔会多吐一段），不因此丢行。
+    """
+    out = {}
+    for line in (text or "").splitlines():
+        line = line.strip().lstrip("-•* ").strip()
+        if "|||" not in line:
+            continue
+        parts = [p.strip() for p in line.split("|||")]
+        if len(parts) < 3:
+            continue
+        key = parts[0].strip("`* ")
+        a = parts[1].strip()
+        b = "|||".join(parts[2:]).strip()
+        if key and (a or b):
+            out[key] = (a, b)
+    return out
+
+
+# ── M2 专用提示词：变化摘要 + 影响说明 ───────────────────────────
+M2_PROMPT = """你是跨境电商合规助理。下面是**已经从官方数据库检索到的**法规变化事件
+（事件键、事件类型、日期、法规名、官方编号、事件说明）。
+
+请为每条事件写两段给卖家看的中文：
+1. 变化摘要 —— 发生了什么（25 字以内，不要重复法规名，不要复述日期）
+2. 影响说明 —— 对卖家意味着什么、要关注什么（40 字以内）
+
+【不可违反的硬约束】
+1. 只允许使用下面给出的内容。**不得补充任何你认为「应该还有」的法规或日期**。
+2. **不得修改、推断或新增**任何法规编号、日期、链接 —— 一律照抄。
+3. **不得预测未来**，不得出现「将会」「预计」这类推断（除非事件本身日期在未来）。
+4. 信息不足就写「官方未说明」，**不要猜**。语气务实，不承诺「保证合规」。
+
+【输出格式】
+严格每条一行，用 ||| 分隔，不要 markdown 表格，不要加解释：
+事件键|||变化摘要|||影响说明
+
+事件列表：
+{items}
+"""
+
+
+def build_m2_items(events):
+    """把事件拍平成提示词条目。**只给事实字段，不给模型任何发挥空间。**"""
+    lines = []
+    for e in events:
+        lines.append("|||".join([
+            e["event_key"],
+            e["事件类型"],
+            e["日期"],
+            e.get("法规中文名", ""),
+            e.get("官方编号", ""),
+            (e.get("备注") or "无补充说明"),
+        ]))
+    return "\n".join(lines)
+
+
+def m2_summaries(events):
+    """M2 的可选润色：为每条事件生成 (变化摘要, 影响说明)。
+
+    返回 ({event_key: (摘要, 影响)}, meta)。模型不可用时返回空字典 ——
+    上层用确定性摘要顶上，时间线照样完整。
+    """
+    if not events:
+        return {}, {"ok": True, "reason": "无条目", "cached": False}
+    prompt = M2_PROMPT.format(items=build_m2_items(events))
+    text, meta = chat(prompt, max_tokens=4000)
+    if not meta["ok"]:
+        return {}, meta
+    return parse_keyed_triples(text), meta
+
+
+# ── M3 专用提示词：法规语言 → 可执行动作 ────────────────────────
+M3_PROMPT = """你是跨境电商合规助理。下面是**已经从官方数据库核验过的**法规义务
+（法规键、法规名、官方编号、义务说明）。
+
+请把每条义务改写成**一条可执行动作**：动词开头，说清「做什么」，
+像给同事派活一样，20 字以内的短句。
+
+【不可违反的硬约束】
+1. **只能依据**下面给出的义务说明改写，**不得新增要求、不得扩大适用范围**。
+2. **不得推荐**任何具体服务商、实验室品牌、产品或第三方机构。
+3. **不得承诺**「保证合规」，不得编造时限（下面没给的期限不要写）。
+4. 拿不准就照抄义务说明 —— **宁可啰嗦，也不要自行发挥**。
+
+【输出格式】
+严格每条一行，用 ||| 分隔，不要 markdown 表格，不要加解释：
+法规键|||可执行动作
+
+义务列表：
+{items}
+"""
+
+
+def build_m3_items(actions):
+    """把动作候选拍平成提示词条目（包含确定性回退文本，供模型改写）。"""
+    lines = []
+    for a in actions:
+        lines.append("|||".join([
+            a["key"],
+            a.get("依据法规", ""),
+            a.get("官方编号", ""),
+            a.get("动作", ""),
+        ]))
+    return "\n".join(lines)
+
+
+def m3_actions(actions):
+    """M3 的可选润色：把义务说明改写成可执行动作。
+
+    返回 ({key: 动作文本}, meta)。模型不可用时返回空字典 ——
+    上层直接用 core/actions.py 抽好的确定性文本，条条有依据。
+    """
+    if not actions:
+        return {}, {"ok": True, "reason": "无条目", "cached": False}
+    prompt = M3_PROMPT.format(items=build_m3_items(actions))
+    text, meta = chat(prompt, max_tokens=4000)
+    if not meta["ok"]:
+        return {}, meta
+    return parse_keyed_lines(text), meta

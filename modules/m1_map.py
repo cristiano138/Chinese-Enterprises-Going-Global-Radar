@@ -29,10 +29,11 @@ PROJECT = os.path.dirname(HERE)
 if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 
-from core import corpus, llm, verify  # noqa: E402
-
-DISCLAIMER = ("本清单仅供参考，不构成法律意见。请以官方原文为准，"
-              "并由专业人员复核后再作合规决策。")
+from core import corpus, llm, verify, snapshot  # noqa: E402
+from core.copy_zh import (  # noqa: E402
+    msg_no_input, msg_category_out_of_scope, msg_market_out_of_scope,
+    msg_empty_no_audit, msg_partial_pending, msg_llm_unavailable,
+)
 
 # M1 输出字段的中文表头（与 README 功能模块表的 8 项严格对应）
 FIELD_LABELS = [
@@ -105,21 +106,33 @@ def query(category, market, use_llm=True):
 
     返回 dict：
         ok            —— 是否成功（False 表示范围外输入）
-        reason        —— 失败原因
+        reason        —— 失败原因（PRD E 节文案）
         品类 / 市场     —— 回显
         primary       —— 主体法规记录（该品类）
         cross         —— 横切法规记录（标签标识 / 通用，所有品类都适用）
         llm           —— 模型调用元信息（成功/失败/缓存）
         dropped       —— 被引用对齐拦下的条目（正常情况下为 0）
         stats         —— 本市场语料统计
+        header        —— 顶部元数据（PRD D3：查询条件/查询日期/快照版本/数据截止时间）
     """
     res = corpus.search(category, market)
 
     if not res["ok"]:
-        return {"ok": False, "reason": res["reason"],
+        # 走 PRD E 节文案（不要硬编）
+        cat = (category or "").strip()
+        mkt = (market or "").strip()
+        if not cat and not mkt:
+            reason = msg_no_input()
+        elif mkt and mkt not in corpus.SUPPORTED_MARKETS:
+            reason = msg_market_out_of_scope(mkt)
+        else:
+            reason = msg_category_out_of_scope(cat) if cat else msg_no_input()
+        return {"ok": False, "reason": reason,
                 "品类": category, "市场": market,
                 "primary": [], "cross": [], "llm": None,
-                "dropped": [], "stats": {}}
+                "dropped": [], "stats": {},
+                "header": snapshot.header(cat or "（空）", mkt or "（空）",
+                                          m1_status=snapshot.MODULE_ERROR)}
 
     # ── ④ 引用对齐（先过底线，再谈润色）─────────────────────
     prim_kept, prim_drop = verify.filter_rows(res["primary"])
@@ -141,6 +154,17 @@ def query(category, market, use_llm=True):
         for it, why in rejected:
             dropped.append((it.get("key"), why))
 
+    # M1 模块状态：空 / partial / ready
+    total = len(prim_kept) + len(cross_kept)
+    pending = sum(1 for r in prim_kept + cross_kept
+                  if (r.get("核对状态", "") or "").strip() != "已核对")
+    if total == 0:
+        m1_status = snapshot.MODULE_EMPTY
+    elif pending > 0:
+        m1_status = snapshot.MODULE_PARTIAL
+    else:
+        m1_status = snapshot.MODULE_READY
+
     return {
         "ok": True,
         "reason": "",
@@ -156,6 +180,8 @@ def query(category, market, use_llm=True):
             "横切条数": len(cross_kept),
             "本市场语料总数": len(res["primary"]) + len(res["cross"]),
         },
+        "header": snapshot.header(res["category"], res["market"],
+                                  m1_status=m1_status),
     }
 
 
@@ -216,7 +242,8 @@ def render_text(result):
         lines.append("")
 
     lines.append("─" * 78)
-    lines.append(f"  ⚖️ {DISCLAIMER}")
+    lines.append(f"  ⚖️ {snapshot.DISCLAIMER}")
+    lines.append(f"  ℹ️  {snapshot.WAF_FOOTER_HINT}")
     lines.append("=" * 78)
     return "\n".join(lines)
 

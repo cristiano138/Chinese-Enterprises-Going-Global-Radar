@@ -10,6 +10,12 @@
     本模块是**纯确定性代码**：只读 CSV、只做字符串匹配，
     不联网、不调模型 —— 这是产品可信度的地基。
 
+支持范围（PRD 附录 3 / 5.1）：
+    - 市场：欧盟、美国
+    - 类目入口（5 个）：儿童玩具 / 电子电器 / 纺织服装 / 美妆个护 / 食品接触材料
+    - 「标签标识」「通用」按审核条件关联，**不作为独立入口**
+      —— 用户不能直接选它们作为类目查询；它们仍参与横切规则展示
+
 输入：
     data/语料核对表_完整版.csv   （86 条 × 20 列，主底表）
     回退：data/语料核对表_骨架总表.csv
@@ -18,6 +24,7 @@
     from core import corpus
     cat = corpus.load_corpus()          # 载入（带缓存）
     hits = corpus.search("儿童玩具", "欧盟")   # 精确筛选
+    ok, reason = corpus.is_supported("儿童玩具", "欧盟")
 """
 
 import csv
@@ -44,7 +51,8 @@ SUPPORTED_MARKETS = OrderedDict([
     ("美国", "US"),
 ])
 
-# 品类 = 5 个行业类目（卖家视角的「我卖什么」）
+# 类目入口 = 5 个行业类目（PRD 第 3 节：本期支持欧盟、美国；类目固定为这 5 个）
+# 这是产品允许用户直接选作输入的类目。
 SUPPORTED_CATEGORIES = [
     "儿童玩具",
     "电子电器",
@@ -53,12 +61,17 @@ SUPPORTED_CATEGORIES = [
     "食品接触材料",
 ]
 
-# 横切维度 —— 不是并列品类，而是「任何品类都要遵守」的维度。
-# 这正是设计优点：两个维度覆盖所有品类。
-#   标签标识：任何品类都要打标签
-#   通用    ：任何消费品都可能被通用法规（如欧盟 GPSR）覆盖
+# 横切维度 —— 不是并列类目入口，而是「任何类目都要遵守」的关联规则。
+# PRD 第 3 节：「『标签标识』『通用』是按审核条件关联的规则，不作为独立入口，
+# 也不无条件套用全部类目」。所以本模块把它们从 `is_supported()` 拒绝清单中
+# 移除，并把它们从用户入口剔除，但内部 `search()` 仍按关联规则展示。
 CROSS_CUTTING = ["标签标识", "通用"]
 
+# 入口类目（PRD 严格规定 —— 不含横切）
+ENTRY_CATEGORIES = SUPPORTED_CATEGORIES
+
+# 兼容性别名：旧 selftest / 历史代码用 ALL_QUERYABLE
+# 新代码请用 ENTRY_CATEGORIES
 ALL_QUERYABLE = SUPPORTED_CATEGORIES + CROSS_CUTTING
 
 # 每家市场的「通用/横切」法规覆盖面（用于在清单里单列一节，而不是混进品类）
@@ -129,7 +142,12 @@ def market_code(market):
 
 
 def is_supported(category, market):
-    """判断「类目 + 市场」是否在支持范围内。返回 (bool, 拒绝原因)。"""
+    """判断「类目 + 市场」是否在支持范围内。返回 (bool, 拒绝原因)。
+
+    按 PRD 附录 3：
+        - 市场限欧盟、美国
+        - 类目入口限 5 个业务类目（标签/通用不能作为入口）
+    """
     cat = (category or "").strip()
     mkt = (market or "").strip()
 
@@ -138,10 +156,12 @@ def is_supported(category, market):
             f"暂不支持市场「{mkt or '（空）'}」。本期仅覆盖："
             + "、".join(SUPPORTED_MARKETS.keys())
         )
-    if cat not in ALL_QUERYABLE:
+    if cat not in ENTRY_CATEGORIES:
+        # 横切维度（标签标识/通用）也按"不在入口范围"拒绝
         return False, (
-            f"暂不支持品类「{cat or '（空）'}」。本期仅覆盖："
-            + "、".join(ALL_QUERYABLE)
+            f"暂不支持类目「{cat or '（空）'}」。"
+            f"本期类目入口仅：{'、'.join(ENTRY_CATEGORIES)}"
+            f"（「{CROSS_CUTTING[0]}」「{CROSS_CUTTING[1]}」按审核条件关联，不作为独立入口）"
         )
     return True, ""
 
@@ -234,12 +254,15 @@ if __name__ == "__main__":
     print(f"  品类分布：{s['category']}")
     print(f"  效力分布：{s['validity']}")
     print()
-    for cat in ALL_QUERYABLE:
+    # PRD：仅 5 个类目入口；横切不再作为入口
+    for cat in ENTRY_CATEGORIES:
         for mkt in SUPPORTED_MARKETS:
             res = search(cat, mkt)
             print(f"  {cat:<8} × {mkt}  →  主体 {len(res['primary']):>2} 条"
                   f" + 横切 {len(res['cross']):>2} 条")
     print()
-    bad, why = is_supported("汽车配件", "欧盟")
-    print(f"  范围外输入测试：汽车配件 × 欧盟 → ok={bad}，{why}")
-    print("=" * 66)
+    # 边界测试：横切类目作为入口应被拒
+    print("  边界测试：")
+    for bad_cat in ["标签标识", "通用", "汽车配件", "", None]:
+        ok, why = is_supported(bad_cat, "欧盟")
+        print(f"    {str(bad_cat)!r:<14} → ok={ok}  {why[:80]}")

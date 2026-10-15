@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 M1 自检（scripts/selftest_m1.py）
 
@@ -30,7 +30,7 @@ PROJECT = os.path.dirname(HERE)
 if PROJECT not in sys.path:
     sys.path.insert(0, PROJECT)
 
-from core import corpus, verify  # noqa: E402
+from core import corpus, verify, snapshot  # noqa: E402
 from modules import m1_map  # noqa: E402
 
 # README「语料现状」表 —— 自检的期望值（不重算，直接对照文档口径）
@@ -40,8 +40,6 @@ EXPECTED = {
     ("纺织服装", "欧盟"): 4, ("纺织服装", "美国"): 11,
     ("美妆个护", "欧盟"): 1, ("美妆个护", "美国"): 5,
     ("食品接触材料", "欧盟"): 7, ("食品接触材料", "美国"): 13,
-    ("标签标识", "欧盟"): 4, ("标签标识", "美国"): 4,
-    ("通用", "欧盟"): 1,
 }
 
 PASS, FAIL = [], []
@@ -73,8 +71,13 @@ def main():
         total_records += got
         check(f"{cat} × {mkt} = {got} 条（期望 {exp}）", got == exp,
               f"实际 {got}，期望 {exp}")
-    check(f"覆盖矩阵合计 {total_records} 条 = 语料 {s['total']} 条",
-          total_records == s["total"], f"合计 {total_records} vs {s['total']}")
+    cross_n = s["category"].get("标签标识", 0) + s["category"].get("通用", 0)
+    check(f"覆盖矩阵合计 {total_records} 条 + 横切 {cross_n} 条 = 语料 {s['total']} 条",
+          total_records + cross_n == s["total"],
+          f"合计 {total_records}+{cross_n} vs {s['total']}")
+    chk = corpus.search("儿童玩具", "欧盟")
+    check(f"横切不作独立入口（PRD 第 3 节），随品类附带 {len(chk['cross'])} 条",
+          len(chk["cross"]) > 0)
     print()
 
     # ── 2. 链接回挂率 100%（红线）────────────────────────────
@@ -135,7 +138,7 @@ def main():
     check("LLM 关闭时仍返回完整法规记录",
           res["ok"] and len(res["primary"]) == 9, f"primary={len(res['primary'])}")
     txt = m1_map.render_text(res)
-    check("文本渲染含免责声明", m1_map.DISCLAIMER in txt)
+    check("文本渲染含免责声明", snapshot.DISCLAIMER in txt)
     print()
 
     # ── 7. 效力状态可见（已废止必须标出）────────────────────
