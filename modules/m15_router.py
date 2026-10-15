@@ -428,7 +428,7 @@ def render_parse(res):
                      f'{_esc(ident["命中依据"])}</div>')
         return (
             '<div class="cr-wrap"><div class="cr-err">'
-            '<b>M1.5 智能路由 · 无法完成判定</b><br>'
+            '<b>无法完成判定</b><br>'
             f'{msg}<br>{extra}<br>'
             '<b>支持的市场：</b>' + "、".join(corpus.SUPPORTED_MARKETS.keys()) +
             '<br><b>支持的品类：</b>' + "、".join(corpus.ENTRY_CATEGORIES) +
@@ -456,7 +456,7 @@ def render_parse(res):
     missing_items = "".join(f"<li>{m}</li>" for m in res.get("missing", []))
     return (
         '<div class="cr-wrap">'
-        f'<div class="cr-head"><b>M1.5 智能路由 · 判定卡</b>　'
+        f'<div class="cr-head"><b>判定卡</b>　'
         f'{_esc(res["品类"])} × {_esc(res["市场"])}'
         f'<span class="cr-badge b-ok">{_esc(via)}</span></div>'
         f'{basis_html}'

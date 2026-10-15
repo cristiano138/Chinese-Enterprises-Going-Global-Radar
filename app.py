@@ -2,17 +2,21 @@
 """
 出海合规雷达 · Web 界面入口（app.py）
 
-四个模块共用同一组输入（品类 + 市场），输出四样东西：
-    M1 合规地图     —— 适用法规清单，每条带官方链接
-    M2 变化时间线   —— 近期法规变化（含过渡期），每条带官方链接
-    M3 待办清单     —— 可执行动作 + 来源条款链接，**仅导出 CSV（PRD 9）**
-    M4 对照演示     —— 固定题干 + 真实历史回放（PRD D4）
+页面按使用场景组织（用户视角，无内部模块代号）：
+    🔎 智能判定   —— 大白话/整份文件输入 → 自动识别 → 判定卡（旗舰入口）
+    🗺 法规地图   —— 手动选品类×市场 → 适用法规清单，每条带官方链接
+    ✅ 合规待办   —— 可执行动作 + 来源条款链接，支持导出 CSV
+    📅 变化时间线 —— 近期法规变化（含过渡期），每条带官方链接
+    ⚖️ 模型对照   —— 固定题干 + 真实历史回放
 
-PRD 关键约束：
-    D3   —— 类目入口仅 5 个；CSV 严格 10 列；文件名 ComplianceRadar_*.csv
-    D5-1 —— M3 卡片默认折叠，点开展开完整证据链
-    E    —— 所有空态文案走 PRD 附录 E 节；不硬编
-    9    —— 本期不做 PDF
+内部映射（仅供开发，不出现在界面上）：
+    智能判定 = modules/m15_router.py；法规地图 = m1_map；
+    合规待办 = m3_todo；变化时间线 = m2_timeline；模型对照 = m4_compare。
+
+关键约束：
+    每条结论附官方链接；拿不到官方链接的内容一律不输出；
+    CSV 严格 10 列，文件名 ComplianceRadar_*.csv；本期不做 PDF；
+    待办卡片默认折叠，点开展开证据链；空态文案不硬编。
 
 运行：
     python app.py
@@ -212,12 +216,17 @@ def _reject_html(reason, header_meta=None):
 
 
 def _header_block(meta):
-    """顶部元数据条（PRD D3：查询条件 / 查询日期 / 快照版本 / 数据截止时间 / 模块状态）。"""
+    """顶部元数据条：查询条件 / 查询日期 / 快照版本 / 数据截止时间 / 模块状态。"""
     if not meta:
         return ""
+    _MOD_NAMES = {"M1": "法规地图", "M2": "变化时间线",
+                  "M3": "合规待办", "M4": "模型对照"}
+    _MOD_CN = {"ready": "就绪", "partial": "部分", "empty": "空",
+               "error": "异常"}
     mod = meta.get("模块状态", {})
     mod_html = "　".join(
-        f'<span class="cr-mod cr-mod-{v}">M{k}·{v}</span>'
+        f'<span class="cr-mod cr-mod-{v}">'
+        f'{_MOD_NAMES.get(k, k)}·{_MOD_CN.get(v, v)}</span>'
         for k, v in mod.items()
     )
     notes_html = ""
@@ -289,9 +298,10 @@ def render_m1(result):
 
     p, c = result["primary"], result["cross"]
     lm = result.get("llm") or {}
-    head = (f'<div class="cr-head"><b>M1 合规地图</b>　'
+    head = (f'<div class="cr-head"><b>法规地图</b>　'
             f'<span style="color:#6b7280;font-size:13px">'
-            f'主体 {len(p)} 条 · 横切 {len(c)} 条</span></div>')
+            f'这一单适用的法规 · 主体 {len(p)} 条 · 横切 {len(c)} 条'
+            f'（每条附官方原文链接）</span></div>')
     note = _model_note(lm, bool(p and p[0].get("卖家提示")), "m1")
 
     parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
@@ -351,7 +361,7 @@ def render_m2(result):
 
     s = result["stats"]
     lm = result.get("llm") or {}
-    head = (f'<div class="cr-head"><b>M2 变化时间线</b>　'
+    head = (f'<div class="cr-head"><b>变化时间线</b>　'
             f'<span style="color:#6b7280;font-size:13px">{_e(result["时间窗"])}'
             f'　近窗内 {s["近窗内条数"]} 条 · 涉及法规 {s["涉及法规数"]} 部'
             f' · 即将发生 {s["即将发生条数"]} 条</span></div>')
@@ -441,7 +451,7 @@ def render_m3(result):
     dist = "　".join(f"{k} {v} 条" for k, v in
                     sorted(s["紧迫度分布"].items(),
                            key=lambda x: "高中低".index(x[0])))
-    head = (f'<div class="cr-head"><b>M3 待办清单</b>　'
+    head = (f'<div class="cr-head"><b>合规待办</b>　'
             f'<span style="color:#6b7280;font-size:13px">'
             f'动作 {s["动作条数"]} 条 · 涉及法规 {s["涉及法规数"]} 部'
             f'　|　<span style="color:#7a5b00">卡片默认折叠，点开展开证据链</span>'
@@ -464,7 +474,7 @@ def render_m3(result):
 
     if dist:
         parts.append(f'<div class="cr-empty">紧迫度分布：{_e(dist)}'
-                     f'　·　清单可导出 CSV（右侧按钮）</div>')
+                     f'　·　清单可导出 CSV（页面下方按钮）</div>')
 
     idx = 0
     for tname, bunch in result["分组"]:
@@ -501,12 +511,12 @@ def render_m4(result):
     if not result["ok"]:
         return _reject_html(result["reason"], result.get("header"))
 
-    head = ('<div class="cr-head"><b>M4 对照演示</b>　'
+    head = ('<div class="cr-head"><b>模型对照参考</b>　'
             '<span style="color:#6b7280;font-size:13px">'
             '通用大模型 vs 本工具 · 同一固定题干</span></div>')
 
     parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}']
-    parts.append('<div class="cr-sec">固定题干（PRD D4）</div>')
+    parts.append('<div class="cr-sec">固定题干</div>')
     parts.append(f'<div class="cr-empty" style="font-family:ui-monospace,Consolas,monospace;'
                  f'line-height:1.7">{_e(result["固定题干"])}</div>')
 
@@ -539,8 +549,8 @@ def render_m4(result):
                      '本期未提供真实历史实测记录（需先调用真实模型生成同题原答并保存），'
                      '故不在此处展示示意回答冒充结果。<br>'
                      '<span style="font-size:12px;color:#6b7280">'
-                     '按 PRD D4：未取得确证的案例不得作为默认反例，'
-                     '回放记录待人工录制后展示。</span>'
+                     '按对照规范：未取得真实实测记录的案例不作为默认展示，'
+                     '回放记录待人工录制后上线。</span>'
                      '</div>')
 
     parts.append(_footer_block())
@@ -549,17 +559,32 @@ def render_m4(result):
 
 
 # ── 回调 ──────────────────────────────────────────────────────
-def run_all(category, market, window, use_llm):
+def run_map(category, market, use_llm):
+    """法规地图回调。任何异常都不白屏。"""
     cat = _real(category)
     try:
-        r1 = m1_map.query(cat, market, use_llm=bool(use_llm))
-        r2 = m2_timeline.query(cat, market, window=window, use_llm=bool(use_llm))
-        r3 = m3_todo.query(cat, market, use_llm=bool(use_llm))
-        r4 = m4_compare.query()
-        return render_m1(r1), render_m2(r2), render_m3(r3), render_m4(r4)
+        return render_m1(m1_map.query(cat, market, use_llm=bool(use_llm)))
     except Exception as e:  # noqa: BLE001
-        err = _err_html(e)
-        return err, err, err, err
+        return _err_html(e)
+
+
+def run_todo(category, market, use_llm):
+    """合规待办回调。任何异常都不白屏。"""
+    cat = _real(category)
+    try:
+        return render_m3(m3_todo.query(cat, market, use_llm=bool(use_llm)))
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e)
+
+
+def run_timeline(category, market, window, use_llm):
+    """变化时间线回调。任何异常都不白屏。"""
+    cat = _real(category)
+    try:
+        return render_m2(m2_timeline.query(cat, market, window=window,
+                                           use_llm=bool(use_llm)))
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e)
 
 
 def run_route(text, context):
@@ -609,115 +634,151 @@ def export_m3_csv(category, market):
 
 def build_ui():
     cfg = llm.config_summary()
-    status = ("模型链路：已配置（可选润色）" if cfg["ready"]
-              else "模型链路：未配置 —— 将输出原始清单（数据完整，链接可核验）")
-    export_hint = "导出：仅 CSV（PRD 第 9 节规定本期不做 PDF）"
+    model_status = ("模型：已接入（理解输入用，结论仍 100% 来自核对语料）"
+                    if cfg["ready"] else
+                    "模型：未配置 —— 输出原始清单（数据完整，链接可核验）")
+    global_meta = (
+        f"<small style='color:#6b7280'>{model_status}　·　"
+        f"快照：{snapshot.SNAPSHOT_VERSION}　·　"
+        f"数据截止：{snapshot.DATA_CUTOFF}　·　"
+        f"结果可导出 CSV</small>"
+    )
 
-    # 类目下拉 —— PRD 第 3 节：仅 5 个业务类目入口；横切维度不算
+    # 类目下拉 —— 仅 5 个业务类目入口；横切维度随品类附带，不单独查
     cat_choices = list(corpus.SUPPORTED_CATEGORIES)
+    mkt_choices = list(corpus.SUPPORTED_MARKETS.keys())
 
     _major = int(gr.__version__.split(".")[0])
-    _blocks_kwargs = {"title": "出海合规雷达 · 合规地图 / 时间线 / 待办清单 / 对照演示"}
+    _blocks_kwargs = {"title": "出海合规雷达 ComplianceRadar"}
     if _major < 6:
         _blocks_kwargs.update(css=_CSS, theme=gr.themes.Soft())
 
     with gr.Blocks(**_blocks_kwargs) as demo:
         gr.Markdown(
             "# 出海合规雷达 ComplianceRadar\n"
-            "**输入「我卖什么 + 我卖到哪」→ 一次得到四样东西："
-            "适用法规清单（M1）· 法规变化时间线（M2）· 可执行待办清单（M3）"
-            "· 通用模型 vs 本工具对比（M4）。**\n\n"
-            "每条结论都附官方原文链接，可点开逐条核验；"
-            "拿不到官方链接的内容一律不输出。"
+            "**输入你的生意 → 雷达告诉你这一单要满足哪些法规、什么时候变、"
+            "要办什么事 —— 每条结论都附官方原文链接，可逐条点开核验。**\n\n"
+            "| 你现在的情况 | 去哪里 |\n"
+            "|---|---|\n"
+            "| 只知道大概，想直接问 | **智能判定** —— 大白话或整份产品/合同文件直接粘 |\n"
+            "| 明确知道品类和市场 | **法规地图 / 合规待办 / 变化时间线** —— 精确查询 |\n"
+            "| 想看我们和通用 AI 的区别 | **模型对照** |\n"
         )
+        gr.Markdown(global_meta)
 
-        with gr.Row():
-            with gr.Column(scale=1):
-                cat = gr.Dropdown(
-                    choices=cat_choices,
-                    value="儿童玩具",
-                    label="① 商品类目（PRD：仅 5 个业务类目）",
-                )
-                mkt = gr.Dropdown(
-                    choices=list(corpus.SUPPORTED_MARKETS.keys()),
-                    value="欧盟",
-                    label="② 目标市场",
-                )
-                window = gr.Radio(
-                    choices=m2_timeline.WINDOW_CHOICES,
-                    value=m2_timeline.DEFAULT_WINDOW,
-                    label="③ 时间窗（M2 用）",
-                )
-                use_llm = gr.Checkbox(
-                    value=cfg["ready"],
-                    label="启用中文润色（可选；关闭则输出确定性结果）",
-                    interactive=cfg["ready"],
-                )
-                btn = gr.Button("生成", variant="primary")
-
+        with gr.Tabs():
+            # ── ① 智能判定 ────────────────────────────────────
+            with gr.Tab("🔎 智能判定"):
                 gr.Markdown(
-                    f"<small style='color:#6b7280'>{status}<br>"
-                    f"模型：{cfg['model']}<br>"
-                    f"快照：{snapshot.SNAPSHOT_VERSION}　"
-                    f"数据截止时间：{snapshot.DATA_CUTOFF}<br>"
-                    f"{export_hint}</small>"
+                    "**用大白话描述你的生意 → 自动识别「品类 × 市场」→ "
+                    "查核对过的官方合规表 → 出判定卡。**"
+                    "\n\n支持一句话，也支持**整段粘贴产品描述、BOM、合同要点**。"
+                    "模型只负责理解输入；法规结论 100% 来自核对语料 + 官方链接，"
+                    "模型无权新增或编造。"
+                )
+                q_text = gr.Textbox(
+                    lines=4,
+                    value="我要把洋娃娃卖到美国去，要做哪些合规工作？",
+                    label="① 你的生意（一句话，或整份产品/合同文件）",
+                )
+                q_ctx = gr.Textbox(
+                    lines=2, value="",
+                    placeholder=("选填：产品材质 / 结构、客户要求、合同关键信息…"
+                                 "（仅辅助识别，不存储）"),
+                    label="② 补充上下文（选填）",
+                )
+                q_btn = gr.Button("开始判定", variant="primary")
+                q_out = gr.HTML(_route_initial())
+                gr.Markdown(
+                    "<small style='color:#8e2118'>"
+                    "🔒 隐私边界：输入原文只在内存中处理，不落盘、不缓存，"
+                    "判定只依赖「品类 / 市场」两个槽位。"
+                    "请勿输入个人隐私或客户敏感信息。</small>"
                 )
 
-            with gr.Column(scale=3):
-                with gr.Tabs():
-                    with gr.Tab("M1 · 合规地图"):
-                        m1_out = gr.HTML(render_m1(
-                            m1_map.query("儿童玩具", "欧盟", use_llm=False)))
-                    with gr.Tab("M2 · 变化时间线"):
-                        m2_out = gr.HTML(render_m2(
-                            m2_timeline.query("儿童玩具", "欧盟", use_llm=False)))
-                    with gr.Tab("M3 · 待办清单"):
-                        m3_out = gr.HTML(render_m3(
-                            m3_todo.query("儿童玩具", "欧盟", use_llm=False)))
-                        with gr.Row():
-                            csv_btn = gr.DownloadButton(
-                                "⬇ 导出 CSV（PRD D3 格式）", variant="secondary",
-                                value=lambda c, m: export_m3_csv(c, m),
-                                inputs=[cat, mkt])
-                    with gr.Tab("M4 · 对照演示"):
-                        m4_out = gr.HTML(render_m4(m4_compare.query()))
-                    with gr.Tab("M1.5 · 智能路由（一句话判定）"):
-                        gr.Markdown(
-                            "**用大白话描述你的生意 → 自动识别「品类 × 市场」→ "
-                            "查核对过的官方合规表 → 给出针对这一单的判定卡。**\n\n"
-                            "模型只负责**理解输入**；法规结论 100% 来自核对语料 + 官方链接，"
-                            "模型无权新增或编造。"
-                        )
-                        q_text = gr.Textbox(
-                            lines=3,
-                            value="我要把洋娃娃卖到美国去，要做哪些合规工作？",
-                            label="① 用一句话描述你的业务（产品 + 目标市场）",
-                        )
-                        q_ctx = gr.Textbox(
-                            lines=2, value="",
-                            placeholder=("选填：产品材质 / 结构、客户要求、合同关键信息…"
-                                         "（仅辅助识别，不存储）"),
-                            label="② 企业上下文（选填）",
-                        )
-                        q_btn = gr.Button("开始判定", variant="primary")
-                        q_out = gr.HTML(_route_initial())
-                        q_btn.click(run_route, inputs=[q_text, q_ctx],
-                                    outputs=q_out)
-                        gr.Markdown(
-                            "<small style='color:#8e2118'>"
-                            "🔒 隐私边界：输入原文只在内存中处理，不落盘、不缓存，"
-                            "判定只依赖「品类 / 市场」两个槽位。"
-                            "请勿输入个人隐私或客户敏感信息。</small>"
-                        )
+            # ── ② 法规地图 ────────────────────────────────────
+            with gr.Tab("🗺 法规地图"):
+                gr.Markdown("**已知品类和市场？选好直接生成 —— 这一单适用的全部法规。**")
+                with gr.Row():
+                    cat1 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
+                                       label="① 商品类目")
+                    mkt1 = gr.Dropdown(choices=mkt_choices, value="欧盟",
+                                       label="② 目标市场")
+                    use1 = gr.Checkbox(value=cfg["ready"],
+                                       label="中文润色（可选）",
+                                       interactive=cfg["ready"])
+                    btn1 = gr.Button("生成清单", variant="primary")
+                m1_out = gr.HTML(render_m1(
+                    m1_map.query("儿童玩具", "欧盟", use_llm=False)))
 
-        btn.click(run_all, inputs=[cat, mkt, window, use_llm],
-                  outputs=[m1_out, m2_out, m3_out, m4_out])
-        cat.change(run_all, inputs=[cat, mkt, window, use_llm],
-                   outputs=[m1_out, m2_out, m3_out, m4_out])
-        mkt.change(run_all, inputs=[cat, mkt, window, use_llm],
-                   outputs=[m1_out, m2_out, m3_out, m4_out])
-        window.change(run_all, inputs=[cat, mkt, window, use_llm],
-                      outputs=[m1_out, m2_out, m3_out, m4_out])
+            # ── ③ 合规待办 ────────────────────────────────────
+            with gr.Tab("✅ 合规待办"):
+                gr.Markdown(
+                    "**这一单要办的事，按紧迫程度排好 —— 点开每条看证据链，"
+                    "可导出 CSV。**"
+                )
+                with gr.Row():
+                    cat3 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
+                                       label="① 商品类目")
+                    mkt3 = gr.Dropdown(choices=mkt_choices, value="欧盟",
+                                       label="② 目标市场")
+                    use3 = gr.Checkbox(value=cfg["ready"],
+                                       label="中文润色（可选）",
+                                       interactive=cfg["ready"])
+                    btn3 = gr.Button("生成待办", variant="primary")
+                m3_out = gr.HTML(render_m3(
+                    m3_todo.query("儿童玩具", "欧盟", use_llm=False)))
+                with gr.Row():
+                    csv_btn = gr.DownloadButton(
+                        "⬇ 导出待办清单（CSV）", variant="secondary",
+                        value=lambda c, m: export_m3_csv(c, m),
+                        inputs=[cat3, mkt3])
+
+            # ── ④ 变化时间线 ──────────────────────────────────
+            with gr.Tab("📅 变化时间线"):
+                gr.Markdown(
+                    "**法规什么时候生效、什么时候开始适用、什么时候修订 —— "
+                    "重点看「即将发生」的过渡期节点。**"
+                )
+                with gr.Row():
+                    cat2 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
+                                       label="① 商品类目")
+                    mkt2 = gr.Dropdown(choices=mkt_choices, value="欧盟",
+                                       label="② 目标市场")
+                    window2 = gr.Radio(
+                        choices=m2_timeline.WINDOW_CHOICES,
+                        value=m2_timeline.DEFAULT_WINDOW,
+                        label="③ 时间窗（只影响时间线）",
+                    )
+                    use2 = gr.Checkbox(value=cfg["ready"],
+                                       label="中文润色（可选）",
+                                       interactive=cfg["ready"])
+                    btn2 = gr.Button("生成时间线", variant="primary")
+                m2_out = gr.HTML(render_m2(
+                    m2_timeline.query("儿童玩具", "欧盟", use_llm=False)))
+
+            # ── ⑤ 模型对照 ────────────────────────────────────
+            with gr.Tab("⚖️ 模型对照"):
+                gr.Markdown(
+                    "**同一道固定题，通用大模型和本工具各答一遍 —— "
+                    "有没有官方来源、日期站不站得住，你自己看。**"
+                    "\n\n对照页如实展示两边回答，不预设立场。"
+                )
+                m4_out = gr.HTML(render_m4(m4_compare.query()))
+
+        # 事件绑定（每页签自足，互不干扰）
+        q_btn.click(run_route, inputs=[q_text, q_ctx], outputs=q_out)
+        for w in (cat1, mkt1, use1):
+            w.change(run_map, inputs=[cat1, mkt1, use1], outputs=m1_out)
+        btn1.click(run_map, inputs=[cat1, mkt1, use1], outputs=m1_out)
+        for w in (cat3, mkt3, use3):
+            w.change(run_todo, inputs=[cat3, mkt3, use3], outputs=m3_out)
+        btn3.click(run_todo, inputs=[cat3, mkt3, use3], outputs=m3_out)
+        for w in (cat2, mkt2, window2, use2):
+            w.change(run_timeline, inputs=[cat2, mkt2, window2, use2],
+                     outputs=m2_out)
+        btn2.click(run_timeline, inputs=[cat2, mkt2, window2, use2],
+                   outputs=m2_out)
 
     return demo
 
