@@ -39,6 +39,12 @@ from modules import (m1_map, m2_timeline, m3_todo, m4_compare,  # noqa: E402
 
 import gradio as gr  # noqa: E402
 
+# M3 待办清单的 CSV 导出目录（PRD D3 格式）。
+# 写入方：export_m3_csv()，由 M3 页签的 DownloadButton 触发；命令行等价入口见
+#         README「m3_todo.py --export」。
+# 全部内容都是**生成物**，随时可删、下次导出会重建，不参与任何查表逻辑。
+# ⚠️ 刻意**不进 .gitignore**：导出件要能在仓库里直接看到（演示/评审时按日期取用）。
+#    副作用是导过一次后 git status 会多出未跟踪文件 —— 这是预期行为，不是脏数据。
 EXPORT_DIR = os.path.join(HERE, "data", "export")
 
 
