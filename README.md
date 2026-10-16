@@ -286,8 +286,10 @@ $PY modules/m4_compare.py                     # M4 对照演示占位（玩具×
 **自检**：
 
 ```bash
+$PY scripts/selftest_all.py      # 发布前总闸门：M1 / M1.5 / M2 / M3 / 语料体检
 $PY scripts/selftest_m1.py       # M1：分层断言（覆盖率 / 回挂率 / 防幻觉 / 边界 / 降级）
-$PY scripts/selftest_m15.py      # M1.5 路由：模型路径（桩注入 llm.chat / is_ready，离线、24 项）
+$PY scripts/selftest_m15.py      # M1.5 路由：模型路径（桩注入 llm.chat / is_ready，离线、30 项）
+$PY scripts/selftest_m2_m3.py    # M2/M3：固定日期、证据链、CSV 和边界
 $PY modules/m15_router.py        # M1.5 路由：词典路径（离线确定性，含 ok ⇒ m1.ok 不变量）
 ```
 
@@ -334,7 +336,10 @@ compliance-radar/
 │   ├── make_todo_eu.py         生成待补清单
 │   ├── selftest_m1.py          M1 自检（24 项断言，退出码 0 = 全绿）
 │   ├── selftest_m15.py         M1.5 路由自检（模型路径桩注入 llm.chat / is_ready，24 项断言）
-│   ├── selftest_m2_m3.py       M2/M3 自检（22 项断言；未随本仓库合入）
+│   ├── selftest_m2_m3.py       M2/M3 自检（固定日期 / 证据链 / CSV / 边界）
+│   ├── selftest_all.py         发布前总闸门（四模块 + 语料体检）
+│   ├── validate_corpus.py      主语料重复键、必填字段、链接和状态体检
+│   └── build_snapshot.py       生成 data/snapshot.json 发布快照
 │   └── audit_guide.py          文档链接与数据批量核对器
 │
 ├── core/                       ✅ 核心引擎（纯确定性代码）
@@ -506,7 +511,9 @@ compliance-radar/
 - 每条动作强制回挂**来源条款的官方链接**，可点回原文逐条核对
 - **PRD D3 严格 CSV**：列顺序 = 商品类目/目标市场/动作/适用条件/执行时点/官方编号/来源条款/官方链接/数据截止时间/免责声明；文件名 = `ComplianceRadar_<EU|US>_<类目>_<YYYYMMDD>.csv`；UTF-8 BOM；`= + - @` 开头单元格文本转义防公式注入；无待办时不生成空文件
 - **PRD D5-1 卡片折叠**：默认仅显示「动作 + 时点 + 条件状态」，点开展开五步证据链：① 执行动作 ② 适用条件 ③ 来源条款 ④ 原文摘录 ⑤ 官方原文
-- `scripts/selftest_m2_m3.py` 自检：**22 项断言全绿**（时间窗单调 / 回挂率 100% / 锚点事件 / 诚实性 / 数量守恒 / 导出可解析 / 边界）
+- `scripts/selftest_m2_m3.py` 自检：固定日期、官方链接、证据摘录、数量守恒、CSV 可解析和边界用例通过。
+- `scripts/selftest_all.py`：发布前统一执行语料体检、M1、M1.5、M2、M3，失败数必须为 0。
+- `data/snapshot.json`：由 `scripts/build_snapshot.py` 生成，记录总量、唯一键、市场分布、状态分布和生成提交。
 
 **M4 实现明细（对照演示）**：
 

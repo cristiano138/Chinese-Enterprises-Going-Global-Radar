@@ -60,7 +60,7 @@ def _fallback_impact(row):
     return seg0 or "官方未说明"
 
 
-def _to_record(event, row, summary=None, seq=1, total=1):
+def _to_record(event, row, summary=None, seq=1, total=1, today=None):
     """事件 + 原始语料行 → M2 标准输出记录（README 规定的四要素齐备）。
 
     seq / total：同一部法规在本节里出现的第几次 / 共几次 ——
@@ -72,6 +72,7 @@ def _to_record(event, row, summary=None, seq=1, total=1):
     change = (summary or (None, None))[0] or dates.describe(event)
     impact = (summary or (None, None))[1] or _fallback_impact(row)
     model_used = bool(summary and summary[0])
+    reference_today = today or date.today()
 
     return {
         "event_key": event["event_key"],
@@ -81,7 +82,7 @@ def _to_record(event, row, summary=None, seq=1, total=1):
         "变化摘要": change,
         "影响说明": impact,
         "摘要来源": "模型润色" if model_used else "确定性抽取",
-        "距今": dates.humanize_gap(event["date_obj"], date.today()),
+        "距今": dates.humanize_gap(event["date_obj"], reference_today),
         "同类序号": seq,
         "同类计数": total,
         "法规中文名": event["法规中文名"],
@@ -167,7 +168,8 @@ def query(category, market, window=DEFAULT_WINDOW, use_llm=True, today=None):
                 continue
             seen[e["key"]] = seen.get(e["key"], 0) + 1
             out.append(_to_record(e, row, summaries.get(e["event_key"]),
-                                  seq=seen[e["key"]], total=totals[e["key"]]))
+                                  seq=seen[e["key"]], total=totals[e["key"]],
+                                  today=today))
         return out
 
     recent_recs = _recs(recent)
