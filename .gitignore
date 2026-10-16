@@ -35,6 +35,7 @@ htmlcov/
 # ===== 数据文件（体积大，按需另行分发） =====
 data/raw/
 data/cache/
+data/export/
 data/_cache_*.json
 *.sqlite
 *.db
