@@ -59,13 +59,51 @@ EXPORT_DIR = os.path.join(HERE, "data", "export")
 #   · 动画只用 transform/opacity（合成器路径，不触发重排）；
 #   · 不用 backdrop-filter / 大面积阴影（滚动掉帧的主要来源）。
 _CSS = """
-:root{--cr-brand:#2f4a8a;--cr-brand-2:#22c3e6;--cr-brand-soft:#eef2f9;
-      --cr-bg:#fafaf7;--cr-ink:#1f2430;--cr-ink2:#4b5263;--cr-ink3:#7a8192;
-      --cr-line:#e4e4de;--cr-radius:4px;--cr-night:#0b1020;
+:root{--cr-brand:#22c3e6;--cr-brand-2:#7df9ff;--cr-brand-soft:rgba(34,195,230,.10);
+      --cr-bg:#0b1020;--cr-ink:#e8eef7;--cr-ink2:#b6c1d4;--cr-ink3:#7c889e;
+      --cr-line:#1d2742;--cr-radius:4px;--cr-night:#0b1020;
       --cr-beam:#22c3e6;--cr-glow:#7df9ff;
-      --cr-hi:#2e7d5b;--cr-mid:#8f6210;--cr-lo:#a4493f;
+      --cr-hi:#4ade9d;--cr-mid:#e8c06a;--cr-lo:#f0937e;
       --cr-serif:"Songti SC","Noto Serif SC","Source Han Serif SC",STSong,serif}
 body, .gradio-container { background: var(--cr-bg) !important; }
+/* ── Gradio 组件深色化（清新简约：透明底 + 细线分隔 + 青色点缀）── */
+.gradio-container .block, .gradio-container .form, .gradio-container .panel {
+    background: transparent !important; border-color: var(--cr-line) !important; }
+.gradio-container input[type="text"], .gradio-container input[type="number"],
+.gradio-container textarea {
+    background: #101731 !important; color: var(--cr-ink) !important;
+    border: 1px solid var(--cr-line) !important; }
+.gradio-container input::placeholder, .gradio-container textarea::placeholder {
+    color: var(--cr-ink3) !important; }
+.gradio-container label > span { color: var(--cr-ink2) !important; }
+.gradio-container .tab-nav, .gradio-container .tab-container {
+    background: transparent !important; border-color: var(--cr-line) !important; }
+.gradio-container .tab-nav button {
+    color: var(--cr-ink3) !important; background: none !important;
+    border: 0 !important; border-bottom: 2px solid transparent !important;
+    border-radius: 0 !important; padding: 8px 2px !important;
+    font-size: 15px !important; margin-bottom: -1px !important; }
+.gradio-container .tab-nav button.selected {
+    color: var(--cr-glow) !important; border-bottom-color: var(--cr-glow) !important;
+    font-weight: 600 !important; }
+.gradio-container .tab-nav button:hover { color: var(--cr-ink) !important; }
+.gradio-container button.primary, .gradio-container button.secondary {
+    background: var(--cr-night) !important; color: var(--cr-glow) !important;
+    border: 1px solid var(--cr-line) !important;
+    border-radius: var(--cr-radius) !important; box-shadow: none !important; }
+.gradio-container button.primary:hover, .gradio-container button.secondary:hover {
+    border-color: var(--cr-brand) !important; opacity: .9; }
+.gradio-container details, .gradio-container summary {
+    background: transparent !important; color: var(--cr-ink) !important;
+    border-color: var(--cr-line) !important; }
+.gradio-container .dropdown ul, .gradio-container ul.options {
+    background: #101731 !important; color: var(--cr-ink) !important;
+    border-color: var(--cr-line) !important; }
+.gradio-container ul.options li { color: var(--cr-ink) !important; }
+.gradio-container ul.options li:hover, .gradio-container ul.options li.selected {
+    background: #1a2445 !important; }
+.gradio-container footer, .gradio-container .show-api {
+    background: transparent !important; color: var(--cr-ink3) !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
 /* ── 深色雷达横幅（与开场动画同色系）── */
@@ -130,12 +168,13 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-row  { font-size:13px; color:var(--cr-ink2); margin:3px 0; line-height:1.6;
            word-break: break-word; }
 .cr-k { display:inline-block; min-width:88px; color:var(--cr-ink3); }
-.cr-row code { background:#f1f1ec; padding:1px 5px; border-radius:3px;
+.cr-row code { background:#101731; color:var(--cr-ink2); padding:1px 5px;
+               border-radius:3px;
                font-family: ui-monospace, Consolas, monospace; font-size:12.5px; }
 .cr-a { color:var(--cr-brand); text-decoration:none; word-break:break-all; }
 .cr-a:hover { text-decoration: underline; }
-.cr-note { font-size:12.5px; color:var(--cr-mid); background:#f9f6ee;
-           border:1px solid #e7dfc9; border-radius:var(--cr-radius);
+.cr-note { font-size:12.5px; color:var(--cr-mid); background:rgba(232,192,106,.07);
+           border:1px solid rgba(232,192,106,.28); border-radius:var(--cr-radius);
            padding:8px 10px; margin:14px 0; }
 .cr-dis { font-size:12.5px; color:var(--cr-ink3); border-top:1px dashed var(--cr-line);
           margin-top:16px; padding-top:10px; }
@@ -144,14 +183,15 @@ body, .gradio-container { background: var(--cr-bg) !important; }
              padding:10px 2px 2px; margin-top:16px;
              display:flex; align-items:flex-start; gap:8px; }
 .cr-footer b { color:var(--cr-ink2); }
-.cr-err { border:1px solid #e5c8c4; background:#faf0ee; border-radius:var(--cr-radius);
+.cr-err { border:1px solid rgba(240,147,126,.35); background:rgba(240,147,126,.08);
+          border-radius:var(--cr-radius);
           padding:14px; color:var(--cr-lo); font-size:14px; line-height:1.7; }
 .cr-tl { border-left: 2px solid var(--cr-line); margin: 6px 0 0 6px; padding-left: 12px; }
 .cr-tl .cr-card { position: relative; }
 .cr-date { font-family: ui-monospace, Consolas, monospace; font-size: 14px;
            font-weight: 600; color:var(--cr-ink); }
 .cr-empty { font-size:13px; color:var(--cr-ink2); background:transparent;
-            border:1px dashed #d8d8d0; border-radius:var(--cr-radius);
+            border:1px dashed #26314f; border-radius:var(--cr-radius);
             padding:10px 12px; margin:8px 0; }
 
 /* ── 可折叠板块（v2）：细线 + 衬线标题 + 右侧箭头（v4 折叠样式）──
@@ -637,11 +677,11 @@ def _m3_card(r, idx):
     evidence = (
         '<div class="cr-evidence">'
         f'<div><b>① 执行动作</b>：{_e(r["动作"])}</div>'
-        f'<div><b>② 适用条件</b>：{_e(r.get("类型含义", ""))}'
+        f'<div><b>② 适用条件</b>：{_e(r.get("适用条件") or r.get("类型含义", ""))}'
         f'（动作类型：{_e(r["动作类型"])}）</div>'
         f'<div><b>③ 来源条款</b>：{_e(r["官方编号"])}　'
         f'《{_e(r["依据法规"])}》</div>'
-        f'<div><b>④ 原文摘录</b>：（以官方原文为准 —— 见下方链接）</div>'
+        f'<div><b>④ 原文摘录</b>：{_e(r.get("证据摘录") or "以官方原文为准")}</div>'
         f'<div><b>⑤ 官方原文</b>：{link}</div>'
         '</div>'
     )

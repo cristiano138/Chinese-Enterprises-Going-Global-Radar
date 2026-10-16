@@ -251,6 +251,7 @@ def export_csv(result, selected_action_ids=None):
             ("条件待确认" if action.get("动作来源") == "规则抽取" else ""),
         ]))
         source_clause = action["官方编号"] or "（未标注）"
+        excerpt = action.get("证据摘录") or action.get("适用条件") or "（以官方原文为准）"
 
         w.writerow([
             _csv_safe(cat),
@@ -259,7 +260,7 @@ def export_csv(result, selected_action_ids=None):
             _csv_safe(conditions or "（按法规全文判断）"),
             _csv_safe(action.get("期限") or "持续义务（在相关市场提供行为发生前）"),
             _csv_safe(source_clause),
-            _csv_safe("（以官方原文为准 —— 见官方链接）"),
+            _csv_safe(excerpt),
             _csv_safe(action.get("来源条款链接", "")),
             _csv_safe(cutoff),
             _csv_safe(snapshot.DISCLAIMER),

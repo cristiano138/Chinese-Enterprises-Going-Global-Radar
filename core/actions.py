@@ -186,6 +186,9 @@ def build_candidate(row, today=None):
         "来源条款链接": row.get("官方链接", ""),
         "全部官方链接": [u for u in (row.get("官方链接", ""), row.get("ELI标识", ""))
                          if u and u.startswith("http")],
+        "证据摘录": _seg0(row),
+        "适用条件": (row.get("备注／问题", "") or "").strip(),
+        "状态": row.get("现行效力", ""),
         "_raw": row,
     }
 
