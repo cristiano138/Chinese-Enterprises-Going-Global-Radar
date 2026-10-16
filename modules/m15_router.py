@@ -482,7 +482,7 @@ def render_parse(res):
         said_cat = ident.get("用户品类") or ident.get("品类") or ""
         said_mkt = ident.get("用户市场") or ident.get("市场") or ""
         if r == "empty":
-            msg = "请先输入业务描述（例如：我要把儿童玩具卖到欧盟）。"
+            msg = "请先在左侧输入业务描述（例如：我要把儿童玩具卖到欧盟）。"
         elif r == "bad_market":
             msg = (f"识别到目标市场「{_esc(said_mkt)}」—— 本期仅覆盖 "
                    f"{'、'.join(corpus.SUPPORTED_MARKETS.keys())}，"
@@ -494,11 +494,11 @@ def render_parse(res):
                    "不做硬编答案。")
         elif r.startswith("partial_"):
             miss = "目标市场" if r.endswith("市场") else "产品品类"
-            msg = (f"识别不完整：没从输入里确认出{miss}。"
-                   f"请在输入里补充说明后重新判定。")
+            msg = (f"识别不完整：没从输入里确认出{miss}。请补充说明，"
+                   f"或改用「M1 合规地图」页签下拉选择。")
         else:
             msg = ("没从输入里识别出「品类 × 市场」。请用一句更明确的话描述"
-                   "（例：我要把毛绒玩具卖到德国）。")
+                   "（例：我要把毛绒玩具卖到德国），或改用「M1 合规地图」页签下拉选择。")
         extra = ""
         if ident.get("命中依据"):
             extra = (f'<div class="cr-row"><span class="cr-k">识别依据</span>'
