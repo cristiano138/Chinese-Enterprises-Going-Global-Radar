@@ -1,8 +1,8 @@
 {
   "snapshot_version": "v1.1",
-  "generated_at": "2026-10-16T22:14:27+08:00",
+  "generated_at": "2026-10-16T22:19:27+08:00",
   "data_cutoff": "2026.10.14",
-  "git_commit": "34942cd",
+  "git_commit": "77b4869",
   "total_rows": 86,
   "unique_keys": 86,
   "duplicate_keys": [],
