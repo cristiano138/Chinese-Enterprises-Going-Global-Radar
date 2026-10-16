@@ -78,18 +78,15 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .gradio-container label > span { color: var(--cr-ink2) !important; }
 .gradio-container .tab-nav, .gradio-container .tab-container {
     background: transparent !important; border-color: var(--cr-line) !important; }
-.gradio-container [role="tab"], .gradio-container .tab-nav button,
-.gradio-container .tab-container > button {
+.gradio-container .tab-nav button {
     color: var(--cr-ink3) !important; background: none !important;
     border: 0 !important; border-bottom: 2px solid transparent !important;
     border-radius: 0 !important; padding: 8px 2px !important;
     font-size: 15px !important; margin-bottom: -1px !important; }
-.gradio-container [role="tab"].selected, .gradio-container .tab-nav button.selected,
-.gradio-container .tab-container > button.selected {
+.gradio-container .tab-nav button.selected {
     color: var(--cr-glow) !important; border-bottom-color: var(--cr-glow) !important;
     font-weight: 600 !important; }
-.gradio-container [role="tab"]:hover, .gradio-container .tab-container > button:hover {
-    color: var(--cr-ink) !important; }
+.gradio-container .tab-nav button:hover { color: var(--cr-ink) !important; }
 .gradio-container button.primary, .gradio-container button.secondary {
     background: var(--cr-night) !important; color: var(--cr-glow) !important;
     border: 1px solid var(--cr-line) !important;
