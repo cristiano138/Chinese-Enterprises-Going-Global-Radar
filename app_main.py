@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# UI v5 · 统一 LLM 路由器入口（按 v4 设计稿）：全部模块的询问部分收敛为一个输入
+# UI v5.1 · 统一 LLM 路由器入口 + M2/M3 独立页签回归（整洁版）
 """
 出海合规雷达 · Web 界面入口（app.py）
 
@@ -7,11 +7,14 @@
     🔎 智能判定   —— 大白话输入（LLM 路由器）→ 品类/市场/风险事实栏
                      → 三列折叠面板：结论摘要 / 待办清单 / 法规原文
     📅 变化时间线 —— 同一个 LLM 路由器输入 → 该品类×市场近期法规变化
+    ✅ 合规待办   —— 同一个 LLM 路由器输入 → 待办折叠清单（可导出 CSV）
     ⚖️ 模型对照   —— 通用 AI vs 本工具（固定题干 + 真实历史回放）
 
 内部映射（仅供开发，不出现在界面上）：
-    智能判定 = m15_router（识别）+ m1_map（法规原文）+ m3_todo（待办清单）；
-    变化时间线 = m15_router（识别）+ m2_timeline；模型对照 = m4_compare。
+    智能判定 = m15_router（识别）+ m1_map（法规原文）+ m3_todo（待办摘要）；
+    变化时间线 = m15_router（识别）+ m2_timeline；
+    合规待办 = m15_router（识别）+ m3_todo（完整清单，M3 独立入口）；
+    模型对照 = m4_compare。
 
 关键约束：
     每条结论附官方链接；拿不到官方链接的内容一律不输出；
@@ -167,11 +170,11 @@ body, .gradio-container { background: var(--cr-bg) !important; }
     border-radius:0 !important; margin-bottom:-1px !important; }
 .tab-nav button.selected, .tab-container button.selected { color:var(--cr-ink) !important;
     border-bottom-color:var(--cr-ink) !important; font-weight:600 !important; }
-#cr-run, #cr-run2 { background:var(--cr-night) !important; color:var(--cr-glow) !important;
+#cr-run, #cr-run2, #cr-run3 { background:var(--cr-night) !important; color:var(--cr-glow) !important;
     border:0 !important; border-radius:var(--cr-radius) !important;
     box-shadow:none !important; }
-#cr-run:hover, #cr-run2:hover { opacity:.9; }
-#cr-run-row, #cr-run2-row { justify-content:flex-end; }
+#cr-run:hover, #cr-run2:hover, #cr-run3:hover { opacity:.9; }
+#cr-run-row, #cr-run2-row, #cr-run3-row { justify-content:flex-end; }
 /* 导出按钮：叠加到横幅右上（小屏自动回落到横幅下方） */
 #cr-export-row { justify-content:flex-end; margin:-62px 8px 18px 0; position:relative;
                  z-index:20; }
@@ -338,6 +341,7 @@ _HERO_SVG = (
 def _hero_html():
     """顶部横幅（v4 设计稿）：品牌 + 衬线大标题 + 一句引导，其余一律不放。"""
     guide = ("不知道从哪开始？直接在下方用大白话提问；"
+             "「合规待办」查要办什么事、右上角可导出 CSV；"
              "「变化时间线」查法规什么时候变；"
              "「模型对照」看我们和通用 AI 的区别。")
     return (
@@ -425,6 +429,12 @@ def _todo_it(a):
                body, a.get("来源条款链接"))
 
 
+def _risk_from_m3(m3res):
+    """风险等级（语料无风险字段，按 M3 紧迫度分布推导）。"""
+    dist = ((m3res or {}).get("stats") or {}).get("紧迫度分布") or {}
+    return "高" if dist.get("高", 0) else ("中" if dist.get("中", 0) else "低")
+
+
 def _summary_items(res, m3res):
     """结论摘要列（v4 CONC）：计数结论 + 首要动作 + 风险等级 + 待确认 + 缺资料。
     全部由已核对语料推导，不硬编。"""
@@ -444,7 +454,7 @@ def _summary_items(res, m3res):
 
     dist = ((m3res or {}).get("stats") or {}).get("紧迫度分布") or {}
     k_hi = dist.get("高", 0)
-    risk = "高" if k_hi else ("中" if dist.get("中", 0) else "低")
+    risk = _risk_from_m3(m3res)
 
     if m3res is None:
         items.append(_it("待办清单暂不可用", "低",
@@ -557,6 +567,38 @@ def render_timeline(m2res):
     return f'<div class="cr-wrap">{echo}{body}{_footer_block(privacy=True)}</div>'
 
 
+def render_todo(text, res, m3res):
+    """合规待办页（M3 独立入口）：echo → 事实栏 → 待办折叠列表 → 如实披露 → 页脚。"""
+    if m3res is None:
+        return ('<div class="cr-wrap"><div class="cr-err">'
+                '待办清单生成失败，请重试。</div></div>')
+    if not m3res.get("ok"):
+        return (f'<div class="cr-wrap"><div class="cr-err">'
+                f'{_e(m3res.get("reason") or "该输入暂无可核验的待办数据。")}'
+                f'</div></div>')
+    a3 = m3res.get("动作") or []
+    body = "".join(_todo_it(a) for a in a3) if a3 else \
+        '<div class="cr-empty">该组合暂无可执行待办。</div>'
+    k_hi = ((m3res.get("stats") or {}).get("紧迫度分布") or {}).get("高", 0)
+    echo = (f'<p class="cr-echo">判定依据：「{_e(text)}」 · '
+            f'待办 {len(a3)} 条 · 高紧迫 {k_hi} 项</p>')
+    note = res.get("note") or ""
+    note_html = f'<div class="cr-note">ℹ️ {_e(note)}</div>' if note else ""
+    extra = ""
+    un = m3res.get("未产出") or []
+    if un:
+        extra += (f'<div class="cr-note">另有 {len(un)} 条语料暂无明确动作，'
+                  f'按规格未上清单（如实不硬编）。</div>')
+    dropped = m3res.get("dropped") or []
+    if dropped:
+        extra += (f'<div class="cr-note">引用对齐拦下 {len(dropped)} 条'
+                  f'（无官方链接 / 语料库外的编号，按红线不输出）。</div>')
+    return (f'<div class="cr-wrap">{echo}{note_html}'
+            f'{_facts(res["品类"], res["市场"], _risk_from_m3(m3res))}'
+            f'<p class="cr-legend">{_e(_CONF_NOTE)}</p>'
+            f'{body}{extra}{_footer_block(privacy=True)}</div>')
+
+
 def render_cmp():
     """模型对照（v4 设计稿 cmp 两栏 + 折叠的固定题干 / 历史回放）。"""
     res = m4_compare.query()
@@ -625,6 +667,23 @@ def run_timeline(text, context):
         return _err_html(e)
 
 
+def run_todo(text, context):
+    """合规待办回调：LLM 路由识别品类×市场 → M3 完整待办清单。
+    返回 (HTML, 品类, 市场)——后两个回填 State，导出按钮跟随最近查询。"""
+    try:
+        res = m15_router.route(text, context)
+        if not res.get("ok"):
+            return m15_router.render_parse(res), "", ""
+        m3res = _safe(lambda: m3_todo.query(res["品类"], res["市场"],
+                                            use_llm=False))
+        if m3res is None:
+            return _err_html(Exception("待办查询异常")), "", ""
+        return (render_todo((text or "").strip(), res, m3res),
+                res["品类"], res["市场"])
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e), "", ""
+
+
 _DEFAULT_Q = "我要把洋娃娃卖到美国去，要做哪些合规工作？"
 
 
@@ -659,6 +718,24 @@ def _timeline_initial():
         return _err_html(e)
 
 
+def _todo_initial():
+    """合规待办页签的初始展示（词典路径，不联网、零成本）。
+    返回 (HTML, 品类, 市场)。"""
+    try:
+        res = m15_router.route(_DEFAULT_Q, "", use_llm=False)
+        if res.get("ok"):
+            m3res = _safe(lambda: m3_todo.query(res["品类"], res["市场"],
+                                                use_llm=False))
+            if m3res:
+                return (render_todo(_DEFAULT_Q, res, m3res),
+                        res["品类"], res["市场"])
+        return ('<div class="cr-wrap"><p class="cr-echo">'
+                '输入你的生意，查询要办的合规事项；右上角可导出 CSV。</p></div>',
+                "", "")
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e), "", ""
+
+
 def export_m3_csv(category, market):
     """导出 M3 清单为 CSV，返回文件路径（失败返回 None）。"""
     res = m3_todo.query(category or "", market or "", use_llm=False)
@@ -681,9 +758,10 @@ def build_ui():
     if _major < 6:
         _blocks_kwargs.update(css=_CSS, theme=gr.themes.Soft())
 
-    # 初始展示（词典路径，不联网、零成本）：两个页签直接铺好默认示例的结果
+    # 初始展示（词典路径，不联网、零成本）：各页签直接铺好默认示例的结果
     init_html, init_cat, init_mkt = _route_initial()
     init_tl = _timeline_initial()
+    init_todo, _td_cat, _td_mkt = _todo_initial()
 
     with gr.Blocks(**_blocks_kwargs) as demo:
         # 开场雷达 CG（~2s 自动淡出，纯 CSS，不阻塞交互）
@@ -734,7 +812,23 @@ def build_ui():
                                       elem_id="cr-run2", scale=0)
                 t_out = gr.HTML(init_tl)
 
-            # ── ③ 模型对照（固定，无输入）─────────────────────
+            # ── ③ 合规待办（M3 独立入口，同一个 LLM 路由器）────
+            with gr.Tab("合规待办"):
+                d_text = gr.Textbox(
+                    lines=3, value=_DEFAULT_Q,
+                    label="你的生意（一句话，或整份产品/合同文件）",
+                )
+                with gr.Accordion("补充上下文（选填，仅辅助识别，不存储）",
+                                  open=False):
+                    d_ctx = gr.Textbox(
+                        lines=2, value="", show_label=False,
+                        placeholder="例：产品材质 / 结构、适用年龄、客户要求…")
+                with gr.Row(elem_id="cr-run3-row"):
+                    d_btn = gr.Button("查询待办", variant="primary",
+                                      elem_id="cr-run3", scale=0)
+                d_out = gr.HTML(init_todo)
+
+            # ── ④ 模型对照（固定，无输入）─────────────────────
             with gr.Tab("模型对照"):
                 m4_out = gr.HTML(render_cmp())
 
@@ -745,6 +839,10 @@ def build_ui():
                       outputs=[q_out, cat_s, mkt_s])
         t_btn.click(run_timeline, inputs=[t_text, t_ctx], outputs=t_out)
         t_text.submit(run_timeline, inputs=[t_text, t_ctx], outputs=t_out)
+        d_btn.click(run_todo, inputs=[d_text, d_ctx],
+                    outputs=[d_out, cat_s, mkt_s])
+        d_text.submit(run_todo, inputs=[d_text, d_ctx],
+                      outputs=[d_out, cat_s, mkt_s])
 
     return demo
 
