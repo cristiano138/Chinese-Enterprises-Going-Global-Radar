@@ -290,11 +290,12 @@ def parse_model(text, context=""):
     两处刻意的设置：
       · use_cache=False —— 路由提示词含用户原文，**禁止落盘缓存**（隐私边界）。
         （内存缓存 _PARSE_CACHE 只存「哈希 → 槽位」，不含原文，不受此限。）
-      · max_tokens=4000 —— 本链路默认模型是**推理模型**，reasoning 计入 max_tokens，
-        额度耗尽时 content 会是空串（core/llm.py:137 判为失败）。实测 300/400 必然空返回、
-        600 时 JSON 被截断，而**范围外输入恰恰思考最久、最容易被截断**。故给足额度
-        （与 core/llm.py 中 M1/M2/M3 的 4000 口径一致）。
-        不采用「空返回后重试」：截断时推理 token 已经计费，重试等于付两次推理拿一个答案。
+      · thinking=False —— 路由层只做槽位抽取，不需要思维链，延迟敏感场景
+        （用户交互路径）关闭思考模式更快。M1/M2/M3 润色环节仍保留思考模式
+        （core/llm.py chat() 默认 thinking=True），两边各自按场景取舍。
+      · max_tokens=4000 —— 关闭思考后本不再需要这么大额度，但保留原口径，
+        避免模型侧日后恢复思考或输出变长时又被截断。
+        不采用「空返回后重试」：重试等于付两次 token 拿一个答案。
       · timeout=MODEL_TIMEOUT —— 硬超时封顶等待时长，超时由 route() 降级词典。
         （客户端级 timeout 管不住「推理模型慢慢想」，详见 core/llm.py chat()。）
     """
@@ -307,7 +308,7 @@ def parse_model(text, context=""):
     prompt = PARSE_PROMPT.format(text=(text or "")[:500],
                                  context=(context or "")[:500] or "（无）")
     out, meta = llm.chat(prompt, max_tokens=4000, temperature=0,
-                         use_cache=False, timeout=MODEL_TIMEOUT)
+                         use_cache=False, timeout=MODEL_TIMEOUT, thinking=False)
     if not meta.get("ok"):
         return None, meta
     m = re.search(r"\{.*\}", out, re.S)
