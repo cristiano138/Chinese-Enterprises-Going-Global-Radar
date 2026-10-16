@@ -219,38 +219,41 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-action .cr-evidence > div { margin: 4px 0; line-height: 1.6; }
 .cr-action .cr-evidence b { color: var(--cr-brand); }
 
-/* ── 开场雷达 CG（应用启动时 ~2s，自动淡出，不阻塞交互）────────────
-   纯 CSS 动画（v4 设计）：深色底 + 三重同心圆 + 锥形扫描叶 + 目标点闪烁，
-   2s 后整层 opacity→0 且 visibility:hidden。pointer-events:none 全程放行点击。
-   prefers-reduced-motion 用户直接隐藏（无障碍）。 */
-.cr-intro { position: fixed; inset: 0; z-index: 9999;
-            display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 22px; pointer-events: none;
-            background: var(--cr-night);
-            animation: crIntroOut 2s ease forwards; }
-.cr-intro .cr-radar { position: relative; width: 180px; height: 180px; }
-.cr-intro .cr-radar i { position: absolute; inset: 0;
-                        border: 1px solid rgba(34,195,230,.35); border-radius: 50%; }
-.cr-intro .cr-radar i:nth-child(2) { inset: 30px; }
-.cr-intro .cr-radar i:nth-child(3) { inset: 60px; }
-.cr-intro .cr-sweep { position: absolute; inset: 0; border-radius: 50%;
-                      background: conic-gradient(from 0deg, rgba(34,195,230,.5), transparent 70deg);
-                      animation: crSweep 1.6s linear infinite; }
-.cr-intro .cr-blip { position: absolute; width: 7px; height: 7px; border-radius: 50%;
-                     background: var(--cr-glow);
-                     animation: crBlink .8s ease-in-out infinite; }
-.cr-intro-name { color: #e6f7ff; font-size: 18px; letter-spacing: .2em; opacity: 0;
-                 animation: crFadeIn .4s .2s forwards; }
-.cr-intro-sub { color: #9fb3c8; font-size: 12px; letter-spacing: 1px; opacity: 0;
-                animation: crFadeIn .4s .5s forwards; }
-@keyframes crSweep { to { transform: rotate(360deg); } }
-@keyframes crBlink { 0%,100% { opacity: 1; } 50% { opacity: .15; } }
-@keyframes crFadeIn { to { opacity: 1; } }
-@keyframes crIntroOut { 0%,80% { opacity: 1; visibility: visible; }
-                        100% { opacity: 0; visibility: hidden; } }
-@media (prefers-reduced-motion: reduce) {
-  .cr-intro { display: none; }
-}
+/* ── 进入 CG：品牌启动动画（约 2.6s，pointer-events:none 不阻塞交互）──
+   视觉节奏：网格亮起 → 雷达扫描 → 数据点汇聚 → 品牌标题出现 → 平滑淡出。 */
+.cr-intro { position:fixed; inset:0; z-index:9999; display:flex; flex-direction:column;
+            align-items:center; justify-content:center; gap:18px; pointer-events:none;
+            overflow:hidden; background:linear-gradient(135deg,#0d1b38 0%,#172f68 55%,#0f4aa8 100%);
+            animation:crIntroOut 2.6s cubic-bezier(.4,0,.2,1) forwards; }
+.cr-intro::before { content:""; position:absolute; inset:0; opacity:.22;
+  background-image:linear-gradient(rgba(142,180,255,.22) 1px,transparent 1px),linear-gradient(90deg,rgba(142,180,255,.22) 1px,transparent 1px);
+  background-size:42px 42px; transform:scale(1.08); animation:crGridIn 1.4s ease-out forwards; }
+.cr-intro::after { content:""; position:absolute; width:520px; height:520px; border:1px solid rgba(145,181,255,.16); border-radius:50%; box-shadow:0 0 0 34px rgba(145,181,255,.07),0 0 0 68px rgba(145,181,255,.04); animation:crOrbitIn 1.2s ease-out forwards; }
+.cr-intro .cr-radar { position:relative; z-index:1; width:190px; height:190px; }
+.cr-intro .cr-radar i { position:absolute; inset:0; border:1px solid rgba(182,211,255,.5); border-radius:50%; opacity:0; animation:crRingIn .65s ease-out forwards; }
+.cr-intro .cr-radar i:nth-child(2) { inset:30px; animation-delay:.12s; }
+.cr-intro .cr-radar i:nth-child(3) { inset:60px; animation-delay:.24s; }
+.cr-intro .cr-radar::before,.cr-intro .cr-radar::after { content:""; position:absolute; background:rgba(182,211,255,.35); }
+.cr-intro .cr-radar::before { width:100%; height:1px; left:0; top:50%; }
+.cr-intro .cr-radar::after { height:100%; width:1px; left:50%; top:0; }
+.cr-intro .cr-sweep { position:absolute; inset:0; border-radius:50%;
+  background:conic-gradient(from 0deg,rgba(97,160,255,.76),rgba(97,160,255,0) 72deg);
+  transform-origin:50% 50%; animation:crSweep 1.25s linear infinite; }
+.cr-intro .cr-blip { position:absolute; z-index:2; width:8px; height:8px; border-radius:50%; background:#dbe9ff; box-shadow:0 0 0 5px rgba(121,177,255,.2),0 0 18px #8dbbff; opacity:0; animation:crBlipIn .45s ease-out forwards,crBlink .9s ease-in-out .45s infinite; }
+.cr-intro-name { position:relative; z-index:1; color:#fff; font-size:22px; font-weight:700; letter-spacing:.15em; opacity:0; transform:translateY(8px); animation:crFadeIn .55s .55s forwards; }
+.cr-intro-sub { position:relative; z-index:1; color:rgba(220,233,255,.76); font-size:12px; letter-spacing:1.5px; opacity:0; animation:crFadeIn .5s .9s forwards; }
+.cr-intro-progress { position:relative; z-index:1; width:180px; height:2px; margin-top:4px; background:rgba(255,255,255,.18); overflow:hidden; opacity:0; animation:crFadeIn .35s .75s forwards; }
+.cr-intro-progress::after { content:""; display:block; width:45%; height:100%; background:#9bc4ff; box-shadow:0 0 12px #9bc4ff; animation:crProgress 1.5s ease-in-out infinite; }
+@keyframes crSweep { to { transform:rotate(360deg); } }
+@keyframes crGridIn { from { opacity:0; transform:scale(1.2); } to { opacity:.22; transform:scale(1); } }
+@keyframes crOrbitIn { from { opacity:0; transform:scale(.7) rotate(-20deg); } to { opacity:1; transform:scale(1) rotate(0); } }
+@keyframes crRingIn { from { opacity:0; transform:scale(.65); } to { opacity:1; transform:scale(1); } }
+@keyframes crBlipIn { from { opacity:0; transform:scale(.2); } to { opacity:1; transform:scale(1); } }
+@keyframes crBlink { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+@keyframes crFadeIn { to { opacity:1; transform:translateY(0); } }
+@keyframes crProgress { 0% { transform:translateX(-120%); } 100% { transform:translateX(340%); } }
+@keyframes crIntroOut { 0%,78% { opacity:1; visibility:visible; } 100% { opacity:0; visibility:hidden; } }
+@media (prefers-reduced-motion:reduce) { .cr-intro { display:none; } }
 """
 
 
@@ -403,6 +406,7 @@ _INTRO_HTML = (
     '</div>'
     '<div class="cr-intro-name">出海合规雷达</div>'
     '<div class="cr-intro-sub">COMPLIANCE RADAR · 每条结论附官方原文链接</div>'
+    '<div class="cr-intro-progress" aria-hidden="true"></div>'
     '</div>'
 )
 
