@@ -754,7 +754,7 @@ def export_m3_csv(category, market):
 
 def build_ui():
     _major = int(gr.__version__.split(".")[0])
-    _blocks_kwargs = {"title": "出海合规雷达 ComplianceRadar"}
+    _blocks_kwargs = {"title": "出海合规雷达 ComplianceRadar v5.1"}
     if _major < 6:
         _blocks_kwargs.update(css=_CSS, theme=gr.themes.Soft())
 
