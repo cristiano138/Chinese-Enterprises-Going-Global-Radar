@@ -38,9 +38,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from core import corpus, llm, snapshot  # noqa: E402
-from modules import (m1_map, m2_timeline, m3_todo, m4_compare,  # noqa: E402
-                     m15_router)
+from core import corpus, llm, snapshot, verify  # noqa: E402
+from modules import (m1_map, m2_timeline, m3_todo, m4_compare, m5_compare,  # noqa: E402
+                     m6_multi_region, m15_router)
 
 import gradio as gr  # noqa: E402
 
@@ -809,6 +809,61 @@ def render_m4(result):
     return "".join(parts)
 
 
+# ── M5/M6：多区域能力 ────────────────────────────────────────
+def _region_record_card(row, index):
+    title = _e(row.get("法规中文名") or row.get("官方标题（英文）") or "官方未标注")
+    key = _e(row.get("官方编号") or row.get("CELEX号") or "-")
+    validity = _e(row.get("现行效力") or "官方未标注")
+    url = row.get("官方链接") or ""
+    link = (f'<a class="cr-a" href="{_attr(url)}" target="_blank" rel="noopener">官方原文 →</a>'
+            if verify.is_official_url(url) else "")
+    note = _e((row.get("备注／问题") or "").split("｜")[0])
+    return (f'<div class="cr-card"><div class="cr-title">{index}. {title}'
+            f'{_badge(validity, "b-ok" if validity.startswith("现行") else "b-q")}</div>'
+            f'<div class="cr-row"><span class="cr-k">官方编号</span><code>{key}</code></div>'
+            f'<div class="cr-row"><span class="cr-k">业务提示</span>{note or "官方未标注"}</div>'
+            f'<div class="cr-row"><span class="cr-k">官方链接</span>{link}</div></div>')
+
+
+def render_m6(result):
+    if not result.get("ok"):
+        return _reject_html(result.get("reason", "无法汇总"))
+    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>多区域法规汇总</b>　'
+             f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+             f'{result["总条数"]} 条区域法规</span></div>']
+    for region in result["区域"]:
+        body = "".join(_region_record_card(r, i + 1) for i, r in enumerate(region["法规"]))
+        parts.append(_group(f'{region["市场"]}法规清单', region["条数"], body, open_=True,
+                            hint=f'已核对链接 {region["条数"] - region["被拦截"]} 条'))
+    parts.append('<div class="cr-note">区域分别计数；同一横切法规在不同区域会分别展示。所有条目均经过官方链接白名单校验。</div>')
+    parts.append('</div>')
+    return "".join(parts)
+
+
+def render_m5(result):
+    if not result.get("ok"):
+        return _reject_html(result.get("reason", "无法完成对比"))
+    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>区域差异对比</b>　'
+             f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+             f'共同编号 {result["共同数量"]} 条</span></div>',
+             f'<div class="cr-note">{_e(result["说明"])} 快照 {_e(result["快照版本"])}，数据截止 {_e(result["数据截止时间"])}。</div>']
+    summary = "".join(f'<div class="cr-stat"><div class="cr-stat-k">{_e(x["市场"])}法规</div>'
+                       f'<div class="cr-stat-v">{x["数量"]}</div><div class="cr-stat-s">已通过链接校验</div></div>'
+                       for x in result["区域"])
+    parts.append(f'<div class="cr-overview">{summary}</div>')
+    shared_body = "".join(f'<div class="cr-row"><span class="cr-k">共同编号</span>'
+                           f'<code>{_e(x["key"])}</code> {_e(x["名称"])}</div>'
+                           for x in result["共同"])
+    parts.append(_group("两地共同出现的官方编号", len(result["共同"]),
+                        shared_body or '<div class="cr-empty">没有按官方编号精确匹配的共同条目。</div>', open_=True))
+    for market, rows in result["独有"].items():
+        body = "".join(_region_record_card(r, i + 1) for i, r in enumerate(rows))
+        parts.append(_group(f'{market}独有法规', len(rows), body, open_=False,
+                            hint='官方编号未在其他所选区域出现'))
+    parts.append('</div>')
+    return "".join(parts)
+
+
 # ── 回调 ──────────────────────────────────────────────────────
 def run_map(category, market, use_llm):
     """法规地图回调。任何异常都不白屏。"""
@@ -834,6 +889,20 @@ def run_timeline(category, market, window, use_llm):
     try:
         return render_m2(m2_timeline.query(cat, market, window=window,
                                            use_llm=bool(use_llm)))
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e)
+
+
+def run_multi_region(category, markets):
+    try:
+        return render_m6(m6_multi_region.query(category, markets))
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e)
+
+
+def run_compare(category):
+    try:
+        return render_m5(m5_compare.query(category, ["欧盟", "美国"]))
     except Exception as e:  # noqa: BLE001
         return _err_html(e)
 
@@ -1026,7 +1095,24 @@ def build_ui():
                 m2_out = gr.HTML(render_m2(
                     m2_timeline.query("儿童玩具", "欧盟", use_llm=False)))
 
-            # ── ⑤ 模型对照 ────────────────────────────────────
+            # ── ⑤ 多区域汇总 ──────────────────────────────────
+            with gr.Tab("🌍 多区域汇总"):
+                gr.HTML('<div class="cr-section-intro"><b>一次查看同一品类在多个区域的法规。</b> 当前先支持欧盟与美国，结果按区域分组，所有条目附官方来源。</div>')
+                with gr.Row():
+                    cat6 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
+                    markets6 = gr.CheckboxGroup(choices=mkt_choices, value=mkt_choices, label="目标区域（可多选）")
+                    btn6 = gr.Button("汇总法规", variant="primary")
+                m6_out = gr.HTML(render_m6(m6_multi_region.query("儿童玩具", mkt_choices)))
+
+            # ── ⑥ 区域差异对比 ─────────────────────────────────
+            with gr.Tab("⚖️ 区域对比"):
+                gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
+                with gr.Row():
+                    cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
+                    btn5 = gr.Button("开始对比", variant="primary")
+                m5_out = gr.HTML(render_m5(m5_compare.query("儿童玩具", mkt_choices)))
+
+            # ── ⑦ 模型对照 ────────────────────────────────────
             with gr.Tab("⚖️ 模型对照"):
                 gr.HTML('<div class="cr-section-intro"><b>同一道题，两套方法放在一起看。</b> 重点观察来源、编号和证据是否能被复核；当前页面只展示已录制的真实回放。</div>')
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
@@ -1044,6 +1130,11 @@ def build_ui():
                      outputs=m2_out)
         btn2.click(run_timeline, inputs=[cat2, mkt2, window2, use2],
                    outputs=m2_out)
+        for w in (cat6, markets6):
+            w.change(run_multi_region, inputs=[cat6, markets6], outputs=m6_out)
+        btn6.click(run_multi_region, inputs=[cat6, markets6], outputs=m6_out)
+        cat5.change(run_compare, inputs=[cat5], outputs=m5_out)
+        btn5.click(run_compare, inputs=[cat5], outputs=m5_out)
 
     return demo
 
