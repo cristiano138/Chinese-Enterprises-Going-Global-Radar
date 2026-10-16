@@ -252,7 +252,7 @@ def _header_block(meta):
 
 
 def _footer_block():
-    """页脚（PRD：固定免责声明 + 用户追加的 WAF 提示）。"""
+    """页脚（PRD：固定免责声明 + 用户追加的 WAF 提示 + 时效性核验徽章）。"""
     return (
         '<div class="cr-footer">'
         f'<b>⚖️</b><span>{_e(snapshot.DISCLAIMER)}</span>'
@@ -260,7 +260,53 @@ def _footer_block():
         '<div class="cr-footer" style="background:#fff8e1;border-color:#f0dfa0">'
         f'<b>ℹ️</b><span>{_e(snapshot.WAF_FOOTER_HINT)}</span>'
         '</div>'
+        + _freshness_footer()
     )
+
+
+# ── 时效性核验徽章（团队「持续监控」思路的最小可行落地）──────────────
+# 数据来自 scripts/check_freshness.py 生成的 data/freshness_latest.json；
+# 文件不存在（没跑过核验）就静默不显示 —— 不硬编、不假装验过。
+_FRESHNESS_FILE = os.path.join(HERE, "data", "freshness_latest.json")
+_freshness_memo = {"mtime": 0, "data": None}
+
+
+def _freshness_latest():
+    """按文件 mtime 记忆化读取最新核验结果（每次渲染都读盘太浪费）。"""
+    try:
+        mtime = os.path.getmtime(_FRESHNESS_FILE)
+        if mtime != _freshness_memo["mtime"]:
+            import json as _json
+            with open(_FRESHNESS_FILE, encoding="utf-8") as f:
+                _freshness_memo.update(mtime=mtime, data=_json.load(f))
+        return _freshness_memo["data"]
+    except Exception:
+        return None
+
+
+def _freshness_footer():
+    d = _freshness_latest()
+    if not d:
+        return ""
+    ok, total = d.get("ok", 0), d.get("total", 0)
+    # 三分口径（与 check_freshness.py 一致）：
+    #   link_error = 连上了但 4xx/5xx，链接可能失效；net_error = 本机网络没连通，不判死链
+    link_bad = d.get("link_error", 0)
+    net_bad = d.get("net_error", 0)
+    changed = d.get("changed", 0)
+    style = ("background:#e8f5e9;border-color:#b7dfba" if link_bad == 0
+             else "background:#fff8e1;border-color:#f0dfa0")
+    parts = (f"官方链接最近核验：{_e(d.get('checked_at', ''))}（北京时间）· "
+             f"{ok}/{total} 可访问")
+    if link_bad:
+        parts += f" · ⚠️ {link_bad} 条链接异常（待人工复核）"
+    if net_bad:
+        parts += f" · {net_bad} 条本机网络未连通（不判死链）"
+    if changed:
+        parts += f" · 🔶 {changed} 条内容较上次核验有更新"
+    parts += "　—　时效性监控脚本定期核验，日志留档可回放"
+    return (f'<div class="cr-footer" style="{style}">'
+            f'<b>🛰️</b><span>{parts}</span></div>')
 
 
 # ── M1 渲染 ───────────────────────────────────────────────────
@@ -784,6 +830,9 @@ def build_ui():
 
 
 if __name__ == "__main__":
+    # 后台预热智能判定（M1.5）：把演示常用输入的模型解析提前算进内存缓存，
+    # 演示首点即毫秒级命中；不阻塞启动，失败静默（词典兜底照常）。
+    m15_router.start_prewarm()
     port = int(os.getenv("SERVER_PORT", os.getenv("PORT", "7860")))
     host = "0.0.0.0" if os.getenv("SERVER_PORT") else "127.0.0.1"
     _major = int(gr.__version__.split(".")[0])

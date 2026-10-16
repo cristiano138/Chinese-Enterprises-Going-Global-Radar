@@ -44,13 +44,20 @@ CALLS = []
 
 
 def stub(text, meta=None, ready=True):
-    """让模型返回 `text`（meta 缺省为成功）。CALLS 记录每次调用参数。"""
+    """让模型返回 `text`（meta 缺省为成功）。CALLS 记录每次调用参数。
+
+    同时清空路由层内存缓存 —— 同一输入换桩重测时，不能让旧解析结果
+    从缓存里回来冒充本次桩的输出。
+    """
     CALLS.clear()
+    m15_router._PARSE_CACHE.clear()
     _meta = meta if meta is not None else {"ok": True, "reason": "", "cached": False}
 
-    def fake_chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True):
+    def fake_chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True,
+                  timeout=None):
         CALLS.append({"prompt": prompt, "max_tokens": max_tokens,
-                      "temperature": temperature, "use_cache": use_cache})
+                      "temperature": temperature, "use_cache": use_cache,
+                      "timeout": timeout})
         return text, _meta
 
     llm.chat = fake_chat
@@ -78,6 +85,23 @@ def main():
     check("max_tokens=4000（推理模型 reasoning 计入额度，300 会空返回）",
           c.get("max_tokens") == 4000, f"实际 {c.get('max_tokens')}")
     check("temperature=0", c.get("temperature") == 0, f"实际 {c.get('temperature')}")
+    check("timeout=MODEL_TIMEOUT（硬超时封顶，防止 26s+ 干等）",
+          c.get("timeout") == m15_router.MODEL_TIMEOUT,
+          f"实际 {c.get('timeout')}")
+    print()
+
+    # ── 1b. 内存缓存：同一输入第二次不再调用模型（响应提速主力）──
+    print("【1b】内存缓存：哈希键、不含原文、命中免调用")
+    n_calls = len(CALLS)
+    res2 = m15_router.route("我要把洋娃娃卖到美国去", "")
+    check("同一输入二次路由 → 未再调用模型（缓存命中）",
+          len(CALLS) == n_calls, f"又调了 {len(CALLS) - n_calls} 次")
+    check("  缓存命中结果与首次一致", res2["ok"] is True and
+          res2.get("品类") == "儿童玩具" and res2.get("市场") == "美国")
+    raw_keys = list(m15_router._PARSE_CACHE.keys())
+    check("  缓存键是 sha256 哈希（不含原文）",
+          all(len(k) == 64 and "洋娃娃" not in k for k in raw_keys),
+          f"keys={raw_keys[:1]}")
     print()
 
     # ── 2. 枚举收紧：模型给出范围外的值不许放行 ────────────────
@@ -167,6 +191,24 @@ def main():
     print()
 
     unstub()
+
+    # ── 7. llm.chat 硬超时机制（离线：桩 _call_api 睡眠）────────
+    print("【7】llm.chat(timeout=…) 硬超时：慢模型及时降级，不干等")
+    import time as _t
+    _orig_api, _orig_ready_flag = llm._call_api, llm.READY
+    def _slow_api(prompt, max_tokens, temperature):
+        _t.sleep(3)
+        return '{"ok":true}'
+    llm._call_api = _slow_api
+    llm.READY = True
+    t0 = _t.time()
+    _, meta = llm.chat("任意提示词", timeout=1, use_cache=False)
+    dt = _t.time() - t0
+    llm._call_api, llm.READY = _orig_api, _orig_ready_flag
+    check("慢模型（3s）+ timeout=1 → 1s 左右返回失败", meta["ok"] is False and dt < 2.2,
+          f"dt={dt:.1f}s meta={meta}")
+    check("  失败原因标注为超时", meta.get("timeout") is True, repr(meta.get("reason")))
+    print()
 
     print("=" * 74)
     if FAIL:

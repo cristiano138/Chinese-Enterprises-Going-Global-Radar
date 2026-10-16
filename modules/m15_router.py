@@ -39,11 +39,13 @@ M1.5 · 输入驱动路由层（modules/m15_router.py）
     自检（模型路径，桩注入）：python scripts/selftest_m15.py
 """
 
+import hashlib
 import html
 import json
 import os
 import re
 import sys
+import threading
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
@@ -56,6 +58,40 @@ from modules import m1_map  # noqa: E402
 # 枚举「哨兵值」：模型用它明确表达「用户说了，但不在本期支持范围内」。
 # 与「空字符串 = 用户没说」严格区分 —— 两者的用户文案完全不同（见 route / render_parse）。
 OOS = "范围外"
+
+# ── 响应速度治理（2026-10-16 用户反馈「响应时间有点长」）─────────────
+# 实测：模型解析典型 1.5~2.5s，但「范围外 / 模糊输入」推理最久，
+# 曾录得 26.7s 才超时降级 —— 路由是演示第一入口，绝不能让用户干等。
+#
+# 三招（都守住红线：原文不落盘、模型只做理解）：
+#   ① MODEL_TIMEOUT：模型解析硬超时，超时立即降级词典（演示永不中断）；
+#   ② _PARSE_CACHE：解析结果**内存**缓存，key 是 sha256(规范化文本) ——
+#      缓存里连原文都没有，只有哈希 → 槽位，满足「不落盘不缓存原文」；
+#   ③ prewarm()：应用启动时后台线程把演示常用输入先解析进缓存，
+#      演示首点即毫秒级命中（见 app_main.py 启动处的 start_prewarm）。
+MODEL_TIMEOUT = 12
+_PARSE_CACHE = {}
+_PARSE_CACHE_MAX = 128
+_cache_lock = threading.Lock()
+
+
+def _cache_key(text, context):
+    """缓存键：规范化输入的 sha256 —— 键本身不含原文，可安全留在内存。"""
+    norm = (text or "").strip() + "\x00" + (context or "").strip()
+    return hashlib.sha256(norm.encode("utf-8")).hexdigest()
+
+
+def _cache_get(key):
+    with _cache_lock:
+        return _PARSE_CACHE.get(key)
+
+
+def _cache_put(key, value):
+    with _cache_lock:
+        if len(_PARSE_CACHE) >= _PARSE_CACHE_MAX:
+            # 简单 FIFO 逐出：演示场景输入量小，无需 LRU 复杂度
+            _PARSE_CACHE.pop(next(iter(_PARSE_CACHE)))
+        _PARSE_CACHE[key] = value
 
 # ── 本地词典（兜底解析，确定性代码）──────────────────────────────────
 # 命中即计数，取命中最多的类目 / 市场；全部落空 → 诚实拒绝。
@@ -253,15 +289,25 @@ def parse_model(text, context=""):
 
     两处刻意的设置：
       · use_cache=False —— 路由提示词含用户原文，**禁止落盘缓存**（隐私边界）。
+        （内存缓存 _PARSE_CACHE 只存「哈希 → 槽位」，不含原文，不受此限。）
       · max_tokens=4000 —— 本链路默认模型是**推理模型**，reasoning 计入 max_tokens，
         额度耗尽时 content 会是空串（core/llm.py:137 判为失败）。实测 300/400 必然空返回、
         600 时 JSON 被截断，而**范围外输入恰恰思考最久、最容易被截断**。故给足额度
         （与 core/llm.py 中 M1/M2/M3 的 4000 口径一致）。
         不采用「空返回后重试」：截断时推理 token 已经计费，重试等于付两次推理拿一个答案。
+      · timeout=MODEL_TIMEOUT —— 硬超时封顶等待时长，超时由 route() 降级词典。
+        （客户端级 timeout 管不住「推理模型慢慢想」，详见 core/llm.py chat()。）
     """
+    key = _cache_key(text, context)
+    hit = _cache_get(key)
+    if hit is not None:
+        slots, meta = hit
+        return slots, dict(meta, cached=True)
+
     prompt = PARSE_PROMPT.format(text=(text or "")[:500],
                                  context=(context or "")[:500] or "（无）")
-    out, meta = llm.chat(prompt, max_tokens=4000, temperature=0, use_cache=False)
+    out, meta = llm.chat(prompt, max_tokens=4000, temperature=0,
+                         use_cache=False, timeout=MODEL_TIMEOUT)
     if not meta.get("ok"):
         return None, meta
     m = re.search(r"\{.*\}", out, re.S)
@@ -271,11 +317,42 @@ def parse_model(text, context=""):
         data = json.loads(m.group(0))
     except Exception:
         return None, {"ok": False, "reason": "模型 JSON 解析失败", "cached": False}
-    return {"品类": _slot(data, "品类"),
-            "市场": _slot(data, "市场"),
-            "用户品类": _slot(data, "用户品类"),
-            "用户市场": _slot(data, "用户市场"),
-            "命中依据": _slot(data, "命中依据")}, meta
+    slots = {"品类": _slot(data, "品类"),
+             "市场": _slot(data, "市场"),
+             "用户品类": _slot(data, "用户品类"),
+             "用户市场": _slot(data, "用户市场"),
+             "命中依据": _slot(data, "命中依据")}
+    # 只缓存成功解析（含「全部空槽位」这种合法结果 —— 它同样是模型的确定输出）；
+    # 失败不缓存：网络抖动不该让同一输入永远降级。
+    _cache_put(key, (slots, meta))
+    return slots, meta
+
+
+def prewarm(inputs=None):
+    """启动预热：后台线程把演示常用输入的解析结果先算进内存缓存。
+
+    只在模型链路可用时才发起（无 key 时预热无意义，词典本来就是毫秒级）。
+    预热失败静默忽略 —— 任何情况下演示都还有词典兜底。
+    """
+    if not llm.is_ready():
+        return
+    defaults = [
+        # 与 app_main.py 智能判定页签的默认输入保持一致
+        "我要把洋娃娃卖到美国去，要做哪些合规工作？",
+        # PRD 验收用例里的高频演示句
+        "蓝牙耳机出口欧盟",
+        "毛绒玩具发德国亚马逊",
+    ]
+    for t in (inputs or defaults):
+        try:
+            parse_model(t)
+        except Exception:
+            pass
+
+
+def start_prewarm():
+    """在后台线程启动预热（不阻塞应用启动）。由 app_main.py 调用。"""
+    threading.Thread(target=prewarm, daemon=True, name="m15-prewarm").start()
 
 
 def _result(ok, reason, via, note, ident, hits, missing=None, m1=None):

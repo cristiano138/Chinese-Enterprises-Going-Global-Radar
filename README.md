@@ -1,4 +1,4 @@
-﻿# ComplianceRadar 出海合规雷达
+# ComplianceRadar 出海合规雷达
 
 > **Sellers enter "what I sell + where I sell it" → get which regulations apply, what changed recently, and what to do next — every conclusion backed by a link to its official source.**
 
@@ -138,6 +138,10 @@
 > - **不变量 `ok ⇒ m1.ok`** —— 判定卡不会出现「上半张说判定成功、下半张报 M1·error」。
 > - **依据可追溯** —— 判定卡分开显示模型给的「识别依据」与词典的「词典命中」「槽位来源」，不再用词典命中词冒充路由理由。
 > - **降级如实标注** —— `route_via` 按「模型是否真的贡献了槽位」判定；模型调用失败时标「本地词典解析」，不会与「模型解析不可用」的提示自相矛盾。
+>
+> **响应提速（10-16）**：模型解析加 12s 硬超时（实测模糊输入曾拖满 26s+）、解析结果内存缓存（键为 sha256，不含原文，守住「不落盘」红线）、启动后台预热演示常用输入 —— 重复/例句输入毫秒级返回。自检见 `scripts/selftest_m15.py`（30 项）。
+>
+> **时效性监控（10-16，最小可行版）**：`scripts/check_freshness.py` 定期核验 86 条官方链接（状态 / Last-Modified / 内容哈希），日志追加 `data/freshness_log.jsonl`，最新态落在 `data/freshness_latest.json` 并显示在每个结果页页脚。口径三分：可访问 / 链接异常（4xx-5xx，待复核）/ 本机网络未连通（不判死链）。全文落库与定时推送为后续路线，详见 [`docs/时效性监控.md`](docs/时效性监控.md)；比赛说明材料见 [`docs/比赛说明材料七要素.md`](docs/比赛说明材料七要素.md)。
 
 ---
 

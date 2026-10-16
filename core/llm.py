@@ -20,6 +20,8 @@ import hashlib
 import json
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 
 if sys.platform == "win32":
     try:
@@ -111,11 +113,28 @@ def _cache_put(prompt, text):
         pass
 
 
-def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True):
+def _call_api(prompt, max_tokens, temperature):
+    """实际发起一次模型请求（同步阻塞）。抽出来便于外层加硬超时。"""
+    resp = _client_get().chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=max_tokens,
+        temperature=temperature,
+    )
+    return resp.choices[0].message.content or ""
+
+
+def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None):
     """调用模型。返回 (text, meta)。
 
     meta 说明调用是否成功、是否命中缓存，供上层如实标注。
     任何异常都不抛出 —— 上层靠 meta 判断并降级。
+
+    timeout（秒，默认 None = 不限）：对整次请求加硬超时。
+    客户端自身的 timeout=120 只管单次 socket 读写，而推理模型「慢慢想」
+    能在额度内拖满几十秒（实测 26.7s）—— 交互入口（如 M1.5 路由）应传
+    一个上限，超时及时降级，不让用户干等。
+    超时后被遗弃的线程仍在后台把这次请求跑完（无法强杀 HTTP），结果丢弃。
     """
     if not READY:
         return "", {"ok": False, "reason": "模型链路未配置（缺 Token/Base/Model）",
@@ -127,13 +146,15 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True):
             return hit, {"ok": True, "reason": "", "cached": True}
 
     try:
-        resp = _client_get().chat.completions.create(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=max_tokens,
-            temperature=temperature,
-        )
-        text = resp.choices[0].message.content or ""
+        if timeout:
+            pool = ThreadPoolExecutor(max_workers=1)
+            fut = pool.submit(_call_api, prompt, max_tokens, temperature)
+            try:
+                text = fut.result(timeout=timeout)
+            finally:
+                pool.shutdown(wait=False)
+        else:
+            text = _call_api(prompt, max_tokens, temperature)
         if not text.strip():
             # 推理模型 token 给少了的典型症状：返回空
             return "", {"ok": False, "reason": "模型返回空内容（可能 max_tokens 不足）",
@@ -141,6 +162,10 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True):
         if use_cache:
             _cache_put(prompt, text)
         return text, {"ok": True, "reason": "", "cached": False}
+    except FuturesTimeout:
+        return "", {"ok": False,
+                    "reason": f"模型响应超过 {timeout}s，已及时降级",
+                    "cached": False, "timeout": True}
     except Exception as e:
         return "", {"ok": False,
                     "reason": f"{type(e).__name__}: {str(e)[:160]}",
