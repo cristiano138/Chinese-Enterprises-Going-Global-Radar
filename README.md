@@ -286,20 +286,12 @@ $PY modules/m4_compare.py                     # M4 对照演示占位（玩具×
 **自检**：
 
 ```bash
-$PY scripts/selftest_all.py       # ⭐ 全量测试入口
-                                   #   A 分层断言 + B 底座冒烟 + C 端到端
-                                   #   + D 模型链路 + E PRD F1 主流程完成条件
 $PY scripts/selftest_m1.py       # M1：分层断言（覆盖率 / 回挂率 / 防幻觉 / 边界 / 降级）
-$PY scripts/selftest_m2_m3.py    # M2+M3：分层断言（时间窗 / 锚点 / 数量守恒 / CSV D3 格式）
 $PY scripts/selftest_m15.py      # M1.5 路由：模型路径（桩注入 llm.chat / is_ready，离线、24 项）
 $PY modules/m15_router.py        # M1.5 路由：词典路径（离线确定性，含 ok ⇒ m1.ok 不变量）
 ```
 
-> ⚠️ 本仓库当前**只有** `selftest_m1.py` 与 `selftest_m15.py` 两份自检脚本。
-> 上面列出的 `selftest_all.py` / `selftest_m2_m3.py` / `run_selftest.bat` **未随代码合入**，
-> 直接运行会报文件不存在 —— 需要时由 M2/M3 负责人补齐。
-
-全量测试入口（`selftest_all.py`）合入后，退出码 0 = 无失败项，可直接接进 CI。当前可离线复跑的是 `selftest_m1.py` 与 `selftest_m15.py` 两份。
+两份自检脚本均可离线复跑，退出码 0 = 无失败项。
 
 **数据管线**（已跑通，可复跑）：
 
@@ -330,11 +322,7 @@ compliance-radar/
 ├── requirements.txt            依赖清单
 ├── .env.example                环境变量模板
 ├── .gitignore
-├── run_test.bat                一键自检（验证模型链路是否通）
 ├── run_pipeline.bat            一键重跑数据管线（fetch → merge → check → enrich → overview）
-├── run_selftest.bat            一键全量测试（A 分层断言 + B 底座冒烟 + C 端到端 + E F1 主流程）
-├── test_connection.py          连通性测试
-├── list_models.py              查看可用模型列表
 │
 ├── scripts/                    ✅ 数据管线（已跑通，可复跑）
 │   ├── fetch_eu.py             欧盟抓取 — EUR-Lex 官方 SPARQL 接口

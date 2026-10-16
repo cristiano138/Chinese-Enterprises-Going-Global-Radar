@@ -27,3 +27,5 @@ python-dotenv>=1.0.0
 
 # --- 重试与限速 ---
 tenacity>=8.5.0
+
+# rebuild 20261016-1418: response-time fix + freshness monitor
