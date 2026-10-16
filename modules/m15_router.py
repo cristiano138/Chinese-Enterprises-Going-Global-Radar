@@ -523,30 +523,43 @@ def render_parse(res):
     basis = ident.get("命中依据") or ""
     basis_html = (f'<div class="cr-row"><span class="cr-k">识别依据</span>'
                   f'{_esc(basis)}'
-                  f'<span style="color:#6b7280">（模型回显的用户原话）</span></div>'
+                  f'<span style="color:#8a91a3">（模型回显的用户原话）</span></div>'
                   if basis else "")
     src_html = (f'<div class="cr-row"><span class="cr-k">槽位来源</span>'
                 f'品类 {_esc(ident.get("品类来源") or "—")} · '
                 f'市场 {_esc(ident.get("市场来源") or "—")}</div>')
     note = res.get("note") or ""
     note_html = f'<div class="cr-note">ℹ️ {_esc(note)}</div>' if note else ""
-    missing_items = "".join(f"<li>{m}</li>" for m in res.get("missing", []))
+    missing = res.get("missing", [])
+    missing_items = "".join(f"<li>{m}</li>" for m in missing)
+    # 10-16 UI 增强：识别明细 + 缺失资料收进「可折叠板块」——
+    # 首屏只留判定结论（品类 × 市场 + 路由方式），次级信息点开再看。
+    detail_body = (
+        f'{basis_html}'
+        f'<div class="cr-row"><span class="cr-k">词典命中</span>{hit_html}</div>'
+        f'{src_html}'
+        f'{note_html}'
+        f'<div class="cr-sec" style="margin-top:10px">'
+        f'要下更准的判断，这一单还缺这些资料</div>'
+        f'<ul style="margin:4px 0 8px 20px;line-height:1.8">{missing_items}</ul>'
+        f'<div class="cr-row">更完整的判定还依赖：产品 BOM / 材质单、'
+        f'合同或客户合规要求、供应链分工（谁负责清关 / 贴标 / 注册）'
+        f'—— 本期版本仅作提示，不做结构化判定。</div>'
+    )
+    detail_group = (
+        '<details class="cr-group"><summary>'
+        f'识别明细与缺失资料<span class="cr-g-count">{len(missing)}</span>'
+        '<span class="cr-g-hint">点开看识别依据和补充资料清单</span></summary>'
+        f'<div class="cr-group-body">{detail_body}</div></details>'
+    )
     return (
         '<div class="cr-wrap">'
         f'<div class="cr-head"><b>判定卡</b>　'
         f'{_esc(res["品类"])} × {_esc(res["市场"])}'
         f'<span class="cr-badge b-ok">{_esc(via)}</span></div>'
-        f'{basis_html}'
-        f'<div class="cr-row"><span class="cr-k">词典命中</span>{hit_html}</div>'
-        f'{src_html}'
-        f'{note_html}'
+        f'{detail_group}'
         f'<div class="cr-tip">🧭 路由原则：模型只负责「理解输入」，'
         f'下方法规结论 100% 来自本地核对语料 + 官方链接，模型无权新增或编造。</div>'
-        f'<div class="cr-sec">要下更准的判断，这一单还缺这些资料</div>'
-        f'<ul style="margin:4px 0 8px 20px;line-height:1.8">{missing_items}</ul>'
-        f'<div class="cr-row">更完整的判定还依赖：产品 BOM / 材质单、'
-        f'合同或客户合规要求、供应链分工（谁负责清关 / 贴标 / 注册）'
-        f'—— 本期版本仅作提示，不做结构化判定。</div>'
         f'<div class="cr-dis">🔒 隐私边界：本次判定只使用「品类 + 市场」两个槽位；'
         f'输入原文只在内存中处理，不落盘、不缓存。'
         f'请勿输入个人隐私或客户敏感信息。</div>'

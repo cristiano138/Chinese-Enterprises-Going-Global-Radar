@@ -53,83 +53,145 @@ EXPORT_DIR = os.path.join(HERE, "data", "export")
 
 
 # ── 结果渲染成 HTML 卡片 ──────────────────────────────────────
+# 性能约定（10-16 UI 增强）：
+#   · 收起内容用 content-visibility:auto —— 浏览器跳过不可见区块的布局/绘制；
+#   · 动画只用 transform/opacity（合成器路径，不触发重排）；
+#   · 不用 backdrop-filter / 大面积阴影（滚动掉帧的主要来源）。
 _CSS = """
-.cr-wrap { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; }
-.cr-header { background: #f7faff; border: 1px solid #d6e2f5; border-radius: 8px;
-             padding: 10px 14px; font-size: 13px; color: #1f4fa8;
-             margin-bottom: 14px; line-height: 1.7; }
+:root{--cr-brand:#6c5ce7;--cr-brand-2:#8e7bff;--cr-brand-soft:#efedff;
+      --cr-bg:#f5f6fa;--cr-ink:#1f2430;--cr-ink2:#5a6172;--cr-ink3:#8a91a3;
+      --cr-line:#e6e8f0;--cr-radius:12px}
+.cr-wrap { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+           color:var(--cr-ink); }
+.cr-header { background: #fff; border: 1px solid var(--cr-line); border-radius: 10px;
+             padding: 8px 14px; font-size: 12.5px; color: var(--cr-ink2);
+             margin-bottom: 12px; line-height: 1.7; }
 .cr-header b { color: #111; }
-.cr-header .cr-meta-line { margin: 2px 0; }
-.cr-header .cr-meta-scope { font-size: 12.5px; color: #4b5563; }
-.cr-header .cr-meta-notes { margin-top: 6px; color: #7a5b00;
-                              font-size: 12.5px; }
-.cr-header .cr-disclaimer { margin-top: 8px; padding-top: 6px;
-                            border-top: 1px dashed #c3d5f5;
-                            font-size: 12px; color: #4b5563; }
+.cr-header .cr-meta-line { margin: 1px 0; }
+.cr-header .cr-meta-notes { margin-top: 4px; color: #7a5b00; font-size: 12px; }
+.cr-header .cr-disclaimer { margin-top: 6px; padding-top: 6px;
+                            border-top: 1px dashed var(--cr-line);
+                            font-size: 12px; color: var(--cr-ink3); }
 .cr-mod { display: inline-block; font-size: 11.5px; padding: 1px 6px;
           border-radius: 8px; margin: 0 4px; font-weight: 500; }
-.cr-mod-ready   { background:#e8f5e9; color:#1b5e20; border:1px solid #b7dfba; }
-.cr-mod-empty   { background:#f6f7f9; color:#41536b; border:1px solid #d5dde6; }
-.cr-mod-partial { background:#fff8e1; color:#7a5b00; border:1px solid #f0dfa0; }
-.cr-mod-error   { background:#fdecea; color:#8e2118; border:1px solid #f3c2bd; }
+.cr-mod-ready   { background:#e8f7ee; color:#16a34a; }
+.cr-mod-empty   { background:#f0f1f5; color:#5a6172; }
+.cr-mod-partial { background:#fdf3e3; color:#d97706; }
+.cr-mod-error   { background:#fdeaea; color:#dc2626; }
 .cr-head { font-size: 15px; color:#111; margin: 4px 0 12px; }
 .cr-head b { font-size: 17px; }
-.cr-sec { margin: 18px 0 8px; font-size: 15px; font-weight: 600; color:#111;
-          border-left: 4px solid #2f6fed; padding-left: 8px; }
-.cr-card { border: 1px solid #e3e6ea; border-radius: 8px; padding: 12px 14px;
-           margin-bottom: 10px; background: #fff; }
+.cr-sec { margin: 16px 0 8px; font-size: 15px; font-weight: 600; color:#111;
+          border-left: 3px solid var(--cr-brand); padding-left: 8px; }
+.cr-card { border: 1px solid var(--cr-line); border-radius: var(--cr-radius);
+           padding: 12px 14px; margin-bottom: 10px; background: #fff;
+           content-visibility: auto; contain-intrinsic-size: auto 220px; }
 .cr-title { font-size: 15px; font-weight: 600; color:#111; margin-bottom: 6px; }
 .cr-badge { display:inline-block; font-size:12px; padding:2px 7px; border-radius:10px;
             margin-left:6px; vertical-align: middle; }
-.b-ok   { background:#e8f5e9; color:#1b5e20; border:1px solid #b7dfba; }
-.b-warn { background:#fdecea; color:#8e2118; border:1px solid #f3c2bd; }
-.b-q    { background:#fff8e1; color:#7a5b00; border:1px solid #f0dfa0; }
-.b-info { background:#eef3fd; color:#1f4fa8; border:1px solid #c3d5f2; }
-.b-ref  { background:#f3f4f6; color:#4b5563; border:1px solid #dcdfe4; }
-.b-future { background:#f0e9ff; color:#5b2ea6; border:1px solid #d6c7f5; }
-.b-u-high { background:#fdecea; color:#8e2118; border:1px solid #f3c2bd; }
-.b-u-mid  { background:#fff8e1; color:#7a5b00; border:1px solid #f0dfa0; }
-.b-u-low  { background:#eef2f6; color:#41536b; border:1px solid #d5dde6; }
-.cr-tip  { font-size:13px; color:#1f4fa8; background:#f2f6fe; border-radius:5px;
+.b-ok   { background:#e8f7ee; color:#16a34a; }
+.b-warn { background:#fdeaea; color:#dc2626; }
+.b-q    { background:#fdf3e3; color:#d97706; }
+.b-info { background:#efedff; color:#5b4bd4; }
+.b-ref  { background:#f0f1f5; color:#5a6172; }
+.b-future { background:#efedff; color:#5b4bd4; }
+.b-u-high { background:#fdeaea; color:#dc2626; }
+.b-u-mid  { background:#fdf3e3; color:#d97706; }
+.b-u-low  { background:#eef2f6; color:#5a6172; }
+.cr-tip  { font-size:13px; color:#5b4bd4; background:#f6f4ff; border-radius:6px;
            padding:6px 8px; margin:6px 0; }
 .cr-row  { font-size:13px; color:#333; margin:3px 0; line-height:1.55;
            word-break: break-word; }
-.cr-k { display:inline-block; min-width:88px; color:#6b7280; }
-.cr-row code { background:#f6f7f9; padding:1px 5px; border-radius:4px;
+.cr-k { display:inline-block; min-width:88px; color:var(--cr-ink3); }
+.cr-row code { background:#f0f1f5; padding:1px 5px; border-radius:4px;
                font-family: ui-monospace, Consolas, monospace; font-size:12.5px; }
-.cr-a { color:#2f6fed; text-decoration:none; word-break:break-all; }
+.cr-a { color:var(--cr-brand); text-decoration:none; word-break:break-all; }
 .cr-a:hover { text-decoration: underline; }
 .cr-note { font-size:12.5px; color:#7a5b00; background:#fffdf3; border:1px solid #f0e6c0;
            border-radius:6px; padding:8px 10px; margin:14px 0; }
-.cr-dis { font-size:12.5px; color:#6b7280; border-top:1px dashed #dfe3e8;
+.cr-dis { font-size:12.5px; color:var(--cr-ink3); border-top:1px dashed var(--cr-line);
           margin-top:16px; padding-top:10px; }
-.cr-footer { font-size:12px; color:#41536b; background:#fafbfc; border:1px solid #e6e8ec;
-             border-radius:6px; padding:8px 12px; margin-top:14px;
-             display:flex; align-items:center; gap:8px; }
+.cr-footer { font-size:12px; color:var(--cr-ink2); background:#fafbfc;
+             border:1px solid var(--cr-line); border-radius:8px; padding:8px 12px;
+             margin-top:14px; display:flex; align-items:center; gap:8px; }
 .cr-footer b { color:#111; }
-.cr-err { border:1px solid #f3c2bd; background:#fdecea; border-radius:8px;
+.cr-err { border:1px solid #f3c2bd; background:#fdecea; border-radius:10px;
           padding:14px; color:#8e2118; font-size:14px; line-height:1.7; }
-.cr-tl { border-left: 2px solid #dfe3e8; margin: 6px 0 0 6px; padding-left: 12px; }
+.cr-tl { border-left: 2px solid var(--cr-line); margin: 6px 0 0 6px; padding-left: 12px; }
 .cr-tl .cr-card { position: relative; }
 .cr-date { font-family: ui-monospace, Consolas, monospace; font-size: 14px;
            font-weight: 600; color:#111; }
-.cr-empty { font-size:13px; color:#4b5563; background:#f6f7f9; border:1px dashed #dfe3e8;
-            border-radius:6px; padding:10px 12px; margin:8px 0; }
+.cr-empty { font-size:13px; color:var(--cr-ink2); background:#f6f7f9;
+            border:1px dashed #dfe3e8; border-radius:6px; padding:10px 12px; margin:8px 0; }
 
-/* M3 卡片折叠（D5-1）：<details>/<summary> 样式 */
-.cr-action { border: 1px solid #e3e6ea; border-radius: 8px; padding: 10px 14px;
-             margin-bottom: 8px; background: #fff; }
+/* ── 可折叠板块（v2）：结果按板块分组，点标题展开详情 ──
+   summary 常显（标题 + 条数徽标 + 提示），收起内容不参与渲染（content-visibility）*/
+.cr-group { border: 1px solid var(--cr-line); border-radius: var(--cr-radius);
+            margin: 10px 0; background: #fff; overflow: hidden; }
+.cr-group > summary { cursor: pointer; list-style: none; padding: 11px 14px;
+                      font-size: 14.5px; font-weight: 600; color: #111;
+                      display: flex; align-items: center; gap: 8px;
+                      user-select: none; }
+.cr-group > summary::-webkit-details-marker { display: none; }
+.cr-group > summary::before { content: "▶"; color: var(--cr-ink3);
+                              font-size: 10px; flex: none;
+                              transition: transform .15s ease; }
+.cr-group[open] > summary::before { transform: rotate(90deg);
+                                    color: var(--cr-brand); }
+.cr-group > summary:hover { color: var(--cr-brand); }
+.cr-g-count { font-size: 11.5px; font-weight: 600; color: var(--cr-brand);
+              background: var(--cr-brand-soft); border-radius: 9px;
+              padding: 1px 8px; }
+.cr-g-hint { font-size: 12px; font-weight: 400; color: var(--cr-ink3); }
+.cr-group-body { padding: 2px 14px 12px;
+                 content-visibility: auto; contain-intrinsic-size: auto 600px; }
+
+/* M3 待办卡片折叠（D5-1）：<details>/<summary> 样式 */
+.cr-action { border: 1px solid var(--cr-line); border-radius: 10px;
+             padding: 10px 14px; margin-bottom: 8px; background: #fff; }
 .cr-action > summary { cursor: pointer; font-size: 14px; font-weight: 600;
                         color:#111; padding: 4px 0; list-style: none; }
 .cr-action > summary::-webkit-details-marker { display: none; }
 .cr-action > summary::before { content: "▶ "; color:#9ca3af; font-size: 11px; }
-.cr-action[open] > summary::before { content: "▼ "; color:#2f6fed; }
-.cr-action > summary .cr-summary-meta { color:#6b7280; font-weight: 400;
+.cr-action[open] > summary::before { content: "▼ "; color: var(--cr-brand); }
+.cr-action > summary .cr-summary-meta { color:var(--cr-ink3); font-weight: 400;
                                          font-size: 12px; margin-left: 6px; }
 .cr-action .cr-evidence { margin-top: 8px; padding-top: 8px;
-                          border-top: 1px dashed #e3e6ea; font-size: 13px; }
+                          border-top: 1px dashed var(--cr-line); font-size: 13px; }
 .cr-action .cr-evidence > div { margin: 4px 0; line-height: 1.55; }
-.cr-action .cr-evidence b { color:#1f4fa8; }
+.cr-action .cr-evidence b { color: #5b4bd4; }
+
+/* ── 开场雷达 CG（应用启动时 ~2s，自动淡出，不阻塞交互）────────────
+   纯 CSS 动画：雷达同心圆脉冲 + 扫描扇叶旋转两圈 + 目标点闪烁，
+   2.2s 后整层 opacity→0 且 visibility:hidden。pointer-events:none 全程放行点击。
+   prefers-reduced-motion 用户直接隐藏（无障碍）。 */
+.cr-intro { position: fixed; inset: 0; z-index: 9999;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 18px; pointer-events: none;
+            background: radial-gradient(circle at 50% 45%,
+                        #1c2040 0%, #12152e 55%, #0b0e22 100%);
+            animation: crIntroOut 2.2s ease forwards; }
+.cr-intro svg { width: 230px; height: 230px; display: block; }
+.cr-intro .cr-sweep { transform-origin: 150px 150px;
+                      animation: crSweep 1.1s linear 2; }
+.cr-intro .cr-ring { transform-origin: 150px 150px; opacity: 0;
+                     animation: crRing .8s ease-out forwards; }
+.cr-intro .cr-ring2 { animation-delay: .15s; }
+.cr-intro .cr-ring3 { animation-delay: .3s; }
+.cr-intro .cr-ring4 { animation-delay: .45s; }
+.cr-intro .cr-blip { opacity: 0; animation: crBlip .8s ease-out 2; }
+.cr-intro .cr-blip2 { animation-delay: .4s; }
+.cr-intro-name { color: #fff; font-size: 20px; font-weight: 700;
+                 letter-spacing: 2px; }
+.cr-intro-sub { color: #8a91a3; font-size: 12.5px; letter-spacing: 1px; }
+@keyframes crSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes crRing { from { opacity: 0; transform: scale(.6); }
+                    to { opacity: 1; transform: scale(1); } }
+@keyframes crBlip { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: .35; } }
+@keyframes crIntroOut { 0% { opacity: 1; } 75% { opacity: 1; }
+                        100% { opacity: 0; visibility: hidden; } }
+@media (prefers-reduced-motion: reduce) {
+  .cr-intro { display: none; }
+}
 """
 
 
@@ -216,7 +278,8 @@ def _reject_html(reason, header_meta=None):
 
 
 def _header_block(meta):
-    """顶部元数据条：查询条件 / 查询日期 / 快照版本 / 数据截止时间 / 模块状态。"""
+    """顶部元数据条（10-16 瘦身：压成一行，覆盖范围/数据来源移除 ——
+    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。"""
     if not meta:
         return ""
     _MOD_NAMES = {"M1": "法规地图", "M2": "变化时间线",
@@ -236,15 +299,10 @@ def _header_block(meta):
         )
     return (
         '<div class="cr-header">'
-        f'<div class="cr-meta-line"><b>查询条件</b>：{_e(meta.get("查询条件", ""))}　'
-        f'<b>查询日期</b>：{_e(meta.get("查询日期", ""))}　'
-        f'<b>快照版本</b>：{_e(meta.get("快照版本", ""))}　'
-        f'<b>数据截止时间</b>：{_e(meta.get("数据截止时间", ""))}</div>'
-        f'<div class="cr-meta-line">模块状态：{mod_html}</div>'
-        f'<div class="cr-meta-line cr-meta-scope"><b>覆盖范围</b>：'
-        f'{_e(meta.get("覆盖范围", ""))}</div>'
-        f'<div class="cr-meta-line"><b>数据来源</b>：'
-        f'{_e(meta.get("数据来源", ""))}</div>'
+        f'<div class="cr-meta-line"><b>{_e(meta.get("查询条件", ""))}</b>'
+        f'　·　快照 {_e(meta.get("快照版本", ""))}'
+        f'　·　数据截止 {_e(meta.get("数据截止时间", ""))}'
+        f'　{mod_html}</div>'
         f'{notes_html}'
         f'<div class="cr-disclaimer">{_e(meta.get("免责声明", ""))}</div>'
         '</div>'
@@ -252,16 +310,64 @@ def _header_block(meta):
 
 
 def _footer_block():
-    """页脚（PRD：固定免责声明 + 用户追加的 WAF 提示 + 时效性核验徽章）。"""
+    """页脚（PRD：固定免责声明 + 时效性核验徽章；WAF 平台提示已删——与应用无关）。"""
     return (
         '<div class="cr-footer">'
         f'<b>⚖️</b><span>{_e(snapshot.DISCLAIMER)}</span>'
         '</div>'
-        '<div class="cr-footer" style="background:#fff8e1;border-color:#f0dfa0">'
-        f'<b>ℹ️</b><span>{_e(snapshot.WAF_FOOTER_HINT)}</span>'
-        '</div>'
         + _freshness_footer()
     )
+
+
+# ── 可折叠板块组件（v2）：结果按板块分组，点标题展开详情 ─────────────
+def _group(title, count, body, open_=False, hint=""):
+    """一个 <details> 板块：标题常显（+ 条数徽标 + 灰字提示），正文可展开。
+    open_=True 时默认展开（只给每个页签最重要的板块，其余收起保持干净）。"""
+    o = " open" if open_ else ""
+    c = f'<span class="cr-g-count">{count}</span>' if count != "" else ""
+    h = f'<span class="cr-g-hint">{_e(hint)}</span>' if hint else ""
+    return (f'<details class="cr-group"{o}><summary>{_e(title)}{c}{h}</summary>'
+            f'<div class="cr-group-body">{body}</div></details>')
+
+
+# ── 开场雷达 CG（应用启动 ~2s，纯 CSS，自动淡出，不阻塞交互）────────
+# 结构刻意极简：同心圆 + 一条扫描扇叶 + 两个目标点 + 品牌名。
+# 动画全在 _CSS 里（transform/opacity 合成器路径）；这里只放标记。
+_INTRO_HTML = (
+    '<div class="cr-intro" aria-hidden="true">'
+    '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">'
+    # 外框 + 同心圆（依次脉冲出现）
+    '<circle cx="150" cy="150" r="140" fill="none" stroke="#2a2f55" stroke-width="2"/>'
+    '<circle class="cr-ring" cx="150" cy="150" r="140" fill="none" '
+    'stroke="#6c5ce7" stroke-width="2.5" opacity="0"/>'
+    '<circle class="cr-ring cr-ring2" cx="150" cy="150" r="105" fill="none" '
+    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
+    '<circle class="cr-ring cr-ring3" cx="150" cy="150" r="70" fill="none" '
+    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
+    '<circle class="cr-ring cr-ring4" cx="150" cy="150" r="35" fill="none" '
+    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
+    '<line x1="150" y1="10" x2="150" y2="290" stroke="#2a2f55" stroke-width="1"/>'
+    '<line x1="10" y1="150" x2="290" y2="150" stroke="#2a2f55" stroke-width="1"/>'
+    # 扫描扇叶（旋转两圈）
+    '<g class="cr-sweep">'
+    '<path d="M150 150 L150 15 A135 135 0 0 1 245 55 Z" fill="url(#crSweepG)" '
+    'opacity="0.85"/>'
+    '<line x1="150" y1="150" x2="150" y2="15" stroke="#8e7bff" stroke-width="2"/>'
+    '</g>'
+    # 目标点（闪烁）
+    '<circle class="cr-blip" cx="205" cy="105" r="5" fill="#fff" opacity="0"/>'
+    '<circle class="cr-blip cr-blip2" cx="115" cy="185" r="4" fill="#a99cff" opacity="0"/>'
+    '<circle cx="150" cy="150" r="4" fill="#fff"/>'
+    '<defs><linearGradient id="crSweepG" x1="150" y1="150" x2="245" y2="55" '
+    'gradientUnits="userSpaceOnUse">'
+    '<stop offset="0" stop-color="#8e7bff" stop-opacity="0.55"/>'
+    '<stop offset="1" stop-color="#8e7bff" stop-opacity="0"/>'
+    '</linearGradient></defs>'
+    '</svg>'
+    '<div class="cr-intro-name">出海合规雷达</div>'
+    '<div class="cr-intro-sub">COMPLIANCE RADAR · 每条结论附官方原文链接</div>'
+    '</div>'
+)
 
 
 # ── 时效性核验徽章（团队「持续监控」思路的最小可行落地）──────────────
@@ -352,16 +458,18 @@ def render_m1(result):
 
     parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
     if p:
-        parts.append(f'<div class="cr-sec">{_e(result["品类"])} · '
-                     f'直接适用法规（{len(p)} 条）</div>')
-        parts.extend(_m1_card(r, i) for i, r in enumerate(p, 1))
+        body = "".join(_m1_card(r, i) for i, r in enumerate(p, 1))
+        parts.append(_group(
+            f'{_e(result["品类"])} · 直接适用法规', len(p), body,
+            open_=len(p) <= 6, hint="点开逐条看依据与官方链接"))
     else:
         parts.append('<div class="cr-empty">该品类在当前市场暂无语料条目。</div>')
 
     if c:
-        parts.append('<div class="cr-sec">横切法规 · 标签标识 / 通用'
-                     f'（任何品类都适用，{len(c)} 条）</div>')
-        parts.extend(_m1_card(r, i) for i, r in enumerate(c, 1))
+        body = "".join(_m1_card(r, i) for i, r in enumerate(c, 1))
+        parts.append(_group(
+            '横切法规 · 标签标识 / 通用', len(c), body,
+            hint="任何品类都适用 · 点开查看"))
 
     parts.append(_dropped_note(result["dropped"]))
     parts.append(_footer_block())
@@ -417,11 +525,12 @@ def render_m2(result):
     parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
 
     if result["近窗内"]:
-        parts.append(f'<div class="cr-sec">近 {result["window_months"]} 个月'
-                     f'已发生的变化（{len(result["近窗内"])} 条）</div>')
-        parts.append('<div class="cr-tl">')
-        parts.extend(_m2_card(r, i) for i, r in enumerate(result["近窗内"], 1))
-        parts.append('</div>')
+        body = ('<div class="cr-tl">'
+                + "".join(_m2_card(r, i) for i, r in enumerate(result["近窗内"], 1))
+                + '</div>')
+        parts.append(_group(f'近 {result["window_months"]} 个月已发生的变化',
+                            len(result["近窗内"]), body,
+                            hint="历史记录 · 点开回看"))
     else:
         # PRD E 节 7：保留已知未来节点；两者都无则空态
         empty_msg = (
@@ -435,11 +544,11 @@ def render_m2(result):
         parts.append(f'<div class="cr-empty">{_e(empty_msg)}</div>')
 
     if result["即将发生"]:
-        parts.append('<div class="cr-sec">即将发生 / 过渡期节点'
-                     f'（尚未生效，{len(result["即将发生"])} 条）</div>')
-        parts.append('<div class="cr-tl">')
-        parts.extend(_m2_card(r, i) for i, r in enumerate(result["即将发生"], 1))
-        parts.append('</div>')
+        body = ('<div class="cr-tl">'
+                + "".join(_m2_card(r, i) for i, r in enumerate(result["即将发生"], 1))
+                + '</div>')
+        parts.append(_group('即将发生 / 过渡期节点', len(result["即将发生"]), body,
+                            open_=True, hint="尚未生效 · 提前准备窗口"))
 
     parts.append(_dropped_note(result["dropped"]))
     parts.append(_footer_block())
@@ -524,12 +633,15 @@ def render_m3(result):
 
     idx = 0
     for tname, bunch in result["分组"]:
-        parts.append(f'<div class="cr-sec">【{_e(tname)}】{len(bunch)} 条　'
-                     f'<span style="font-weight:400;color:#6b7280;font-size:13px">'
-                     f'（{_e(bunch[0].get("类型含义", ""))}）</span></div>')
+        cards = []
         for a in bunch:
             idx += 1
-            parts.append(_m3_card(a, idx))
+            cards.append(_m3_card(a, idx))
+        body = (f'<div style="font-size:12.5px;color:#8a91a3;margin:2px 0 8px">'
+                f'{_e(bunch[0].get("类型含义", ""))}</div>' + "".join(cards))
+        parts.append(_group(f'【{_e(tname)}】', len(bunch), body,
+                            open_=(tname == "高"),
+                            hint="点开逐条看证据链"))
 
     if not result["动作"]:
         parts.append('<div class="cr-empty">该组合尚无足够的已核对条款依据生成待办，'
@@ -568,26 +680,27 @@ def render_m4(result):
 
     if result.get("回放列表"):
         parts.append('<div class="cr-sec">已录制历史回放'
-                     f'（{len(result["回放列表"])} 条，最新在前）</div>')
-        for r in result["回放列表"]:
-            parts.append(
-                f'<div class="cr-card">'
+                     f'（{len(result["回放列表"])} 条，最新在前 · 点开看全文）</div>')
+        for k, r in enumerate(result["回放列表"]):
+            inner = (
                 f'<div class="cr-row"><span class="cr-k">录制时间</span>'
                 f'{_e(r.get("timestamp", "-"))}</div>'
                 f'<div class="cr-row"><span class="cr-k">通用模型</span>'
                 f'{_e(r.get("generic_model_name", "-"))}</div>'
                 f'<div class="cr-row"><span class="cr-k">通用侧原答</span></div>'
                 f'<div style="white-space:pre-wrap;font-size:12.5px;'
-                f'margin:4px 0 8px;padding:6px 8px;background:#f6f7f9;'
-                f'border-radius:4px">{_e(r.get("generic_answer", ""))}</div>'
+                f'margin:4px 0 8px;padding:6px 8px;background:#f0f1f5;'
+                f'border-radius:6px">{_e(r.get("generic_answer", ""))}</div>'
                 f'<div class="cr-row"><span class="cr-k">工具侧</span></div>'
                 f'<div style="white-space:pre-wrap;font-size:12.5px;'
-                f'margin:4px 0 8px;padding:6px 8px;background:#eef3fd;'
-                f'border-radius:4px">{_e(r.get("tool_answer", ""))}</div>'
+                f'margin:4px 0 8px;padding:6px 8px;background:#f6f4ff;'
+                f'border-radius:6px">{_e(r.get("tool_answer", ""))}</div>'
                 f'<div class="cr-row"><span class="cr-k">核验状态</span>'
                 f'{_e(r.get("verdict", "未核验"))}</div>'
-                f'</div>'
             )
+            parts.append(_group(
+                f'回放 {k + 1} · {_e(r.get("generic_model_name", "-"))}',
+                "", inner, hint=f'录制于 {_e(r.get("timestamp", "-"))}'))
     else:
         # 占位 —— 不诱导模型、不预写胜负、不拿"32015R1000"当反例
         parts.append('<div class="cr-empty" style="color:#7a5b00">'
@@ -700,15 +813,15 @@ def build_ui():
         _blocks_kwargs.update(css=_CSS, theme=gr.themes.Soft())
 
     with gr.Blocks(**_blocks_kwargs) as demo:
+        # 开场雷达 CG（~2s 自动淡出，纯 CSS，不阻塞交互）
+        gr.HTML(_INTRO_HTML)
         gr.Markdown(
             "# 出海合规雷达 ComplianceRadar\n"
             "**输入你的生意 → 雷达告诉你这一单要满足哪些法规、什么时候变、"
-            "要办什么事 —— 每条结论都附官方原文链接，可逐条点开核验。**\n\n"
-            "| 你现在的情况 | 去哪里 |\n"
-            "|---|---|\n"
-            "| 只知道大概，想直接问 | **智能判定** —— 大白话或整份产品/合同文件直接粘 |\n"
-            "| 明确知道品类和市场 | **法规地图 / 合规待办 / 变化时间线** —— 精确查询 |\n"
-            "| 想看我们和通用 AI 的区别 | **模型对照** |\n"
+            "要办什么事 —— 每条结论都附官方原文链接。**\n\n"
+            "<small>不知道从哪开始？直接在下方 **智能判定** 用大白话提问；"
+            "明确品类和市场用 **法规地图 / 合规待办 / 变化时间线** 精确查询；"
+            "**模型对照** 看我们和通用 AI 的区别。结果页的板块标题可点击展开详情。</small>"
         )
         gr.Markdown(global_meta)
 
@@ -716,11 +829,9 @@ def build_ui():
             # ── ① 智能判定 ────────────────────────────────────
             with gr.Tab("🔎 智能判定"):
                 gr.Markdown(
-                    "**用大白话描述你的生意 → 自动识别「品类 × 市场」→ "
-                    "查核对过的官方合规表 → 出判定卡。**"
-                    "\n\n支持一句话，也支持**整段粘贴产品描述、BOM、合同要点**。"
-                    "模型只负责理解输入；法规结论 100% 来自核对语料 + 官方链接，"
-                    "模型无权新增或编造。"
+                    "**大白话直接问 → 自动识别「品类 × 市场」→ 出判定卡。**"
+                    "支持整段粘贴产品描述、BOM、合同要点。"
+                    "模型只负责理解输入；结论 100% 来自核对语料 + 官方链接。"
                 )
                 q_text = gr.Textbox(
                     lines=4,
@@ -744,7 +855,7 @@ def build_ui():
 
             # ── ② 法规地图 ────────────────────────────────────
             with gr.Tab("🗺 法规地图"):
-                gr.Markdown("**已知品类和市场？选好直接生成 —— 这一单适用的全部法规。**")
+                gr.Markdown("**已知品类和市场？选好直接生成 —— 板块标题可点开看详情。**")
                 with gr.Row():
                     cat1 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -759,10 +870,7 @@ def build_ui():
 
             # ── ③ 合规待办 ────────────────────────────────────
             with gr.Tab("✅ 合规待办"):
-                gr.Markdown(
-                    "**这一单要办的事，按紧迫程度排好 —— 点开每条看证据链，"
-                    "可导出 CSV。**"
-                )
+                gr.Markdown("**这一单要办的事按紧迫度分板块排好 —— 点开板块和每条卡片看证据链。**")
                 with gr.Row():
                     cat3 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -782,10 +890,7 @@ def build_ui():
 
             # ── ④ 变化时间线 ──────────────────────────────────
             with gr.Tab("📅 变化时间线"):
-                gr.Markdown(
-                    "**法规什么时候生效、什么时候开始适用、什么时候修订 —— "
-                    "重点看「即将发生」的过渡期节点。**"
-                )
+                gr.Markdown("**法规什么时候生效、什么时候变 —— 重点看「即将发生」的过渡期节点。**")
                 with gr.Row():
                     cat2 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -805,11 +910,7 @@ def build_ui():
 
             # ── ⑤ 模型对照 ────────────────────────────────────
             with gr.Tab("⚖️ 模型对照"):
-                gr.Markdown(
-                    "**同一道固定题，通用大模型和本工具各答一遍 —— "
-                    "有没有官方来源、日期站不站得住，你自己看。**"
-                    "\n\n对照页如实展示两边回答，不预设立场。"
-                )
+                gr.Markdown("**同一道固定题，两边各答一遍 —— 有没有官方来源，你自己看。**")
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
 
         # 事件绑定（每页签自足，互不干扰）
