@@ -113,18 +113,26 @@ def _cache_put(prompt, text):
         pass
 
 
-def _call_api(prompt, max_tokens, temperature):
-    """实际发起一次模型请求（同步阻塞）。抽出来便于外层加硬超时。"""
+def _call_api(prompt, max_tokens, temperature, thinking=True):
+    """实际发起一次模型请求（同步阻塞）。抽出来便于外层加硬超时。
+
+    DeepSeek 思考模式开关：通过 extra_body={"thinking": {"type": "enabled/disabled"}}
+    控制思维链输出（OpenAI 兼容格式，见官方文档「思考模式开关与思考强度控制」）。
+    thinking 参数由调用方（chat()）按场景决定——
+    主模型（M1/M2/M3 润色）默认开启；M1.5 路由层单独关闭（见 m15_router.py）。
+    """
     resp = _client_get().chat.completions.create(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
         temperature=temperature,
+        extra_body={"thinking": {"type": "enabled" if thinking else "disabled"}},
     )
     return resp.choices[0].message.content or ""
 
 
-def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None):
+def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
+         thinking=True):
     """调用模型。返回 (text, meta)。
 
     meta 说明调用是否成功、是否命中缓存，供上层如实标注。
@@ -135,6 +143,9 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None)
     能在额度内拖满几十秒（实测 26.7s）—— 交互入口（如 M1.5 路由）应传
     一个上限，超时及时降级，不让用户干等。
     超时后被遗弃的线程仍在后台把这次请求跑完（无法强杀 HTTP），结果丢弃。
+
+    thinking（默认 True）：是否开启模型思考模式（思维链）。
+    M1.5 路由层只做槽位抽取，延迟敏感，调用时传 thinking=False 关闭。
     """
     if not READY:
         return "", {"ok": False, "reason": "模型链路未配置（缺 Token/Base/Model）",
@@ -148,13 +159,13 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None)
     try:
         if timeout:
             pool = ThreadPoolExecutor(max_workers=1)
-            fut = pool.submit(_call_api, prompt, max_tokens, temperature)
+            fut = pool.submit(_call_api, prompt, max_tokens, temperature, thinking)
             try:
                 text = fut.result(timeout=timeout)
             finally:
                 pool.shutdown(wait=False)
         else:
-            text = _call_api(prompt, max_tokens, temperature)
+            text = _call_api(prompt, max_tokens, temperature, thinking)
         if not text.strip():
             # 推理模型 token 给少了的典型症状：返回空
             return "", {"ok": False, "reason": "模型返回空内容（可能 max_tokens 不足）",
