@@ -58,136 +58,174 @@ EXPORT_DIR = os.path.join(HERE, "data", "export")
 #   · 动画只用 transform/opacity（合成器路径，不触发重排）；
 #   · 不用 backdrop-filter / 大面积阴影（滚动掉帧的主要来源）。
 _CSS = """
-:root{--cr-brand:#6c5ce7;--cr-brand-2:#8e7bff;--cr-brand-soft:#efedff;
-      --cr-bg:#f5f6fa;--cr-ink:#1f2430;--cr-ink2:#5a6172;--cr-ink3:#8a91a3;
-      --cr-line:#e6e8f0;--cr-radius:12px}
-.cr-wrap { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+:root{--cr-brand:#2f4a8a;--cr-brand-2:#22c3e6;--cr-brand-soft:#eef2f9;
+      --cr-bg:#fafaf7;--cr-ink:#1f2430;--cr-ink2:#4b5263;--cr-ink3:#7a8192;
+      --cr-line:#e4e4de;--cr-radius:4px;--cr-night:#0b1020;
+      --cr-beam:#22c3e6;--cr-glow:#7df9ff;
+      --cr-hi:#2e7d5b;--cr-mid:#8f6210;--cr-lo:#a4493f;
+      --cr-serif:"Songti SC","Noto Serif SC","Source Han Serif SC",STSong,serif}
+body, .gradio-container { background: var(--cr-bg) !important; }
+.cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
-.cr-header { background: #fff; border: 1px solid var(--cr-line); border-radius: 10px;
-             padding: 8px 14px; font-size: 12.5px; color: var(--cr-ink2);
-             margin-bottom: 12px; line-height: 1.7; }
-.cr-header b { color: #111; }
+/* ── 深色雷达横幅（与开场动画同色系）── */
+.cr-band { position:relative; overflow:hidden; border-radius:8px;
+           background:radial-gradient(560px 260px at 88% 45%, rgba(34,195,230,.13), transparent 62%), var(--cr-night);
+           color:#e6f7ff; border:1px solid rgba(34,195,230,.22);
+           padding:20px 22px 16px; }
+.cr-band .cr-bar { display:flex; align-items:center; gap:12px; }
+.cr-brand { font-size:17px; font-weight:600; color:#e6f7ff;
+            font-family:var(--cr-serif); }
+.cr-band h1 { font-size:26px; font-weight:600; line-height:1.35; margin:24px 0 8px;
+              max-width:620px; font-family:var(--cr-serif); color:#fff; }
+.cr-lead { margin:0; color:#9fb3c8; max-width:620px; font-size:14px; }
+.cr-band-guide { margin:10px 0 0; color:#7e93a8; font-size:12.5px; max-width:620px; }
+.cr-band-meta { margin:14px 0 0; padding-top:10px;
+                border-top:1px dashed rgba(125,249,255,.18);
+                color:#7e93a8; font-size:12px; }
+.cr-scope { position:absolute; right:18px; top:50%; width:190px; height:190px;
+            transform:translateY(-50%); display:none; }
+@media (min-width:860px) { .cr-scope { display:block; } }
+/* ── 结果区元数据条 ── */
+.cr-header { background:transparent; border-top:1px solid var(--cr-line);
+             border-bottom:1px solid var(--cr-line); border-radius:0;
+             padding: 8px 2px; font-size: 12.5px; color: var(--cr-ink2);
+             margin-bottom: 14px; line-height: 1.7; }
+.cr-header b { color: var(--cr-ink); }
 .cr-header .cr-meta-line { margin: 1px 0; }
-.cr-header .cr-meta-notes { margin-top: 4px; color: #7a5b00; font-size: 12px; }
+.cr-header .cr-meta-notes { margin-top: 4px; color: var(--cr-mid); font-size: 12px; }
 .cr-header .cr-disclaimer { margin-top: 6px; padding-top: 6px;
                             border-top: 1px dashed var(--cr-line);
                             font-size: 12px; color: var(--cr-ink3); }
 .cr-mod { display: inline-block; font-size: 11.5px; padding: 1px 6px;
-          border-radius: 8px; margin: 0 4px; font-weight: 500; }
-.cr-mod-ready   { background:#e8f7ee; color:#16a34a; }
-.cr-mod-empty   { background:#f0f1f5; color:#5a6172; }
-.cr-mod-partial { background:#fdf3e3; color:#d97706; }
-.cr-mod-error   { background:#fdeaea; color:#dc2626; }
-.cr-head { font-size: 15px; color:#111; margin: 4px 0 12px; }
-.cr-head b { font-size: 17px; }
-.cr-sec { margin: 16px 0 8px; font-size: 15px; font-weight: 600; color:#111;
-          border-left: 3px solid var(--cr-brand); padding-left: 8px; }
-.cr-card { border: 1px solid var(--cr-line); border-radius: var(--cr-radius);
-           padding: 12px 14px; margin-bottom: 10px; background: #fff;
+          border:1px solid currentColor; border-radius:3px; margin: 0 4px;
+          font-weight: 500; background:transparent; }
+.cr-mod-ready   { color:var(--cr-hi); }
+.cr-mod-empty   { color:var(--cr-ink3); }
+.cr-mod-partial { color:var(--cr-mid); }
+.cr-mod-error   { color:var(--cr-lo); }
+.cr-head { font-size: 15px; color:var(--cr-ink); margin: 6px 0 12px; }
+.cr-head b { font-size:20px; font-family:var(--cr-serif); font-weight:600; }
+.cr-sec { margin: 18px 0 8px; font-size: 16px; font-weight: 600; color:var(--cr-ink);
+          border-left: 3px solid var(--cr-brand); padding-left: 8px;
+          font-family:var(--cr-serif); }
+.cr-card { border:0; border-top:1px solid var(--cr-line); border-radius:0;
+           padding: 12px 2px; margin-bottom: 2px; background: transparent;
            content-visibility: auto; contain-intrinsic-size: auto 220px; }
-.cr-title { font-size: 15px; font-weight: 600; color:#111; margin-bottom: 6px; }
-.cr-badge { display:inline-block; font-size:12px; padding:2px 7px; border-radius:10px;
-            margin-left:6px; vertical-align: middle; }
-.b-ok   { background:#e8f7ee; color:#16a34a; }
-.b-warn { background:#fdeaea; color:#dc2626; }
-.b-q    { background:#fdf3e3; color:#d97706; }
-.b-info { background:#efedff; color:#5b4bd4; }
-.b-ref  { background:#f0f1f5; color:#5a6172; }
-.b-future { background:#efedff; color:#5b4bd4; }
-.b-u-high { background:#fdeaea; color:#dc2626; }
-.b-u-mid  { background:#fdf3e3; color:#d97706; }
-.b-u-low  { background:#eef2f6; color:#5a6172; }
-.cr-tip  { font-size:13px; color:#5b4bd4; background:#f6f4ff; border-radius:6px;
-           padding:6px 8px; margin:6px 0; }
-.cr-row  { font-size:13px; color:#333; margin:3px 0; line-height:1.55;
+.cr-title { font-size: 15px; font-weight: 600; color:var(--cr-ink); margin-bottom: 6px; }
+.cr-badge { display:inline-block; font-size:12px; padding:1px 6px; border-radius:3px;
+            margin-left:6px; vertical-align: middle;
+            border:1px solid currentColor; background:transparent; }
+.b-ok   { color:var(--cr-hi); }
+.b-warn { color:var(--cr-lo); }
+.b-q    { color:var(--cr-mid); }
+.b-info { color:var(--cr-brand); }
+.b-ref  { color:var(--cr-ink3); }
+.b-future { color:var(--cr-brand); }
+.b-u-high { color:var(--cr-lo); }
+.b-u-mid  { color:var(--cr-mid); }
+.b-u-low  { color:var(--cr-ink3); }
+.cr-tip  { font-size:13px; color:var(--cr-brand); background:var(--cr-brand-soft);
+           border-radius:var(--cr-radius); padding:6px 8px; margin:6px 0; }
+.cr-row  { font-size:13px; color:var(--cr-ink2); margin:3px 0; line-height:1.6;
            word-break: break-word; }
 .cr-k { display:inline-block; min-width:88px; color:var(--cr-ink3); }
-.cr-row code { background:#f0f1f5; padding:1px 5px; border-radius:4px;
+.cr-row code { background:#f1f1ec; padding:1px 5px; border-radius:3px;
                font-family: ui-monospace, Consolas, monospace; font-size:12.5px; }
 .cr-a { color:var(--cr-brand); text-decoration:none; word-break:break-all; }
 .cr-a:hover { text-decoration: underline; }
-.cr-note { font-size:12.5px; color:#7a5b00; background:#fffdf3; border:1px solid #f0e6c0;
-           border-radius:6px; padding:8px 10px; margin:14px 0; }
+.cr-note { font-size:12.5px; color:var(--cr-mid); background:#f9f6ee;
+           border:1px solid #e7dfc9; border-radius:var(--cr-radius);
+           padding:8px 10px; margin:14px 0; }
 .cr-dis { font-size:12.5px; color:var(--cr-ink3); border-top:1px dashed var(--cr-line);
           margin-top:16px; padding-top:10px; }
-.cr-footer { font-size:12px; color:var(--cr-ink2); background:#fafbfc;
-             border:1px solid var(--cr-line); border-radius:8px; padding:8px 12px;
-             margin-top:14px; display:flex; align-items:center; gap:8px; }
-.cr-footer b { color:#111; }
-.cr-err { border:1px solid #f3c2bd; background:#fdecea; border-radius:10px;
-          padding:14px; color:#8e2118; font-size:14px; line-height:1.7; }
+.cr-footer { font-size:12px; color:var(--cr-ink3); background:transparent;
+             border-top:1px solid var(--cr-line); border-radius:0;
+             padding:10px 2px 2px; margin-top:16px;
+             display:flex; align-items:flex-start; gap:8px; }
+.cr-footer b { color:var(--cr-ink2); }
+.cr-err { border:1px solid #e5c8c4; background:#faf0ee; border-radius:var(--cr-radius);
+          padding:14px; color:var(--cr-lo); font-size:14px; line-height:1.7; }
 .cr-tl { border-left: 2px solid var(--cr-line); margin: 6px 0 0 6px; padding-left: 12px; }
 .cr-tl .cr-card { position: relative; }
 .cr-date { font-family: ui-monospace, Consolas, monospace; font-size: 14px;
-           font-weight: 600; color:#111; }
-.cr-empty { font-size:13px; color:var(--cr-ink2); background:#f6f7f9;
-            border:1px dashed #dfe3e8; border-radius:6px; padding:10px 12px; margin:8px 0; }
+           font-weight: 600; color:var(--cr-ink); }
+.cr-empty { font-size:13px; color:var(--cr-ink2); background:transparent;
+            border:1px dashed #d8d8d0; border-radius:var(--cr-radius);
+            padding:10px 12px; margin:8px 0; }
 
-/* ── 可折叠板块（v2）：结果按板块分组，点标题展开详情 ──
-   summary 常显（标题 + 条数徽标 + 提示），收起内容不参与渲染（content-visibility）*/
-.cr-group { border: 1px solid var(--cr-line); border-radius: var(--cr-radius);
-            margin: 10px 0; background: #fff; overflow: hidden; }
-.cr-group > summary { cursor: pointer; list-style: none; padding: 11px 14px;
-                      font-size: 14.5px; font-weight: 600; color: #111;
-                      display: flex; align-items: center; gap: 8px;
+/* ── 可折叠板块（v2）：细线 + 衬线标题 + 右侧箭头（v4 折叠样式）──
+   summary 常显（标题 + 条数 + 提示），收起内容不参与渲染（content-visibility）*/
+.cr-group { border:0; border-top:1px solid var(--cr-line); border-radius:0;
+            margin: 14px 0 4px; background: transparent; overflow: visible; }
+.cr-group > summary { cursor: pointer; list-style: none; padding: 12px 2px;
+                      font-size: 16px; font-weight: 600; color: var(--cr-ink);
+                      font-family: var(--cr-serif);
+                      display: flex; align-items: center; gap: 10px;
                       user-select: none; }
 .cr-group > summary::-webkit-details-marker { display: none; }
-.cr-group > summary::before { content: "▶"; color: var(--cr-ink3);
-                              font-size: 10px; flex: none;
-                              transition: transform .15s ease; }
-.cr-group[open] > summary::before { transform: rotate(90deg);
-                                    color: var(--cr-brand); }
+.cr-group > summary::after { content: ""; width: 8px; height: 8px; flex: none;
+                             margin-left: auto;
+                             border-right: 1.5px solid var(--cr-ink3);
+                             border-bottom: 1.5px solid var(--cr-ink3);
+                             transform: rotate(45deg); transition: transform .2s; }
+.cr-group[open] > summary::after { transform: rotate(225deg);
+                                   border-color: var(--cr-brand); }
 .cr-group > summary:hover { color: var(--cr-brand); }
-.cr-g-count { font-size: 11.5px; font-weight: 600; color: var(--cr-brand);
-              background: var(--cr-brand-soft); border-radius: 9px;
-              padding: 1px 8px; }
+.cr-g-count { font-size: 12.5px; font-weight: 400; color: var(--cr-ink3);
+              font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
 .cr-g-hint { font-size: 12px; font-weight: 400; color: var(--cr-ink3); }
-.cr-group-body { padding: 2px 14px 12px;
+.cr-group-body { padding: 2px 2px 10px;
                  content-visibility: auto; contain-intrinsic-size: auto 600px; }
 
-/* M3 待办卡片折叠（D5-1）：<details>/<summary> 样式 */
-.cr-action { border: 1px solid var(--cr-line); border-radius: 10px;
-             padding: 10px 14px; margin-bottom: 8px; background: #fff; }
-.cr-action > summary { cursor: pointer; font-size: 14px; font-weight: 600;
-                        color:#111; padding: 4px 0; list-style: none; }
+/* M3 待办卡片折叠（D5-1）：细线行 + 右箭头，点开展开证据链 */
+.cr-action { border:0; border-top:1px solid var(--cr-line); border-radius:0;
+             padding: 4px 2px 10px; margin-bottom: 0; background: transparent; }
+.cr-action > summary { cursor: pointer; font-size: 14.5px; font-weight: 600;
+                        color:var(--cr-ink); padding: 6px 0; list-style: none; }
 .cr-action > summary::-webkit-details-marker { display: none; }
-.cr-action > summary::before { content: "▶ "; color:#9ca3af; font-size: 11px; }
-.cr-action[open] > summary::before { content: "▼ "; color: var(--cr-brand); }
+.cr-action > summary::before { content: ""; display:inline-block; width: 7px; height: 7px;
+                               margin-right: 8px; vertical-align: 1px;
+                               border-right: 1.5px solid var(--cr-ink3);
+                               border-bottom: 1.5px solid var(--cr-ink3);
+                               transform: rotate(-45deg); transition: transform .2s; }
+.cr-action[open] > summary::before { transform: rotate(45deg);
+                                     border-color: var(--cr-brand); }
+.cr-action > summary:hover { color: var(--cr-brand); }
 .cr-action > summary .cr-summary-meta { color:var(--cr-ink3); font-weight: 400;
                                          font-size: 12px; margin-left: 6px; }
 .cr-action .cr-evidence { margin-top: 8px; padding-top: 8px;
                           border-top: 1px dashed var(--cr-line); font-size: 13px; }
-.cr-action .cr-evidence > div { margin: 4px 0; line-height: 1.55; }
-.cr-action .cr-evidence b { color: #5b4bd4; }
+.cr-action .cr-evidence > div { margin: 4px 0; line-height: 1.6; }
+.cr-action .cr-evidence b { color: var(--cr-brand); }
 
 /* ── 开场雷达 CG（应用启动时 ~2s，自动淡出，不阻塞交互）────────────
-   纯 CSS 动画：雷达同心圆脉冲 + 扫描扇叶旋转两圈 + 目标点闪烁，
-   2.2s 后整层 opacity→0 且 visibility:hidden。pointer-events:none 全程放行点击。
+   纯 CSS 动画（v4 设计）：深色底 + 三重同心圆 + 锥形扫描叶 + 目标点闪烁，
+   2s 后整层 opacity→0 且 visibility:hidden。pointer-events:none 全程放行点击。
    prefers-reduced-motion 用户直接隐藏（无障碍）。 */
 .cr-intro { position: fixed; inset: 0; z-index: 9999;
             display: flex; flex-direction: column; align-items: center;
-            justify-content: center; gap: 18px; pointer-events: none;
-            background: radial-gradient(circle at 50% 45%,
-                        #1c2040 0%, #12152e 55%, #0b0e22 100%);
-            animation: crIntroOut 2.2s ease forwards; }
-.cr-intro svg { width: 230px; height: 230px; display: block; }
-.cr-intro .cr-sweep { transform-origin: 150px 150px;
-                      animation: crSweep 1.1s linear 2; }
-.cr-intro .cr-ring { transform-origin: 150px 150px; opacity: 0;
-                     animation: crRing .8s ease-out forwards; }
-.cr-intro .cr-ring2 { animation-delay: .15s; }
-.cr-intro .cr-ring3 { animation-delay: .3s; }
-.cr-intro .cr-ring4 { animation-delay: .45s; }
-.cr-intro .cr-blip { opacity: 0; animation: crBlip .8s ease-out 2; }
-.cr-intro .cr-blip2 { animation-delay: .4s; }
-.cr-intro-name { color: #fff; font-size: 20px; font-weight: 700;
-                 letter-spacing: 2px; }
-.cr-intro-sub { color: #8a91a3; font-size: 12.5px; letter-spacing: 1px; }
-@keyframes crSweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-@keyframes crRing { from { opacity: 0; transform: scale(.6); }
-                    to { opacity: 1; transform: scale(1); } }
-@keyframes crBlip { 0% { opacity: 0; } 35% { opacity: 1; } 100% { opacity: .35; } }
-@keyframes crIntroOut { 0% { opacity: 1; } 75% { opacity: 1; }
+            justify-content: center; gap: 22px; pointer-events: none;
+            background: var(--cr-night);
+            animation: crIntroOut 2s ease forwards; }
+.cr-intro .cr-radar { position: relative; width: 180px; height: 180px; }
+.cr-intro .cr-radar i { position: absolute; inset: 0;
+                        border: 1px solid rgba(34,195,230,.35); border-radius: 50%; }
+.cr-intro .cr-radar i:nth-child(2) { inset: 30px; }
+.cr-intro .cr-radar i:nth-child(3) { inset: 60px; }
+.cr-intro .cr-sweep { position: absolute; inset: 0; border-radius: 50%;
+                      background: conic-gradient(from 0deg, rgba(34,195,230,.5), transparent 70deg);
+                      animation: crSweep 1.6s linear infinite; }
+.cr-intro .cr-blip { position: absolute; width: 7px; height: 7px; border-radius: 50%;
+                     background: var(--cr-glow);
+                     animation: crBlink .8s ease-in-out infinite; }
+.cr-intro-name { color: #e6f7ff; font-size: 18px; letter-spacing: .2em; opacity: 0;
+                 animation: crFadeIn .4s .2s forwards; }
+.cr-intro-sub { color: #9fb3c8; font-size: 12px; letter-spacing: 1px; opacity: 0;
+                animation: crFadeIn .4s .5s forwards; }
+@keyframes crSweep { to { transform: rotate(360deg); } }
+@keyframes crBlink { 0%,100% { opacity: 1; } 50% { opacity: .15; } }
+@keyframes crFadeIn { to { opacity: 1; } }
+@keyframes crIntroOut { 0%,80% { opacity: 1; visibility: visible; }
                         100% { opacity: 0; visibility: hidden; } }
 @media (prefers-reduced-motion: reduce) {
   .cr-intro { display: none; }
@@ -271,7 +309,7 @@ def _reject_html(reason, header_meta=None):
         f'<b>此输入不在本工具的支持范围内</b><br>{_e(reason)}<br><br>'
         f'<b>支持的市场：</b>{_e("、".join(corpus.SUPPORTED_MARKETS.keys()))}<br>'
         f'<b>支持的品类入口：</b>{_e("、".join(corpus.SUPPORTED_CATEGORIES))}'
-        f'<br><span style="color:#6b7280">本工具按「查到的官方数据」回答，'
+        f'<br><span style="color:#7a8192">本工具按「查到的官方数据」回答，'
         f'范围外的问题不做硬编答案。</span>'
         f'</div></div>'
     )
@@ -324,50 +362,68 @@ def _group(title, count, body, open_=False, hint=""):
     """一个 <details> 板块：标题常显（+ 条数徽标 + 灰字提示），正文可展开。
     open_=True 时默认展开（只给每个页签最重要的板块，其余收起保持干净）。"""
     o = " open" if open_ else ""
-    c = f'<span class="cr-g-count">{count}</span>' if count != "" else ""
+    c = f'<span class="cr-g-count">{count} 项</span>' if count != "" else ""
     h = f'<span class="cr-g-hint">{_e(hint)}</span>' if hint else ""
     return (f'<details class="cr-group"{o}><summary>{_e(title)}{c}{h}</summary>'
             f'<div class="cr-group-body">{body}</div></details>')
 
 
 # ── 开场雷达 CG（应用启动 ~2s，纯 CSS，自动淡出，不阻塞交互）────────
-# 结构刻意极简：同心圆 + 一条扫描扇叶 + 两个目标点 + 品牌名。
+# 结构（v4 设计）：三重同心圆 + 锥形扫描叶 + 三个闪烁目标点 + 品牌名。
 # 动画全在 _CSS 里（transform/opacity 合成器路径）；这里只放标记。
 _INTRO_HTML = (
     '<div class="cr-intro" aria-hidden="true">'
-    '<svg viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">'
-    # 外框 + 同心圆（依次脉冲出现）
-    '<circle cx="150" cy="150" r="140" fill="none" stroke="#2a2f55" stroke-width="2"/>'
-    '<circle class="cr-ring" cx="150" cy="150" r="140" fill="none" '
-    'stroke="#6c5ce7" stroke-width="2.5" opacity="0"/>'
-    '<circle class="cr-ring cr-ring2" cx="150" cy="150" r="105" fill="none" '
-    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
-    '<circle class="cr-ring cr-ring3" cx="150" cy="150" r="70" fill="none" '
-    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
-    '<circle class="cr-ring cr-ring4" cx="150" cy="150" r="35" fill="none" '
-    'stroke="#6c5ce7" stroke-width="1.5" opacity="0"/>'
-    '<line x1="150" y1="10" x2="150" y2="290" stroke="#2a2f55" stroke-width="1"/>'
-    '<line x1="10" y1="150" x2="290" y2="150" stroke="#2a2f55" stroke-width="1"/>'
-    # 扫描扇叶（旋转两圈）
-    '<g class="cr-sweep">'
-    '<path d="M150 150 L150 15 A135 135 0 0 1 245 55 Z" fill="url(#crSweepG)" '
-    'opacity="0.85"/>'
-    '<line x1="150" y1="150" x2="150" y2="15" stroke="#8e7bff" stroke-width="2"/>'
-    '</g>'
-    # 目标点（闪烁）
-    '<circle class="cr-blip" cx="205" cy="105" r="5" fill="#fff" opacity="0"/>'
-    '<circle class="cr-blip cr-blip2" cx="115" cy="185" r="4" fill="#a99cff" opacity="0"/>'
-    '<circle cx="150" cy="150" r="4" fill="#fff"/>'
-    '<defs><linearGradient id="crSweepG" x1="150" y1="150" x2="245" y2="55" '
-    'gradientUnits="userSpaceOnUse">'
-    '<stop offset="0" stop-color="#8e7bff" stop-opacity="0.55"/>'
-    '<stop offset="1" stop-color="#8e7bff" stop-opacity="0"/>'
-    '</linearGradient></defs>'
-    '</svg>'
+    '<div class="cr-radar">'
+    '<i></i><i></i><i></i>'
+    '<div class="cr-sweep"></div>'
+    '<span class="cr-blip" style="top:40px;left:118px"></span>'
+    '<span class="cr-blip" style="top:112px;left:50px;animation-delay:.3s"></span>'
+    '<span class="cr-blip" style="top:72px;left:58px;animation-delay:.55s"></span>'
+    '</div>'
     '<div class="cr-intro-name">出海合规雷达</div>'
     '<div class="cr-intro-sub">COMPLIANCE RADAR · 每条结论附官方原文链接</div>'
     '</div>'
 )
+
+
+# ── 顶部深色雷达横幅（v4 设计：品牌行 + 衬线大标题 + 雷达刻度盘）──────
+_HERO_SVG = (
+    '<svg class="cr-scope" viewBox="0 0 240 240" aria-hidden="true">'
+    '<defs><linearGradient id="crSwG" x1="0" y1="0" x2="1" y2="1">'
+    '<stop offset="0" stop-color="#22C3E6" stop-opacity=".45"/>'
+    '<stop offset="1" stop-color="#22C3E6" stop-opacity="0"/></linearGradient></defs>'
+    '<g fill="none" stroke="#22C3E6" stroke-opacity=".3">'
+    '<circle cx="120" cy="120" r="40"/><circle cx="120" cy="120" r="80"/>'
+    '<circle cx="120" cy="120" r="118"/>'
+    '<path d="M120 2V238M2 120H238"/></g>'
+    '<path d="M120 120L120 2A118 118 0 0 1 203.4 36.6Z" fill="url(#crSwG)"/>'
+    '<g fill="#7DF9FF"><circle cx="150" cy="72" r="3"/>'
+    '<circle cx="66" cy="150" r="2.5" opacity=".7"/>'
+    '<circle cx="96" cy="92" r="2" opacity=".5"/></g>'
+    '</svg>'
+)
+
+
+def _hero_html(model_status):
+    """顶部横幅（v4 设计稿 band 区）：品牌 + 衬线大标题 + 引导 + 元数据。
+    替代原 gr.Markdown 标题区；信息一一对应（含模型状态/快照/数据截止），
+    仅呈现方式改为与开场动画同色系的深色带。"""
+    guide = ("不知道从哪开始？在下方「智能判定」用大白话提问；"
+             "明确品类和市场，用「法规地图 / 合规待办 / 变化时间线」精确查询；"
+             "「模型对照」看我们和通用 AI 的区别。")
+    return (
+        '<div class="cr-wrap"><div class="cr-band">'
+        '<div class="cr-bar"><span class="cr-brand">出海合规雷达</span></div>'
+        '<h1>输入你的生意，雷达告诉你要做什么</h1>'
+        '<p class="cr-lead">大白话直接问即可。每条结论都附官方原文链接，'
+        '并标注数据截止日期。</p>'
+        f'<p class="cr-band-guide">{_e(guide)}</p>'
+        f'<div class="cr-band-meta">{_e(model_status)}　·　'
+        f'快照：{_e(snapshot.SNAPSHOT_VERSION)}　·　'
+        f'数据截止：{_e(snapshot.DATA_CUTOFF)}　·　结果可导出 CSV</div>'
+        f'{_HERO_SVG}'
+        '</div></div>'
+    )
 
 
 # ── 时效性核验徽章（团队「持续监控」思路的最小可行落地）──────────────
@@ -400,8 +456,8 @@ def _freshness_footer():
     link_bad = d.get("link_error", 0)
     net_bad = d.get("net_error", 0)
     changed = d.get("changed", 0)
-    style = ("background:#e8f5e9;border-color:#b7dfba" if link_bad == 0
-             else "background:#fff8e1;border-color:#f0dfa0")
+    style = ("background:#eaf4ee;border-color:#cfe4d6" if link_bad == 0
+             else "background:#f7f1e2;border-color:#e5d9bd")
     parts = (f"官方链接最近核验：{_e(d.get('checked_at', ''))}（北京时间）· "
              f"{ok}/{total} 可访问")
     if link_bad:
@@ -451,7 +507,7 @@ def render_m1(result):
     p, c = result["primary"], result["cross"]
     lm = result.get("llm") or {}
     head = (f'<div class="cr-head"><b>法规地图</b>　'
-            f'<span style="color:#6b7280;font-size:13px">'
+            f'<span style="color:#7a8192;font-size:13px">'
             f'这一单适用的法规 · 主体 {len(p)} 条 · 横切 {len(c)} 条'
             f'（每条附官方原文链接）</span></div>')
     note = _model_note(lm, bool(p and p[0].get("卖家提示")), "m1")
@@ -488,7 +544,7 @@ _TYPE_CLS = {"废止": "b-warn", "生效": "b-ok", "修订": "b-info",
 
 def _m2_card(r, idx):
     ref = "" if r["官方确认"] else _badge("参考日期", "b-ref")
-    rep = (f'<span style="color:#8e2118;font-size:12px">'
+    rep = (f'<span style="color:#a4493f;font-size:12px">'
            f'　该法规本窗口内第 {r["同类序号"]}/{r["同类计数"]} 次变化</span>'
            if r["同类计数"] > 1 else "")
     links = _link_list(r, key_primary="官方链接")
@@ -496,7 +552,7 @@ def _m2_card(r, idx):
         f'<div class="cr-card">'
         f'<div class="cr-title"><span class="cr-date">{_e(r["日期"])}</span>'
         f'{_badge(r["事件类型"], _TYPE_CLS.get(r["事件类型"], "b-info"))}{ref}'
-        f'<span style="color:#6b7280;font-size:12.5px">　{_e(r["距今"])}</span>'
+        f'<span style="color:#7a8192;font-size:12.5px">　{_e(r["距今"])}</span>'
         f'{rep}</div>'
         f'<div class="cr-row"><span class="cr-k">变化摘要</span>{_e(r["变化摘要"])}</div>'
         f'<div class="cr-row"><span class="cr-k">影响说明</span>{_e(r["影响说明"])}</div>'
@@ -516,7 +572,7 @@ def render_m2(result):
     s = result["stats"]
     lm = result.get("llm") or {}
     head = (f'<div class="cr-head"><b>变化时间线</b>　'
-            f'<span style="color:#6b7280;font-size:13px">{_e(result["时间窗"])}'
+            f'<span style="color:#7a8192;font-size:13px">{_e(result["时间窗"])}'
             f'　近窗内 {s["近窗内条数"]} 条 · 涉及法规 {s["涉及法规数"]} 部'
             f' · 即将发生 {s["即将发生条数"]} 条</span></div>')
     note = _model_note(lm, bool(result["近窗内"]
@@ -607,9 +663,9 @@ def render_m3(result):
                     sorted(s["紧迫度分布"].items(),
                            key=lambda x: "高中低".index(x[0])))
     head = (f'<div class="cr-head"><b>合规待办</b>　'
-            f'<span style="color:#6b7280;font-size:13px">'
+            f'<span style="color:#7a8192;font-size:13px">'
             f'动作 {s["动作条数"]} 条 · 涉及法规 {s["涉及法规数"]} 部'
-            f'　|　<span style="color:#7a5b00">卡片默认折叠，点开展开证据链</span>'
+            f'　|　<span style="color:#8f6210">卡片默认折叠，点开展开证据链</span>'
             f'</span></div>')
     note = _model_note(lm, bool(result["动作"]
                                 and result["动作"][0]["动作来源"] == "模型改写"), "m3")
@@ -620,8 +676,8 @@ def render_m3(result):
     if result.get("待确认"):
         items = "".join(
             f'<li><b>{_e(it["需确认"])}</b><br>'
-            f'<span style="color:#6b7280">影响：{_e(it["影响"])}</span><br>'
-            f'<span style="color:#1f4fa8">如何核对：{_e(it["如何核对"])}</span>'
+            f'<span style="color:#7a8192">影响：{_e(it["影响"])}</span><br>'
+            f'<span style="color:#2f4a8a">如何核对：{_e(it["如何核对"])}</span>'
             f'</li>'
             for it in result["待确认"])
         parts.append(f'<div class="cr-note">待确认事项（{len(result["待确认"])} 项）'
@@ -637,7 +693,7 @@ def render_m3(result):
         for a in bunch:
             idx += 1
             cards.append(_m3_card(a, idx))
-        body = (f'<div style="font-size:12.5px;color:#8a91a3;margin:2px 0 8px">'
+        body = (f'<div style="font-size:12.5px;color:#7a8192;margin:2px 0 8px">'
                 f'{_e(bunch[0].get("类型含义", ""))}</div>' + "".join(cards))
         parts.append(_group(f'【{_e(tname)}】', len(bunch), body,
                             open_=(tname == "高"),
@@ -670,7 +726,7 @@ def render_m4(result):
         return _reject_html(result["reason"], result.get("header"))
 
     head = ('<div class="cr-head"><b>模型对照参考</b>　'
-            '<span style="color:#6b7280;font-size:13px">'
+            '<span style="color:#7a8192;font-size:13px">'
             '通用大模型 vs 本工具 · 同一固定题干</span></div>')
 
     parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}']
@@ -689,11 +745,11 @@ def render_m4(result):
                 f'{_e(r.get("generic_model_name", "-"))}</div>'
                 f'<div class="cr-row"><span class="cr-k">通用侧原答</span></div>'
                 f'<div style="white-space:pre-wrap;font-size:12.5px;'
-                f'margin:4px 0 8px;padding:6px 8px;background:#f0f1f5;'
+                f'margin:4px 0 8px;padding:6px 8px;background:#f1f1ec;'
                 f'border-radius:6px">{_e(r.get("generic_answer", ""))}</div>'
                 f'<div class="cr-row"><span class="cr-k">工具侧</span></div>'
                 f'<div style="white-space:pre-wrap;font-size:12.5px;'
-                f'margin:4px 0 8px;padding:6px 8px;background:#f6f4ff;'
+                f'margin:4px 0 8px;padding:6px 8px;background:#eef2f9;'
                 f'border-radius:6px">{_e(r.get("tool_answer", ""))}</div>'
                 f'<div class="cr-row"><span class="cr-k">核验状态</span>'
                 f'{_e(r.get("verdict", "未核验"))}</div>'
@@ -703,11 +759,11 @@ def render_m4(result):
                 "", inner, hint=f'录制于 {_e(r.get("timestamp", "-"))}'))
     else:
         # 占位 —— 不诱导模型、不预写胜负、不拿"32015R1000"当反例
-        parts.append('<div class="cr-empty" style="color:#7a5b00">'
+        parts.append('<div class="cr-empty" style="color:#8f6210">'
                      '⚠️ <b>尚未生成对照记录</b>。<br>'
                      '本期未提供真实历史实测记录（需先调用真实模型生成同题原答并保存），'
                      '故不在此处展示示意回答冒充结果。<br>'
-                     '<span style="font-size:12px;color:#6b7280">'
+                     '<span style="font-size:12px;color:#7a8192">'
                      '按对照规范：未取得真实实测记录的案例不作为默认展示，'
                      '回放记录待人工录制后上线。</span>'
                      '</div>')
@@ -796,12 +852,6 @@ def build_ui():
     model_status = ("模型：已接入（理解输入用，结论仍 100% 来自核对语料）"
                     if cfg["ready"] else
                     "模型：未配置 —— 输出原始清单（数据完整，链接可核验）")
-    global_meta = (
-        f"<small style='color:#6b7280'>{model_status}　·　"
-        f"快照：{snapshot.SNAPSHOT_VERSION}　·　"
-        f"数据截止：{snapshot.DATA_CUTOFF}　·　"
-        f"结果可导出 CSV</small>"
-    )
 
     # 类目下拉 —— 仅 5 个业务类目入口；横切维度随品类附带，不单独查
     cat_choices = list(corpus.SUPPORTED_CATEGORIES)
@@ -814,16 +864,9 @@ def build_ui():
 
     with gr.Blocks(**_blocks_kwargs) as demo:
         # 开场雷达 CG（~2s 自动淡出，纯 CSS，不阻塞交互）
+        # + 顶部深色雷达横幅（v4 设计：替代原 Markdown 标题区，信息不变）
         gr.HTML(_INTRO_HTML)
-        gr.Markdown(
-            "# 出海合规雷达 ComplianceRadar\n"
-            "**输入你的生意 → 雷达告诉你这一单要满足哪些法规、什么时候变、"
-            "要办什么事 —— 每条结论都附官方原文链接。**\n\n"
-            "<small>不知道从哪开始？直接在下方 **智能判定** 用大白话提问；"
-            "明确品类和市场用 **法规地图 / 合规待办 / 变化时间线** 精确查询；"
-            "**模型对照** 看我们和通用 AI 的区别。结果页的板块标题可点击展开详情。</small>"
-        )
-        gr.Markdown(global_meta)
+        gr.HTML(_hero_html(model_status))
 
         with gr.Tabs():
             # ── ① 智能判定 ────────────────────────────────────
@@ -847,7 +890,7 @@ def build_ui():
                 q_btn = gr.Button("开始判定", variant="primary")
                 q_out = gr.HTML(_route_initial())
                 gr.Markdown(
-                    "<small style='color:#8e2118'>"
+                    "<small style='color:#a4493f'>"
                     "🔒 隐私边界：输入原文只在内存中处理，不落盘、不缓存，"
                     "判定只依赖「品类 / 市场」两个槽位。"
                     "请勿输入个人隐私或客户敏感信息。</small>"
