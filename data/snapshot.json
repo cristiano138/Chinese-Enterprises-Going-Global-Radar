@@ -1,0 +1,19 @@
+{
+  "snapshot_version": "v1.1",
+  "generated_at": "2026-10-16T22:02:49+08:00",
+  "data_cutoff": "2026.10.14",
+  "git_commit": "74e6cb1",
+  "total_rows": 86,
+  "unique_keys": 86,
+  "duplicate_keys": [],
+  "markets": {
+    "欧盟": 29,
+    "美国": 57
+  },
+  "status_distribution": {
+    "已废止": 4,
+    "现行有效": 25,
+    "现行有效（持续修订）": 57
+  },
+  "source_file": "data\\语料核对表_完整版.csv"
+}

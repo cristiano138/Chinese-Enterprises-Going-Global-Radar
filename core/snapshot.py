@@ -13,6 +13,8 @@
 """
 from __future__ import annotations
 
+import json
+import os
 from datetime import date, datetime, timezone, timedelta
 from typing import Dict, List
 
@@ -22,22 +24,34 @@ _BEIJING = timezone(timedelta(hours=8))
 # ----- 快照元数据（按 PRD 附录 D3 / C1 声明）-----
 
 # 快照版本号（人类可读；本期为单版本，全局固定）
-SNAPSHOT_VERSION = "v1.0-pre-review"
+_PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_SNAPSHOT_FILE = os.path.join(_PROJECT, "data", "snapshot.json")
 
-# 数据截止时间（采集管线最后一次成功刷新的日期；本期采用 corpus.py 内部固定值）
-# 若需调整，运行 `scripts/merge_corpus.py` 刷新后同步更新此值即可
-DATA_CUTOFF = "2026-10-14"
+
+def _load_release_snapshot():
+    try:
+        with open(_SNAPSHOT_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        if data.get("total_rows") and not data.get("duplicate_keys"):
+            return data
+    except (OSError, ValueError, TypeError):
+        pass
+    return {}
+
+
+_RELEASE = _load_release_snapshot()
+SNAPSHOT_VERSION = _RELEASE.get("snapshot_version", "v1.0-pre-review")
+DATA_CUTOFF = _RELEASE.get("data_cutoff") or "2026-10-14"
+
+# 发布脚本生成的总量；快照不存在时保留兼容兜底。
+CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
+CORPUS_ROWS_BY_MARKET = _RELEASE.get("markets", {"欧盟": 29, "美国": 57})
 
 # 官方来源（PRD 附录 C3 允许集合）
 DATA_SOURCES = (
     "EUR-Lex SPARQL（publications.europa.eu/webapi/rdf/sparql）",
     "eCFR API（api.ecfr.gov / www.ecfr.gov）",
 )
-
-# 语料规模（来自 data/语料核对表_完整版.csv；本期未自动扩展）
-# 注：与 PRD 附录 A 中 "88行 / 86 个唯一键" 一致；按 PRD A 节，本字段不承诺"已核对"
-CORPUS_ROWS_TOTAL = 86
-CORPUS_ROWS_BY_MARKET = {"欧盟": 29, "美国": 57}
 
 # 模块状态枚举（PRD 附录 D3）
 MODULE_READY = "ready"      # 有合格数据

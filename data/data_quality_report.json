@@ -1,0 +1,21 @@
+{
+  "generated_at": "2026-10-16T22:02:50+08:00",
+  "source_file": "data\\语料核对表_完整版.csv",
+  "total_rows": 86,
+  "unique_keys": 86,
+  "duplicate_keys": [],
+  "markets": {
+    "EU": 29,
+    "US": 57
+  },
+  "status_distribution": {
+    "已废止": 4,
+    "现行有效": 25,
+    "现行有效（持续修订）": 57
+  },
+  "invalid_rows": [],
+  "missing_urls": [],
+  "warnings": [],
+  "valid": true,
+  "errors": []
+}
