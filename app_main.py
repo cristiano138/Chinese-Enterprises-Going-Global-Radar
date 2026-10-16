@@ -59,48 +59,59 @@ EXPORT_DIR = os.path.join(HERE, "data", "export")
 #   · 动画只用 transform/opacity（合成器路径，不触发重排）；
 #   · 不用 backdrop-filter / 大面积阴影（滚动掉帧的主要来源）。
 _CSS = """
-:root{--cr-brand:#165dff;--cr-brand-2:#6b8cff;--cr-brand-soft:#edf3ff;
-      --cr-bg:#f5f7fb;--cr-ink:#172033;--cr-ink2:#566176;--cr-ink3:#8b95a7;
-      --cr-line:#e7ebf2;--cr-radius:14px;--cr-night:#17233d;
-      --cr-beam:#6b8cff;--cr-glow:#dce6ff;
-      --cr-hi:#159570;--cr-mid:#b7791f;--cr-lo:#d14343;
+:root{--cr-brand:#b98216;--cr-brand-2:#e1b84d;--cr-brand-soft:#fff3c9;
+      --cr-bg:#fff9ec;--cr-ink:#3b3427;--cr-ink2:#766b59;--cr-ink3:#a79b86;
+      --cr-line:#eee2c7;--cr-radius:14px;--cr-night:#4b3b22;
+      --cr-beam:#e1b84d;--cr-glow:#fff0bd;
+      --cr-hi:#4c8c62;--cr-mid:#a46f1a;--cr-lo:#ba554c;
       --cr-serif:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body, .gradio-container { background: var(--cr-bg) !important; }
-.gradio-container { max-width: 1280px !important; padding: 24px 28px 48px !important; }
+.gradio-container { max-width: 1440px !important; padding: 18px 24px 42px 264px !important; }
 .gradio-container .contain { max-width: 1180px !important; margin: 0 auto !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
 .gradio-container button { border-radius:10px !important; font-weight:600 !important; }
-.gradio-container button.primary { background:var(--cr-brand) !important; border-color:var(--cr-brand) !important; box-shadow:0 6px 16px rgba(22,93,255,.18); }
-.gradio-container button.primary:hover { background:#0f4bd6 !important; }
-.gradio-container input, .gradio-container textarea, .gradio-container select { border-radius:10px !important; border-color:#dfe5ef !important; background:#fff !important; }
+.gradio-container button.primary { background:var(--cr-brand) !important; border-color:var(--cr-brand) !important; box-shadow:0 5px 14px rgba(185,130,22,.18); color:#fff !important; }
+.gradio-container button.primary:hover { background:#976b12 !important; }
+.gradio-container button.secondary { border-color:#e4d3a9 !important; color:#70551e !important; background:#fffdf7 !important; }
+.gradio-container input, .gradio-container textarea, .gradio-container select { border-radius:10px !important; border-color:#e6d8b9 !important; background:#fffefa !important; }
 .gradio-container label span { color:var(--cr-ink2) !important; font-weight:600 !important; }
-/* ── 工作台首页横幅：轻量品牌感 + 清晰主任务 ── */
-.cr-band { position:relative; overflow:hidden; border-radius:18px;
-           background:linear-gradient(120deg,#173b8f 0%,#165dff 58%,#6b8cff 100%);
-           color:#fff; border:1px solid rgba(255,255,255,.2);
-           padding:28px 32px 24px; box-shadow:0 14px 32px rgba(24,74,170,.16); }
-.cr-band::after { content:""; position:absolute; width:360px; height:360px; right:-120px; top:-170px;
-                  border:1px solid rgba(255,255,255,.18); border-radius:50%; box-shadow:0 0 0 36px rgba(255,255,255,.05),0 0 0 72px rgba(255,255,255,.04); }
+/* ── 参考工作台：左侧导航 + 轻量顶部状态 + 明亮概览 ── */
+.cr-shell { display:grid; grid-template-columns:220px minmax(0,1fr); gap:22px; align-items:start; }
+.cr-sidebar { position:fixed; z-index:20; left:18px; top:18px; width:220px; box-sizing:border-box; background:#fffdf7; border:1px solid var(--cr-line); border-radius:16px; padding:16px 12px; box-shadow:0 8px 24px rgba(137,105,35,.07); }
+.cr-side-brand { display:flex; align-items:center; gap:10px; padding:8px 10px 18px; border-bottom:1px solid var(--cr-line); color:var(--cr-ink); font-weight:800; font-size:16px; }
+.cr-side-logo { width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:#f7e4a9; color:#8c6414; font-size:16px; }
+.cr-side-label { padding:18px 10px 7px; color:var(--cr-ink3); font-size:11px; letter-spacing:.08em; }
+.cr-side-item { display:flex; align-items:center; gap:9px; padding:10px; margin:3px 0; border-radius:10px; color:var(--cr-ink2); font-size:13px; }
+.cr-side-item.active { color:#765514; background:#fff1bf; font-weight:700; }
+.cr-side-item span:first-child { width:20px; text-align:center; }
+.cr-side-foot { margin:18px 4px 2px; padding:12px 10px; border-radius:11px; background:#fff7dc; color:var(--cr-ink2); font-size:11px; line-height:1.65; }
+.cr-main { min-width:0; }
+.cr-band { position:relative; overflow:hidden; border-radius:16px; background:#fffdf7;
+           color:var(--cr-ink); border:1px solid var(--cr-line); padding:22px 26px 20px; box-shadow:0 8px 24px rgba(137,105,35,.06); }
+.cr-band::after { content:""; position:absolute; width:260px; height:260px; right:-70px; top:-150px;
+                  border:1px solid #ead9a6; border-radius:50%; box-shadow:0 0 0 30px rgba(231,201,115,.12),0 0 0 60px rgba(231,201,115,.08); }
 .cr-band .cr-bar { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
-.cr-brand { font-size:17px; font-weight:700; color:#fff; letter-spacing:.02em; font-family:var(--cr-serif); }
-.cr-band h1 { font-size:30px; font-weight:700; line-height:1.3; margin:26px 0 10px;
-              max-width:680px; font-family:var(--cr-serif); color:#fff; position:relative; z-index:1; }
-.cr-lead { margin:0; color:rgba(255,255,255,.86); max-width:680px; font-size:14px; position:relative; z-index:1; }
-.cr-band-guide { margin:12px 0 0; color:rgba(255,255,255,.7); font-size:12.5px; max-width:700px; position:relative; z-index:1; }
-.cr-band-meta { margin:18px 0 0; padding-top:12px; border-top:1px solid rgba(255,255,255,.2);
-                color:rgba(255,255,255,.72); font-size:12px; position:relative; z-index:1; }
-.cr-scope { position:absolute; right:42px; top:50%; width:220px; height:220px;
-            transform:translateY(-50%); opacity:.65; }
-@media (max-width:900px) { .cr-scope { right:-22px; opacity:.3; } }
-@media (max-width:640px) { .gradio-container { padding:14px 12px 32px !important; }
-  .cr-band { padding:22px 20px 18px; border-radius:14px; }
-  .cr-band h1 { font-size:24px; margin-top:20px; }
-  .cr-band-guide { line-height:1.7; }
-  .cr-band-meta { line-height:1.8; }
-}
+.cr-brand { font-size:17px; font-weight:800; color:#795714; letter-spacing:.02em; font-family:var(--cr-serif); }
+.cr-band h1 { font-size:28px; font-weight:750; line-height:1.3; margin:22px 0 8px;
+              max-width:760px; font-family:var(--cr-serif); color:var(--cr-ink); position:relative; z-index:1; }
+.cr-lead { margin:0; color:var(--cr-ink2); max-width:760px; font-size:14px; position:relative; z-index:1; }
+.cr-band-guide { margin:10px 0 0; color:var(--cr-ink3); font-size:12.5px; max-width:820px; position:relative; z-index:1; }
+.cr-band-meta { margin:16px 0 0; padding-top:11px; border-top:1px solid var(--cr-line);
+                color:var(--cr-ink3); font-size:12px; position:relative; z-index:1; }
+.cr-scope { position:absolute; right:36px; top:50%; width:190px; height:190px;
+            transform:translateY(-50%); opacity:.28; }
+.cr-overview { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; margin:16px 0 18px; }
+.cr-stat { background:#fffdf7; border:1px solid var(--cr-line); border-radius:13px; padding:14px 15px; box-shadow:0 5px 16px rgba(137,105,35,.045); }
+.cr-stat-k { color:var(--cr-ink3); font-size:11px; margin-bottom:7px; }
+.cr-stat-v { color:var(--cr-ink); font-size:22px; font-weight:800; line-height:1; }
+.cr-stat-s { margin-top:7px; color:var(--cr-ink2); font-size:11px; }
+.cr-panel { background:#fffdf7; border:1px solid var(--cr-line); border-radius:15px; padding:18px; box-shadow:0 6px 20px rgba(137,105,35,.05); }
+@media (max-width:1050px) { .gradio-container { padding-left:220px !important; } .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
+@media (max-width:760px) { .gradio-container { padding-left:12px !important; } .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .gradio-container { padding:12px 10px 28px !important; } .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
 /* ── 结果区元数据条 ── */
-.cr-header { background:#fff; border:1px solid var(--cr-line); border-radius:12px;
+.cr-header { background:#f9fbff; border:1px solid var(--cr-line); border-radius:12px;
              padding: 12px 14px; font-size: 12.5px; color: var(--cr-ink2);
              margin: 16px 0; line-height: 1.7; box-shadow:0 3px 12px rgba(35,54,90,.04); }
 .cr-header b { color: var(--cr-ink); }
@@ -122,7 +133,7 @@ body, .gradio-container { background: var(--cr-bg) !important; }
           border-left: 3px solid var(--cr-brand); padding-left: 8px;
           font-family:var(--cr-serif); }
 .cr-card { border:1px solid var(--cr-line); border-radius:12px;
-           padding: 16px; margin:10px 0; background:#fff;
+           padding: 16px; margin:10px 0; background:#f9fbff;
            box-shadow:0 4px 16px rgba(35,54,90,.045); content-visibility:auto; contain-intrinsic-size:auto 220px; }
 .cr-title { font-size: 15px; font-weight: 600; color:var(--cr-ink); margin-bottom: 6px; }
 .cr-badge { display:inline-block; font-size:12px; padding:1px 6px; border-radius:3px;
@@ -169,7 +180,7 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 /* ── 可折叠板块（v2）：细线 + 衬线标题 + 右侧箭头（v4 折叠样式）──
    summary 常显（标题 + 条数 + 提示），收起内容不参与渲染（content-visibility）*/
 .cr-group { border:1px solid var(--cr-line); border-radius:12px;
-            margin: 14px 0 10px; background:#fff; overflow:hidden; box-shadow:0 3px 12px rgba(35,54,90,.035); }
+            margin: 14px 0 10px; background:#f9fbff; overflow:hidden; box-shadow:0 3px 12px rgba(35,54,90,.035); }
 .cr-group > summary { cursor: pointer; list-style: none; padding: 14px 16px;
                       font-size: 16px; font-weight: 700; color: var(--cr-ink);
                       font-family: var(--cr-serif);
@@ -196,7 +207,7 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .gradio-container .block { border-color:var(--cr-line) !important; }
 .cr-section-intro { color:var(--cr-ink2); font-size:14px; margin:10px 0 16px; line-height:1.7; }
 .cr-quick { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 18px; }
-.cr-quick span { padding:8px 12px; background:#fff; border:1px solid var(--cr-line); border-radius:999px; color:var(--cr-ink2); font-size:12px; }
+.cr-quick span { padding:8px 12px; background:#f9fbff; border:1px solid var(--cr-line); border-radius:999px; color:var(--cr-ink2); font-size:12px; }
 
 /* M3 待办卡片折叠（D5-1）：细线行 + 右箭头，点开展开证据链 */
 .cr-action { border:0; border-top:1px solid var(--cr-line); border-radius:0;
@@ -872,6 +883,44 @@ def export_m3_csv(category, market):
     return path
 
 
+def _sidebar_html():
+    """参考工作台的左侧导航；实际功能仍由下方标签页承载。"""
+    return (
+        '<div class="cr-side-brand"><span class="cr-side-logo">⌁</span>'
+        '<span>合规雷达</span></div>'
+        '<div class="cr-side-label">工作台</div>'
+        '<div class="cr-side-item active"><span>⌂</span><span>智能判定</span></div>'
+        '<div class="cr-side-item"><span>▦</span><span>法规地图</span></div>'
+        '<div class="cr-side-item"><span>✓</span><span>合规待办</span></div>'
+        '<div class="cr-side-item"><span>◷</span><span>变化时间线</span></div>'
+        '<div class="cr-side-item"><span>⇄</span><span>模型对照</span></div>'
+        '<div class="cr-side-label">当前数据</div>'
+        '<div class="cr-side-foot">覆盖欧盟与美国<br>86 条已核对语料<br>每条结论附官方链接</div>'
+    )
+
+
+def _overview_html(model_status):
+    """参考图的数据概览卡片，数据只来自当前发布快照。"""
+    eu = snapshot.CORPUS_ROWS_BY_MARKET.get("欧盟", 0)
+    us = snapshot.CORPUS_ROWS_BY_MARKET.get("美国", 0)
+    model = "已接入" if llm.is_ready() else "规则降级"
+    return (
+        '<div class="cr-overview">'
+        f'<div class="cr-stat"><div class="cr-stat-k">已核对法规</div>'
+        f'<div class="cr-stat-v">{snapshot.CORPUS_ROWS_TOTAL}</div>'
+        f'<div class="cr-stat-s">快照 { _e(snapshot.SNAPSHOT_VERSION) }</div></div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">覆盖区域</div>'
+        f'<div class="cr-stat-v">2</div><div class="cr-stat-s">欧盟 {eu} · 美国 {us}</div></div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">入口品类</div>'
+        f'<div class="cr-stat-v">{len(corpus.SUPPORTED_CATEGORIES)}</div>'
+        '<div class="cr-stat-s">玩具 · 电器 · 服装等</div></div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">智能解析</div>'
+        f'<div class="cr-stat-v">{_e(model)}</div>'
+        f'<div class="cr-stat-s">{_e(model_status.split("（")[0])}</div></div>'
+        '</div>'
+    )
+
+
 def build_ui():
     cfg = llm.config_summary()
     model_status = ("模型：已接入（理解输入用，结论仍 100% 来自核对语料）"
@@ -889,9 +938,10 @@ def build_ui():
 
     with gr.Blocks(**_blocks_kwargs) as demo:
         # 开场雷达 CG（~2s 自动淡出，纯 CSS，不阻塞交互）
-        # + 顶部深色雷达横幅（v4 设计：替代原 Markdown 标题区，信息不变）
         gr.HTML(_INTRO_HTML)
+        gr.HTML('<aside class="cr-sidebar" aria-label="功能导航">' + _sidebar_html() + '</aside>')
         gr.HTML(_hero_html(model_status))
+        gr.HTML(_overview_html(model_status))
 
         with gr.Tabs():
             # ── ① 智能判定 ────────────────────────────────────
