@@ -13,6 +13,7 @@ SCRIPTS = [
     "scripts/selftest_m15.py",
     "scripts/selftest_m2_m3.py",
     "scripts/selftest_m5_m6.py",
+    "scripts/selftest_m7.py",
 ]
 
 
@@ -34,6 +35,7 @@ def main() -> int:
     print("M2: PASS")
     print("M3: PASS")
     print("M5/M6: PASS")
+    print("M7: PASS")
     print("失败数：0")
     return 0
 

@@ -40,7 +40,7 @@ if HERE not in sys.path:
 
 from core import corpus, llm, snapshot, verify  # noqa: E402
 from modules import (m1_map, m2_timeline, m3_todo, m4_compare, m5_compare,  # noqa: E402
-                     m6_multi_region, m15_router)
+                     m6_multi_region, m7_opc_readiness, m15_router)
 
 import gradio as gr  # noqa: E402
 
@@ -864,6 +864,47 @@ def render_m5(result):
     return "".join(parts)
 
 
+# ── M7：OPC 上线准备度 ────────────────────────────────────────
+def render_m7(result):
+    if not result.get("ok"):
+        return _reject_html(result.get("reason", "无法生成上线准备度"))
+    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>OPC 上线准备度</b>　'
+             f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+             f'{result["总动作数"]} 项准备动作</span></div>',
+             f'<div class="cr-note">{_e(result["说明"])} 查询日期 {_e(result["查询日期"])}，'
+             f'快照 {_e(result["快照版本"])}。</div>']
+    for region in result["区域"]:
+        summary = (f'<div class="cr-overview"><div class="cr-stat"><div class="cr-stat-k">目标区域</div>'
+                   f'<div class="cr-stat-v">{_e(region["市场"])}</div><div class="cr-stat-s">{region["动作条数"]} 项动作</div></div>'
+                   f'<div class="cr-stat"><div class="cr-stat-k">优先处理</div><div class="cr-stat-v">{region.get("高优先级", 0)}</div><div class="cr-stat-s">按规则计算</div></div>'
+                   f'<div class="cr-stat"><div class="cr-stat-k">需确认</div><div class="cr-stat-v">{region.get("需确认条数", 0)}</div><div class="cr-stat-s">身份或条件待核</div></div>'
+                   f'<div class="cr-stat"><div class="cr-stat-k">未产出</div><div class="cr-stat-v">{region.get("未产出条数", 0)}</div><div class="cr-stat-s">证据不足不硬编</div></div></div>')
+        parts.append(f'<div class="cr-sec">{_e(region["市场"])}上线准备</div>' + summary)
+        for phase in region.get("阶段", []):
+            cards = []
+            for item in phase["动作"]:
+                cards.append(
+                    f'<div class="cr-card"><div class="cr-title">{_e(item["动作"])}'
+                    f'{_badge(item["状态"], "b-warn" if item["状态"] == "需确认" else "b-info")}</div>'
+                    f'<div class="cr-row"><span class="cr-k">责任角色</span>{_e(item["责任角色"])}</div>'
+                    f'<div class="cr-row"><span class="cr-k">适用条件</span>{_e(item["适用条件"] or "请结合商品属性核对")}</div>'
+                    f'<div class="cr-row"><span class="cr-k">依据法规</span>{_e(item["依据法规"])} · <code>{_e(item["官方编号"])}</code></div>'
+                    f'<div class="cr-row"><span class="cr-k">官方链接</span><a class="cr-a" href="{_attr(item["官方链接"])}" target="_blank" rel="noopener">打开原文 →</a></div></div>')
+            parts.append(_group(f'{_e(phase["名称"])} · {region["市场"]}', phase["条数"], "".join(cards), open_=phase["名称"] in ("选品与范围", "打样与测试"), hint="按责任角色推进并留存证据"))
+        if region.get("待确认"):
+            pending = "".join(f'<div class="cr-note"><b>需确认：</b>{_e(x.get("需确认", ""))}<br>{_e(x.get("影响", ""))}<br><span class="cr-k">核对方向</span>{_e(x.get("如何核对", ""))}</div>' for x in region["待确认"])
+            parts.append(_group(f'{region["市场"]}待确认事项', len(region["待确认"]), pending, open_=True))
+    parts.append('</div>')
+    return "".join(parts)
+
+
+def run_readiness(category, markets):
+    try:
+        return render_m7(m7_opc_readiness.query(category, markets))
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e)
+
+
 # ── 回调 ──────────────────────────────────────────────────────
 def run_map(category, market, use_llm):
     """法规地图回调。任何异常都不白屏。"""
@@ -963,6 +1004,7 @@ def _sidebar_html():
         '<div class="cr-side-item"><span>✓</span><span>合规待办</span></div>'
         '<div class="cr-side-item"><span>◷</span><span>变化时间线</span></div>'
         '<div class="cr-side-item"><span>⇄</span><span>模型对照</span></div>'
+        '<div class="cr-side-item"><span>🚀</span><span>OPC 上线准备</span></div>'
         '<div class="cr-side-label">当前数据</div>'
         '<div class="cr-side-foot">覆盖欧盟与美国<br>86 条已核对语料<br>每条结论附官方链接</div>'
     )
@@ -1112,7 +1154,16 @@ def build_ui():
                     btn5 = gr.Button("开始对比", variant="primary")
                 m5_out = gr.HTML(render_m5(m5_compare.query("儿童玩具", mkt_choices)))
 
-            # ── ⑦ 模型对照 ────────────────────────────────────
+            # ── ⑦ OPC 上线准备 ────────────────────────────────
+            with gr.Tab("🚀 OPC 上线准备"):
+                gr.HTML('<div class="cr-section-intro"><b>把合规待办排成小团队能执行的上线计划。</b> 按选品、测试、标签、文件、供应链和切换复核分阶段展示，并给出责任角色与官方依据。</div>')
+                with gr.Row():
+                    cat7 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
+                    markets7 = gr.CheckboxGroup(choices=mkt_choices, value=mkt_choices, label="目标区域（可多选）")
+                    btn7 = gr.Button("生成上线准备", variant="primary")
+                m7_out = gr.HTML(render_m7(m7_opc_readiness.query("儿童玩具", mkt_choices)))
+
+            # ── ⑧ 模型对照 ────────────────────────────────────
             with gr.Tab("⚖️ 模型对照"):
                 gr.HTML('<div class="cr-section-intro"><b>同一道题，两套方法放在一起看。</b> 重点观察来源、编号和证据是否能被复核；当前页面只展示已录制的真实回放。</div>')
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
@@ -1135,6 +1186,9 @@ def build_ui():
         btn6.click(run_multi_region, inputs=[cat6, markets6], outputs=m6_out)
         cat5.change(run_compare, inputs=[cat5], outputs=m5_out)
         btn5.click(run_compare, inputs=[cat5], outputs=m5_out)
+        for w in (cat7, markets7):
+            w.change(run_readiness, inputs=[cat7, markets7], outputs=m7_out)
+        btn7.click(run_readiness, inputs=[cat7, markets7], outputs=m7_out)
 
     return demo
 
