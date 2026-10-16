@@ -6,6 +6,8 @@
 """
 from __future__ import annotations
 
+import csv
+import io
 import os
 import sys
 from datetime import date
@@ -139,6 +141,51 @@ def query(category="儿童玩具", markets=None, today=None):
         "查询日期": today.isoformat(),
         "说明": "这是上线前准备项覆盖情况，不代表商品已经合规；每项仍需按条件和官方依据人工核对。",
     }
+
+
+CSV_COLUMNS = [
+    "商品类目", "目标市场", "阶段", "责任角色", "状态", "紧迫度",
+    "动作", "适用条件", "官方编号", "依据法规", "官方链接",
+    "数据截止时间", "免责声明",
+]
+
+
+def _csv_safe(value):
+    text = "" if value is None else str(value)
+    return "'" + text if text.startswith(("=", "+", "-", "@")) else text
+
+
+def export_csv(result, today=None):
+    """导出 OPC 执行清单，返回 (文件名, UTF-8 BOM 字节流)。"""
+    if not result.get("ok"):
+        raise RuntimeError(result.get("reason", "准备度查询未成功"))
+    rows = []
+    for region in result.get("区域", []):
+        for item in region.get("动作", []):
+            rows.append({
+                "商品类目": result["品类"],
+                "目标市场": region["市场"],
+                "阶段": item["阶段"],
+                "责任角色": item["责任角色"],
+                "状态": item["状态"],
+                "紧迫度": item["紧迫度"],
+                "动作": item["动作"],
+                "适用条件": item["适用条件"],
+                "官方编号": item["官方编号"],
+                "依据法规": item["依据法规"],
+                "官方链接": item["官方链接"],
+                "数据截止时间": result["数据截止时间"],
+                "免责声明": "仅供上线准备参考，不构成法律意见，需由专业人员复核。",
+            })
+    if not rows:
+        raise RuntimeError("当前没有可导出的上线准备动作。")
+    buf = io.StringIO(newline="")
+    writer = csv.DictWriter(buf, fieldnames=CSV_COLUMNS, extrasaction="ignore")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({key: _csv_safe(row.get(key, "")) for key in CSV_COLUMNS})
+    stamp = (today or date.today()).strftime("%Y%m%d")
+    return f"OPC上线准备_{result['品类']}_{stamp}.csv", ("\ufeff" + buf.getvalue()).encode("utf-8")
 
 
 def render_text(result):

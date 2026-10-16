@@ -905,6 +905,16 @@ def run_readiness(category, markets):
         return _err_html(e)
 
 
+def export_readiness_csv(category, markets):
+    result = m7_opc_readiness.query(category, markets)
+    os.makedirs(EXPORT_DIR, exist_ok=True)
+    name, data = m7_opc_readiness.export_csv(result)
+    path = os.path.join(EXPORT_DIR, name)
+    with open(path, "wb") as handle:
+        handle.write(data)
+    return path
+
+
 # ── 回调 ──────────────────────────────────────────────────────
 def run_map(category, market, use_llm):
     """法规地图回调。任何异常都不白屏。"""
@@ -1162,6 +1172,10 @@ def build_ui():
                     markets7 = gr.CheckboxGroup(choices=mkt_choices, value=mkt_choices, label="目标区域（可多选）")
                     btn7 = gr.Button("生成上线准备", variant="primary")
                 m7_out = gr.HTML(render_m7(m7_opc_readiness.query("儿童玩具", mkt_choices)))
+                with gr.Row():
+                    readiness_csv = gr.DownloadButton("⬇ 导出 OPC 执行清单（CSV）", variant="secondary",
+                                                      value=lambda c, ms: export_readiness_csv(c, ms),
+                                                      inputs=[cat7, markets7])
 
             # ── ⑧ 模型对照 ────────────────────────────────────
             with gr.Tab("⚖️ 模型对照"):
