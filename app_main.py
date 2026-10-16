@@ -59,38 +59,50 @@ EXPORT_DIR = os.path.join(HERE, "data", "export")
 #   · 动画只用 transform/opacity（合成器路径，不触发重排）；
 #   · 不用 backdrop-filter / 大面积阴影（滚动掉帧的主要来源）。
 _CSS = """
-:root{--cr-brand:#2f4a8a;--cr-brand-2:#22c3e6;--cr-brand-soft:#eef2f9;
-      --cr-bg:#fafaf7;--cr-ink:#1f2430;--cr-ink2:#4b5263;--cr-ink3:#7a8192;
-      --cr-line:#e4e4de;--cr-radius:4px;--cr-night:#0b1020;
-      --cr-beam:#22c3e6;--cr-glow:#7df9ff;
-      --cr-hi:#2e7d5b;--cr-mid:#8f6210;--cr-lo:#a4493f;
-      --cr-serif:"Songti SC","Noto Serif SC","Source Han Serif SC",STSong,serif}
+:root{--cr-brand:#165dff;--cr-brand-2:#6b8cff;--cr-brand-soft:#edf3ff;
+      --cr-bg:#f5f7fb;--cr-ink:#172033;--cr-ink2:#566176;--cr-ink3:#8b95a7;
+      --cr-line:#e7ebf2;--cr-radius:14px;--cr-night:#17233d;
+      --cr-beam:#6b8cff;--cr-glow:#dce6ff;
+      --cr-hi:#159570;--cr-mid:#b7791f;--cr-lo:#d14343;
+      --cr-serif:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body, .gradio-container { background: var(--cr-bg) !important; }
+.gradio-container { max-width: 1280px !important; padding: 24px 28px 48px !important; }
+.gradio-container .contain { max-width: 1180px !important; margin: 0 auto !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
-/* ── 深色雷达横幅（与开场动画同色系）── */
-.cr-band { position:relative; overflow:hidden; border-radius:8px;
-           background:radial-gradient(560px 260px at 88% 45%, rgba(34,195,230,.13), transparent 62%), var(--cr-night);
-           color:#e6f7ff; border:1px solid rgba(34,195,230,.22);
-           padding:20px 22px 16px; }
-.cr-band .cr-bar { display:flex; align-items:center; gap:12px; }
-.cr-brand { font-size:17px; font-weight:600; color:#e6f7ff;
-            font-family:var(--cr-serif); }
-.cr-band h1 { font-size:26px; font-weight:600; line-height:1.35; margin:24px 0 8px;
-              max-width:620px; font-family:var(--cr-serif); color:#fff; }
-.cr-lead { margin:0; color:#9fb3c8; max-width:620px; font-size:14px; }
-.cr-band-guide { margin:10px 0 0; color:#7e93a8; font-size:12.5px; max-width:620px; }
-.cr-band-meta { margin:14px 0 0; padding-top:10px;
-                border-top:1px dashed rgba(125,249,255,.18);
-                color:#7e93a8; font-size:12px; }
-.cr-scope { position:absolute; right:18px; top:50%; width:190px; height:190px;
-            transform:translateY(-50%); display:none; }
-@media (min-width:860px) { .cr-scope { display:block; } }
+.gradio-container button { border-radius:10px !important; font-weight:600 !important; }
+.gradio-container button.primary { background:var(--cr-brand) !important; border-color:var(--cr-brand) !important; box-shadow:0 6px 16px rgba(22,93,255,.18); }
+.gradio-container button.primary:hover { background:#0f4bd6 !important; }
+.gradio-container input, .gradio-container textarea, .gradio-container select { border-radius:10px !important; border-color:#dfe5ef !important; background:#fff !important; }
+.gradio-container label span { color:var(--cr-ink2) !important; font-weight:600 !important; }
+/* ── 工作台首页横幅：轻量品牌感 + 清晰主任务 ── */
+.cr-band { position:relative; overflow:hidden; border-radius:18px;
+           background:linear-gradient(120deg,#173b8f 0%,#165dff 58%,#6b8cff 100%);
+           color:#fff; border:1px solid rgba(255,255,255,.2);
+           padding:28px 32px 24px; box-shadow:0 14px 32px rgba(24,74,170,.16); }
+.cr-band::after { content:""; position:absolute; width:360px; height:360px; right:-120px; top:-170px;
+                  border:1px solid rgba(255,255,255,.18); border-radius:50%; box-shadow:0 0 0 36px rgba(255,255,255,.05),0 0 0 72px rgba(255,255,255,.04); }
+.cr-band .cr-bar { display:flex; align-items:center; gap:12px; position:relative; z-index:1; }
+.cr-brand { font-size:17px; font-weight:700; color:#fff; letter-spacing:.02em; font-family:var(--cr-serif); }
+.cr-band h1 { font-size:30px; font-weight:700; line-height:1.3; margin:26px 0 10px;
+              max-width:680px; font-family:var(--cr-serif); color:#fff; position:relative; z-index:1; }
+.cr-lead { margin:0; color:rgba(255,255,255,.86); max-width:680px; font-size:14px; position:relative; z-index:1; }
+.cr-band-guide { margin:12px 0 0; color:rgba(255,255,255,.7); font-size:12.5px; max-width:700px; position:relative; z-index:1; }
+.cr-band-meta { margin:18px 0 0; padding-top:12px; border-top:1px solid rgba(255,255,255,.2);
+                color:rgba(255,255,255,.72); font-size:12px; position:relative; z-index:1; }
+.cr-scope { position:absolute; right:42px; top:50%; width:220px; height:220px;
+            transform:translateY(-50%); opacity:.65; }
+@media (max-width:900px) { .cr-scope { right:-22px; opacity:.3; } }
+@media (max-width:640px) { .gradio-container { padding:14px 12px 32px !important; }
+  .cr-band { padding:22px 20px 18px; border-radius:14px; }
+  .cr-band h1 { font-size:24px; margin-top:20px; }
+  .cr-band-guide { line-height:1.7; }
+  .cr-band-meta { line-height:1.8; }
+}
 /* ── 结果区元数据条 ── */
-.cr-header { background:transparent; border-top:1px solid var(--cr-line);
-             border-bottom:1px solid var(--cr-line); border-radius:0;
-             padding: 8px 2px; font-size: 12.5px; color: var(--cr-ink2);
-             margin-bottom: 14px; line-height: 1.7; }
+.cr-header { background:#fff; border:1px solid var(--cr-line); border-radius:12px;
+             padding: 12px 14px; font-size: 12.5px; color: var(--cr-ink2);
+             margin: 16px 0; line-height: 1.7; box-shadow:0 3px 12px rgba(35,54,90,.04); }
 .cr-header b { color: var(--cr-ink); }
 .cr-header .cr-meta-line { margin: 1px 0; }
 .cr-header .cr-meta-notes { margin-top: 4px; color: var(--cr-mid); font-size: 12px; }
@@ -109,9 +121,9 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-sec { margin: 18px 0 8px; font-size: 16px; font-weight: 600; color:var(--cr-ink);
           border-left: 3px solid var(--cr-brand); padding-left: 8px;
           font-family:var(--cr-serif); }
-.cr-card { border:0; border-top:1px solid var(--cr-line); border-radius:0;
-           padding: 12px 2px; margin-bottom: 2px; background: transparent;
-           content-visibility: auto; contain-intrinsic-size: auto 220px; }
+.cr-card { border:1px solid var(--cr-line); border-radius:12px;
+           padding: 16px; margin:10px 0; background:#fff;
+           box-shadow:0 4px 16px rgba(35,54,90,.045); content-visibility:auto; contain-intrinsic-size:auto 220px; }
 .cr-title { font-size: 15px; font-weight: 600; color:var(--cr-ink); margin-bottom: 6px; }
 .cr-badge { display:inline-block; font-size:12px; padding:1px 6px; border-radius:3px;
             margin-left:6px; vertical-align: middle;
@@ -156,10 +168,10 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 
 /* ── 可折叠板块（v2）：细线 + 衬线标题 + 右侧箭头（v4 折叠样式）──
    summary 常显（标题 + 条数 + 提示），收起内容不参与渲染（content-visibility）*/
-.cr-group { border:0; border-top:1px solid var(--cr-line); border-radius:0;
-            margin: 14px 0 4px; background: transparent; overflow: visible; }
-.cr-group > summary { cursor: pointer; list-style: none; padding: 12px 2px;
-                      font-size: 16px; font-weight: 600; color: var(--cr-ink);
+.cr-group { border:1px solid var(--cr-line); border-radius:12px;
+            margin: 14px 0 10px; background:#fff; overflow:hidden; box-shadow:0 3px 12px rgba(35,54,90,.035); }
+.cr-group > summary { cursor: pointer; list-style: none; padding: 14px 16px;
+                      font-size: 16px; font-weight: 700; color: var(--cr-ink);
                       font-family: var(--cr-serif);
                       display: flex; align-items: center; gap: 10px;
                       user-select: none; }
@@ -175,8 +187,16 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-g-count { font-size: 12.5px; font-weight: 400; color: var(--cr-ink3);
               font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
 .cr-g-hint { font-size: 12px; font-weight: 400; color: var(--cr-ink3); }
-.cr-group-body { padding: 2px 2px 10px;
+.cr-group-body { padding: 2px 16px 14px;
                  content-visibility: auto; contain-intrinsic-size: auto 600px; }
+.gradio-container .tabs { margin-top:18px; }
+.gradio-container .tab-nav { gap:6px; border-bottom:1px solid var(--cr-line); padding:0 4px; }
+.gradio-container .tab-nav button { border:0 !important; background:transparent !important; color:var(--cr-ink2) !important; padding:12px 14px !important; border-radius:10px 10px 0 0 !important; }
+.gradio-container .tab-nav button.selected { color:var(--cr-brand) !important; background:var(--cr-brand-soft) !important; box-shadow:inset 0 -2px 0 var(--cr-brand); }
+.gradio-container .block { border-color:var(--cr-line) !important; }
+.cr-section-intro { color:var(--cr-ink2); font-size:14px; margin:10px 0 16px; line-height:1.7; }
+.cr-quick { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 18px; }
+.cr-quick span { padding:8px 12px; background:#fff; border:1px solid var(--cr-line); border-radius:999px; color:var(--cr-ink2); font-size:12px; }
 
 /* M3 待办卡片折叠（D5-1）：细线行 + 右箭头，点开展开证据链 */
 .cr-action { border:0; border-top:1px solid var(--cr-line); border-radius:0;
@@ -641,7 +661,7 @@ def _m3_card(r, idx):
         f'（动作类型：{_e(r["动作类型"])}）</div>'
         f'<div><b>③ 来源条款</b>：{_e(r["官方编号"])}　'
         f'《{_e(r["依据法规"])}》</div>'
-        f'<div><b>④ 原文摘录</b>：（以官方原文为准 —— 见下方链接）</div>'
+        f'<div><b>④ 原文摘录</b>：{_e(r.get("证据摘录") or r.get("适用条件") or "以官方原文为准")}</div>'
         f'<div><b>⑤ 官方原文</b>：{link}</div>'
         '</div>'
     )
@@ -872,10 +892,10 @@ def build_ui():
         with gr.Tabs():
             # ── ① 智能判定 ────────────────────────────────────
             with gr.Tab("🔎 智能判定"):
-                gr.Markdown(
-                    "**大白话直接问 → 自动识别「品类 × 市场」→ 出判定卡。**"
-                    "支持整段粘贴产品描述、BOM、合同要点。"
-                    "模型只负责理解输入；结论 100% 来自核对语料 + 官方链接。"
+                gr.HTML(
+                    '<div class="cr-section-intro"><b>先说清楚你要卖什么、卖到哪里。</b> '
+                    '系统会自动识别品类和市场，再从已核对语料中生成法规与待办。模型只理解输入，结论仍来自确定性规则和官方链接。</div>'
+                    '<div class="cr-quick"><span>适合：产品描述</span><span>适合：BOM / 合同要点</span><span>结果：法规 + 待办 + 证据</span></div>'
                 )
                 q_text = gr.Textbox(
                     lines=4,
@@ -899,7 +919,7 @@ def build_ui():
 
             # ── ② 法规地图 ────────────────────────────────────
             with gr.Tab("🗺 法规地图"):
-                gr.Markdown("**已知品类和市场？选好直接生成 —— 板块标题可点开看详情。**")
+                gr.HTML('<div class="cr-section-intro"><b>已知品类和市场？</b> 选择两个条件，快速查看适用法规、状态和官方来源。</div>')
                 with gr.Row():
                     cat1 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -914,7 +934,7 @@ def build_ui():
 
             # ── ③ 合规待办 ────────────────────────────────────
             with gr.Tab("✅ 合规待办"):
-                gr.Markdown("**这一单要办的事按紧迫度分板块排好 —— 点开板块和每条卡片看证据链。**")
+                gr.HTML('<div class="cr-section-intro"><b>把法规变成今天能执行的动作。</b> 按紧迫度查看待办，点开每条卡片核对适用条件、原文摘录和官方链接。</div>')
                 with gr.Row():
                     cat3 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -934,7 +954,7 @@ def build_ui():
 
             # ── ④ 变化时间线 ──────────────────────────────────
             with gr.Tab("📅 变化时间线"):
-                gr.Markdown("**法规什么时候生效、什么时候变 —— 重点看「即将发生」的过渡期节点。**")
+                gr.HTML('<div class="cr-section-intro"><b>先看时间，再安排动作。</b> 关注法规发布日期、生效日期和过渡期节点，避免按旧规则准备。</div>')
                 with gr.Row():
                     cat2 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
                                        label="① 商品类目")
@@ -954,7 +974,7 @@ def build_ui():
 
             # ── ⑤ 模型对照 ────────────────────────────────────
             with gr.Tab("⚖️ 模型对照"):
-                gr.Markdown("**同一道固定题，两边各答一遍 —— 有没有官方来源，你自己看。**")
+                gr.HTML('<div class="cr-section-intro"><b>同一道题，两套方法放在一起看。</b> 重点观察来源、编号和证据是否能被复核；当前页面只展示已录制的真实回放。</div>')
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
 
         # 事件绑定（每页签自足，互不干扰）
