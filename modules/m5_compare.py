@@ -21,7 +21,11 @@ def _records(category, market):
     if not res.get("ok"):
         return res, []
     kept, dropped = verify.filter_rows(res["primary"] + res["cross"])
-    return res, kept
+    pending_audit = sum(
+        1 for row in (res["primary"] + res["cross"])
+        if (row.get("核对状态") or "").strip() != "已核对"
+    )
+    return res, kept, pending_audit
 
 
 def _key(row):
@@ -71,9 +75,12 @@ def query(category="儿童玩具", markets=None):
 
     by_market = {}
     for market in markets:
-        res, rows = _records(category, market)
-        by_market[market] = {"市场": market, "记录": rows, "数量": len(rows),
-                             "状态": res.get("ok", False)}
+        res, rows, pending_audit = _records(category, market)
+        by_market[market] = {
+            "市场": market, "记录": rows, "数量": len(rows),
+            "待核对": pending_audit,
+            "状态": res.get("ok", False),
+        }
 
     key_sets = {m: {_key(r) for r in d["记录"] if _key(r)} for m, d in by_market.items()}
     shared_keys = set.intersection(*key_sets.values()) if key_sets else set()
@@ -90,7 +97,8 @@ def query(category="儿童玩具", markets=None):
     total = sum(d["数量"] for d in by_market.values())
     if total == 0:
         m5_status = snapshot.MODULE_EMPTY
-    elif any(not d["状态"] for d in by_market.values()):
+    elif (any(not d["状态"] for d in by_market.values())
+          or any(d["待核对"] for d in by_market.values())):
         m5_status = snapshot.MODULE_PARTIAL
     else:
         m5_status = snapshot.MODULE_READY

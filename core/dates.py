@@ -61,8 +61,9 @@ TYPE_MEANING = {
 WINDOW_OPTIONS = {"近 12 个月": 12, "近 6 个月": 6}
 DEFAULT_WINDOW = "近 12 个月"
 
-# 未来事件（过渡期）的展示上限，避免把十年后的日期堆上来
-UPCOMING_MONTHS = 60
+# 未来事件不设隐式时间上限；已公布的远期节点也必须可核验展示。
+# 保留名称兼容旧调用方，过滤逻辑不再使用该值。
+UPCOMING_MONTHS = None
 
 # ── 备注解析正则（均已用 86 条语料逐条验证命中）──────────────────
 _RE_EU_DATES = re.compile(
@@ -236,10 +237,15 @@ def _extract_events_uncached(row):
 def _row_fingerprint(row):
     """语料行的内容指纹（只取影响事件抽取的字段）。
 
-    缓存键刻意包含「备注／问题」：题注里藏着生效/适用日期、取代条数、
-    多日期告警等全部日期线索，漏了它就会在备注更新后继续用旧事件。
+    缓存键包含所有会进入事件输出的法规身份、分类与日期字段；题注里藏着
+    生效/适用日期、取代条数、多日期告警等全部日期线索，漏了它就会在备注
+    更新后继续用旧事件。
     """
     parts = (
+        row.get("CELEX号", ""),
+        row.get("官方编号", ""),
+        row.get("法规中文名", ""),
+        row.get("类目", ""),
         row.get("机构", ""),
         row.get("生效日期", ""),
         row.get("最新修订日期", ""),
@@ -284,19 +290,22 @@ def collect_events(rows, months=None, today=None, include_upcoming=True):
     """
     today = today or date.today()
 
-    all_events = []
+    extracted = []
     for r in rows:
-        all_events.extend(extract_events(r))
-    all_events.sort(key=lambda e: (e["date_obj"], TYPE_ORDER.index(e["事件类型"])),
-                    reverse=True)
+        extracted.extend(extract_events(r))
+    extracted.sort(key=lambda e: (e["date_obj"], TYPE_ORDER.index(e["事件类型"])),
+                   reverse=True)
+
+    # 首次收录只是官方数据库记录，不是法律事件；单独返回供参考，
+    # 不进入 M2 的法律时间线、窗口统计或未来节点。
+    reference_events = [e for e in extracted if not e["官方确认"]]
+    all_events = [e for e in extracted if e["官方确认"]]
 
     if months is None:
         recent, upcoming = all_events, []
     else:
         recent = [e for e in all_events if in_window(e["date_obj"], months, today)]
-        upcoming = [e for e in all_events
-                    if e["date_obj"] > today
-                    and (e["date_obj"] - today).days <= UPCOMING_MONTHS * 31]
+        upcoming = [e for e in all_events if e["date_obj"] > today]
 
     if not include_upcoming:
         upcoming = []
@@ -306,6 +315,7 @@ def collect_events(rows, months=None, today=None, include_upcoming=True):
         "近窗内": recent,
         "即将发生": upcoming,
         "全部": all_events,
+        "参考事件": reference_events,
         "window": months,
         "today": today,
     }

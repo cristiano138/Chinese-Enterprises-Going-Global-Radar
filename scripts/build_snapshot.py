@@ -43,6 +43,9 @@ def main() -> int:
         "duplicate_keys": quality["duplicate_keys"],
         "markets": {labels.get(k, k): v for k, v in quality["markets"].items()},
         "status_distribution": quality["status_distribution"],
+        "audit_status_distribution": quality.get("audit_status_distribution", {}),
+        "pending_audit_rows": quality.get("pending_audit_rows", []),
+        "release_eligible": quality.get("release_eligible", False),
         "source_file": os.path.relpath(SOURCE, PROJECT),
     }
     with open(SNAPSHOT, "w", encoding="utf-8") as f:

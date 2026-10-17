@@ -32,6 +32,7 @@ PRD 关键约束：
 """
 
 import csv
+import hashlib
 import io
 import os
 import re
@@ -123,8 +124,16 @@ def query(category, market, use_llm=True, today=None):
                                           m3_status=snapshot.MODULE_ERROR)}
 
     # ── ⑤ 引用对齐先过（红线优先于润色）────────────────────
-    kept, drop = verify.filter_rows(res["primary"] + res["cross"])
+    # M3 是可执行清单：只允许已经人工核对的语料进入动作层；待核对记录
+    # 仍可在 M1/M5/M6 作为候选展示，但不能被导出成上线依据。
+    kept, drop = verify.filter_rows(
+        res["primary"] + res["cross"], require_audited=True
+    )
     dropped = [(core_actions.row_key(r), why) for r, why in drop]
+    pending_audit_count = sum(
+        1 for r in (res["primary"] + res["cross"])
+        if (r.get("核对状态") or "").strip() != "已核对"
+    )
 
     # ── ③ 动作候选抽取（确定性）───────────────────────────
     cands, skipped = core_actions.collect(kept, today=today)
@@ -142,7 +151,7 @@ def query(category, market, use_llm=True, today=None):
             for it, why in rejected:
                 dropped.append((it.get("key"), why))
 
-    for index, c in enumerate(cands, 1):
+    for c in cands:
         new_text = (rewritten.get(c["key"]) or "").strip()
         if new_text:
             c["动作"] = new_text
@@ -150,11 +159,10 @@ def query(category, market, use_llm=True, today=None):
         else:
             c["动作来源"] = "规则抽取"
         c["动作"] = c["动作"].strip()
-        # 稳定标识：勾选/导出都按它走，不按动作文本。
-        # 动作文本可能重复（两条法规的备注要点相同，或模型把两条改写成同一句），
-        # 按文本匹配会把没选中的那条一起导出 —— 而参数名一直叫 selected_action_ids，
-        # 语义本来就该是「标识」。
-        c["action_id"] = f"{index:03d}-{c['key']}"
+        # 标识依据业务字段生成，不随候选排序或展示序号变化。
+        identity = "|".join((c.get("市场", ""), c.get("类目", ""),
+                             c.get("key", ""), c.get("动作类型", "")))
+        c["action_id"] = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:20]
 
     grouped = core_actions.group_by_type(cands)
 
@@ -197,6 +205,7 @@ def query(category, market, use_llm=True, today=None):
             "涉及法规数": len({c["官方编号"] for c in cands}),
             "未产出条数": len(skipped),
             "候选法规条数": len(kept),
+            "待核对法规条数": pending_audit_count,
             "紧迫度分布": urgency_count,
         },
         "header": snapshot.header(res["category"], res["market"],
@@ -241,6 +250,8 @@ def export_csv(result, selected_action_ids=None):
             if (a.get("action_id") in chosen) or str(i) in chosen
             or (a.get("动作") in chosen)
         ]
+        if not selected:
+            raise RuntimeError("所选待办ID无匹配项，未生成文件。")
 
     buf = io.StringIO(newline="")
     w = csv.writer(buf, quoting=csv.QUOTE_ALL)
@@ -257,12 +268,10 @@ def export_csv(result, selected_action_ids=None):
         if idx not in selected:
             continue
         action_text = action["动作"]
-        conditions = "；".join(filter(None, [
-            action.get("动作类型") and f"动作类型：{action['动作类型']}",
-            action.get("类型含义") and f"含义：{action['类型含义']}",
-            action.get("期限说明") and f"时限：{action['期限说明']}",
-            ("条件待确认" if action.get("动作来源") == "规则抽取" else ""),
-        ]))
+        conditions = (action.get("适用条件") or "").strip()
+        if not conditions:
+            conditions = msg_conditions_pending()
+        conditions += "；人工确认：商品属性、经营者身份及条款适用范围"
         source_clause = action["官方编号"] or "（未标注）"
         # 「来源条款」列填中文要点时必须带来源标注：底表没收录条文正文，
         # 这个摘要是 AI 预生成的一句话中文说明，不能让它看起来像条文原文。

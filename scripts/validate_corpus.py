@@ -14,6 +14,7 @@ SOURCE = os.path.join(DATA, "语料核对表_完整版.csv")
 REPORT = os.path.join(DATA, "data_quality_report.json")
 REQUIRED = {"类目", "机构", "法规中文名", "官方编号", "官方链接", "现行效力"}
 VALID_STATUS = {"现行有效", "现行有效（持续修订）", "未来生效", "已废止", "待确认", ""}
+AUDIT_STATUS = {"已核对", "待核对", "需复核", ""}
 
 
 def main() -> int:
@@ -35,6 +36,7 @@ def main() -> int:
     invalid_rows = []
     missing_urls = []
     invalid_status = []
+    invalid_audit_status = []
     for index, row in enumerate(rows, 2):
         problems = []
         if not row.get("官方编号"):
@@ -47,6 +49,10 @@ def main() -> int:
         if row.get("现行效力") not in VALID_STATUS:
             invalid_status.append({"row": index, "value": row.get("现行效力", "")})
             problems.append("效力状态不在允许集合")
+        audit_status = row.get("核对状态", "")
+        if audit_status not in AUDIT_STATUS:
+            invalid_audit_status.append({"row": index, "value": audit_status})
+            problems.append("核对状态不在允许集合")
         if problems:
             invalid_rows.append({"row": index, "problems": problems})
 
@@ -54,6 +60,13 @@ def main() -> int:
         errors.append(f"发现字段错误 {len(invalid_rows)} 行")
     if invalid_status:
         errors.append(f"发现非法效力状态 {len(invalid_status)} 个")
+    if invalid_audit_status:
+        errors.append(f"发现非法核对状态 {len(invalid_audit_status)} 个")
+    pending_audit = [index for index, row in enumerate(rows, 2)
+                     if row.get("核对状态") != "已核对"]
+    if pending_audit:
+        warnings.append(
+            f"有 {len(pending_audit)} 行尚未人工核对；这些记录不得作为已发布合规依据")
     if any(not row.get("链接可打开") for row in rows):
         warnings.append("部分链接没有自动核验结果；这不等同于链接失效")
 
@@ -69,7 +82,13 @@ def main() -> int:
         "status_distribution": dict(sorted(status_counts.items())),
         "invalid_rows": invalid_rows,
         "missing_urls": missing_urls,
+        "audit_status_distribution": dict(sorted(
+            Counter(row.get("核对状态", "") or "未填写" for row in rows).items()
+        )),
+        "pending_audit_rows": pending_audit,
+        "invalid_audit_status": invalid_audit_status,
         "warnings": warnings,
+        "release_eligible": not errors and not pending_audit,
         "valid": not errors,
         "errors": errors,
     }

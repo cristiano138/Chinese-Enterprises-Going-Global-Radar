@@ -16,6 +16,7 @@
 """
 
 import re
+from urllib.parse import urlsplit
 
 # 允许的官方域（README「什么算官方来源」）：
 #   · 欧盟：eur-lex.europa.eu（原文）、data.europa.eu（ELI 永久标识）
@@ -35,14 +36,25 @@ _URL_RE = re.compile(r"https?://[^\s<>\)\]\"']+")
 
 
 def is_official_url(url):
-    """判断 URL 是否落在官方域名白名单内。"""
+    """判断 URL 是否落在官方域名白名单内。
+
+    使用标准 URL 解析，拒绝用户名/密码、异常端口和非 HTTP(S) 协议，避免
+    ``https://ecfr.gov@attacker.example`` 这类字符串切分绕过白名单。
+    """
     if not url:
         return False
-    u = url.strip().lower()
-    if not u.startswith("http://") and not u.startswith("https://"):
+    raw = url.strip()
+    try:
+        parsed = urlsplit(raw)
+        if parsed.scheme.lower() not in {"http", "https"}:
+            return False
+        if parsed.username or parsed.password or not parsed.hostname:
+            return False
+        if parsed.port is not None and parsed.port not in {80, 443}:
+            return False
+        host = parsed.hostname.lower().rstrip(".")
+    except (ValueError, UnicodeError):
         return False
-    # 去掉协议部分，取主机名
-    host = u.split("//", 1)[1].split("/", 1)[0].split(":", 1)[0]
     return any(host == h or host.endswith("." + h) for h in OFFICIAL_HOSTS)
 
 
@@ -73,11 +85,17 @@ def accept(row):
     return True, ""
 
 
-def filter_rows(rows):
-    """批量过滤：返回 (通过的条目, 被丢弃的条目+原因)。"""
+def filter_rows(rows, require_audited=False):
+    """批量过滤：返回 (通过的条目, 被丢弃的条目+原因)。
+
+    ``require_audited=True`` 是可执行待办和发布门禁使用的严格模式；结构化
+    地图可以保留「待核对」记录，但必须由上层显示为部分状态，不能冒充已核验。
+    """
     kept, dropped = [], []
     for r in rows:
         ok, why = accept(r)
+        if ok and require_audited and (r.get("核对状态") or "").strip() != "已核对":
+            ok, why = False, "语料尚未人工核对，不进入可执行发布清单"
         if ok:
             kept.append(r)
         else:
@@ -115,9 +133,9 @@ def align_output(items, corpus_keys):
 
 
 def rate(aligned, total):
-    """回挂率：通过校验的条目 / LLM 产出的条目。"""
+    """回挂率：通过校验的条目 / LLM 产出的条目；无分母时返回 None。"""
     if total <= 0:
-        return 1.0
+        return None
     return len(aligned) / total
 
 

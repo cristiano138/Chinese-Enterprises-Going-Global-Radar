@@ -870,9 +870,13 @@ def render_m6(result):
              f'{result["总条数"]} 条区域法规</span></div>']
     for region in result["区域"]:
         body = "".join(_region_record_card(r, i + 1) for i, r in enumerate(region["法规"]))
-        parts.append(_group(f'{region["市场"]}法规清单', region["条数"], body, open_=True,
-                            hint=f'已核对链接 {region["条数"] - region["被拦截"]} 条'))
-    parts.append('<div class="cr-note">区域分别计数；同一横切法规在不同区域会分别展示。所有条目均经过官方链接白名单校验。</div>')
+        parts.append(_group(
+            f'{region["市场"]}法规清单', region["条数"], body, open_=True,
+            hint=(f'官方链接通过 {region["条数"]} 条；'
+                  f'待核对 {region.get("待核对", 0)} 条；'
+                  f'被拦截 {region["被拦截"]} 条')))
+    parts.append('<div class="cr-note">区域分别计数；同一横切法规在不同区域会分别展示。'
+                 '“待核对”表示尚未完成人工核验，不等同于已发布依据。</div>')
     parts.append(_footer_block())
     parts.append('</div>')
     return "".join(parts)
@@ -1072,7 +1076,7 @@ def _sidebar_html():
         '<div class="cr-side-item"><span>🚀</span><span>OPC 上线准备</span></div>'
         '<div class="cr-side-label">当前数据</div>'
         f'<div class="cr-side-foot">覆盖 {"、".join(corpus.SUPPORTED_MARKETS.keys())}'
-        f'<br>{snapshot.CORPUS_ROWS_TOTAL} 条已核对语料<br>每条结论附官方链接</div>'
+        f'<br>{snapshot.CORPUS_ROWS_TOTAL} 条候选语料（按核对状态分层）<br>每条结论附官方链接</div>'
     )
 
 

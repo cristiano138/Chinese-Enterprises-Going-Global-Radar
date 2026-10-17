@@ -175,7 +175,8 @@ def query(category, market, window=DEFAULT_WINDOW, use_llm=True, today=None):
     recent_recs = _recs(recent)
     upcoming_recs = _recs(upcoming)
 
-    n_reg = len({r["官方编号"] or r["法规中文名"] for r in recent_recs})
+    n_reg = len({r["官方编号"] or r["法规中文名"]
+                 for r in recent_recs + upcoming_recs})
 
     # M2 模块状态：empty / partial / ready
     total = len(recent_recs) + len(upcoming_recs)

@@ -132,6 +132,18 @@ def main():
     check("真实编号 32025R2509 通过", len(aligned) == 1, f"aligned={aligned}")
     print()
 
+    # ── 5b. 官方链接解析安全 ─────────────────────────────────
+    print("【5b】官方链接解析：拒绝用户信息与异常端口绕过")
+    check("用户信息绕过链接被拒绝",
+          not verify.is_official_url("https://ecfr.gov:443@attacker.example/"))
+    check("非标准端口链接被拒绝",
+          not verify.is_official_url("https://ecfr.gov:8443/title/1"))
+    check("官方 HTTPS 链接通过",
+          verify.is_official_url("https://www.ecfr.gov/current/title-16"))
+    check("空分母回挂率为未测",
+          verify.rate([], 0) is None)
+    print()
+
     # ── 6. 降级：模型不可用仍输出完整清单 ────────────────────
     print("【6】降级：模型不可用时仍输出完整清单")
     res = m1_map.query("电子电器", "美国", use_llm=False)

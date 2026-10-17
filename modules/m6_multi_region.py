@@ -46,13 +46,22 @@ def query(category="儿童玩具", markets=None):
     regions = []
     for market in markets:
         res = corpus.search(category, market, include_cross_cutting=True)
-        kept, dropped = verify.filter_rows(res.get("primary", []) + res.get("cross", []))
-        regions.append({"市场": market, "法规": kept, "条数": len(kept),
-                        "被拦截": len(dropped), "状态": res.get("ok", False)})
+        source_rows = res.get("primary", []) + res.get("cross", [])
+        kept, dropped = verify.filter_rows(source_rows)
+        pending_audit = sum(
+            1 for row in source_rows
+            if (row.get("核对状态") or "").strip() != "已核对"
+        )
+        regions.append({
+            "市场": market, "法规": kept, "条数": len(kept),
+            "被拦截": len(dropped), "待核对": pending_audit,
+            "状态": res.get("ok", False),
+        })
     total = sum(r["条数"] for r in regions)
     if total == 0:
         m6_status = snapshot.MODULE_EMPTY
-    elif any(not r["状态"] for r in regions):
+    elif (any(not r["状态"] for r in regions)
+          or any(r["待核对"] for r in regions)):
         m6_status = snapshot.MODULE_PARTIAL
     else:
         m6_status = snapshot.MODULE_READY

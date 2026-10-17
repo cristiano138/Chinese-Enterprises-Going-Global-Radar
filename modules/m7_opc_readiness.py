@@ -150,9 +150,12 @@ def query(category="儿童玩具", markets=None, today=None):
         for action in result.get("动作", []):
             phase = TYPE_TO_PHASE.get(action.get("动作类型"), "选品与范围")
             grouped[phase].append(_task(action, phase))
+        pending_audit = result.get("stats", {}).get("待核对法规条数", 0)
         regions.append({
             "市场": market,
-            "状态": "ready" if not result.get("未产出") else "partial",
+            "状态": ("partial" if result.get("未产出") or pending_audit
+                      else "ready"),
+            "待核对": pending_audit,
             "阶段": [{"名称": phase, "动作": grouped[phase], "条数": len(grouped[phase])}
                      for phase in PHASES if grouped[phase]],
             "动作": [item for items in grouped.values() for item in items],
@@ -178,7 +181,7 @@ def query(category="儿童玩具", markets=None, today=None):
         "header": snapshot.header(
             category, " / ".join(markets),
             modules={"M7": (snapshot.MODULE_READY
-                            if any(r.get("状态") == "ready" for r in regions)
+                            if regions and all(r.get("状态") == "ready" for r in regions)
                             else snapshot.MODULE_PARTIAL)}),
     }
 
