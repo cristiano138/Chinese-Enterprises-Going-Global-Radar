@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import sys
+import tempfile
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
@@ -107,11 +108,36 @@ def _cache_get(prompt):
 
 
 def _cache_put(prompt, text):
+    """原子写入缓存文件。
+
+    为什么不能直接 open(..., "w")：Gradio 是多线程处理的，两个请求同时写同一
+    个 prompt 会交错，留下半截 JSON；之后每次读取都解析失败，这个 prompt 就
+    永久缓存未命中（白花钱调模型）。写临时文件再 os.replace 是原子替换，
+    读者要么看到旧文件、要么看到完整新文件，不存在中间态。
+    """
+    path = _cache_path(prompt)
+    fd = None
+    tmp = None
     try:
-        with open(_cache_path(prompt), "w", encoding="utf-8") as f:
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(path), suffix=".tmp")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            fd = None                       # 已交给 fdopen 管理，勿重复关闭
             json.dump({"text": text}, f, ensure_ascii=False)
+        os.replace(tmp, path)
+        tmp = None
     except Exception:
         pass
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)
+            except OSError:
+                pass
+        if tmp is not None and os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
 
 
 def _call_api(prompt, max_tokens, temperature, thinking=True):

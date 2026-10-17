@@ -25,8 +25,8 @@ PRD 附录 D4：
 import json
 import os
 import sys
-from datetime import date, datetime
-from typing import Dict, List, Optional
+from datetime import date
+from typing import List, Optional
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
@@ -78,22 +78,6 @@ def load_replays():
             except json.JSONDecodeError:
                 continue
     return out
-
-
-def append_replay(record: Dict) -> str:
-    """追加一条历史回放记录（供人工录制或测试时使用）。
-    record 必填字段：
-        timestamp, question, observation_date, snapshot_version,
-        generic_answer, tool_answer, generic_model_name,
-        tool_conditions, source_coverage, evidence_support, verdict
-    """
-    path = os.path.join(PROJECT, "data", "m4_replays.jsonl")
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    if "timestamp" not in record:
-        record["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
-    with open(path, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
-    return path
 
 
 def query(category="儿童玩具", market="欧盟",

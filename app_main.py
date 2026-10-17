@@ -67,7 +67,26 @@ _CSS = """
       --cr-serif:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
 body, .gradio-container { background: var(--cr-bg) !important; }
 .gradio-container { max-width: 1440px !important; padding: 18px 24px 42px 264px !important; }
+/* 窄屏留白为什么不用 @media：
+   Gradio 6 会把 css 里 @media 内的选择器统一加作用域前缀
+   `.gradio-container.gradio-container-6-30-0 .contain `。侧栏这类在
+   main.contain 内部的元素仍能命中，但 .gradio-container 本身在 .contain
+   之外，前缀后永远匹配不到 —— 断点里的 padding-left 全部变成死规则，
+   窄屏因而一直保留 264px 左留白，内容只剩 132px 并被推出视口。
+   所以这里改由 body 上的档位类驱动（_NAV_JS 用 matchMedia 维护），
+   普通规则不加前缀，能正常覆盖。 */
+body.cr-narrow .gradio-container { padding: 12px 12px 28px 12px !important; }
+body.cr-mid .gradio-container { padding-left: 220px !important; }
+/* 主内容列在窄档还要显式 width:100%：Gradio 的 main.contain 按内容定宽
+   （1400 下 980px、420 下 420px），不铺满可用宽度，窄屏右侧因此溢出 32px。
+   只在窄档覆盖，桌面布局保持原样。 */
+body.cr-narrow .gradio-container main.contain,
+body.cr-mid .gradio-container main.contain { width: 100% !important; }
 .gradio-container .contain { max-width: 1180px !important; margin: 0 auto !important; }
+/* main.contain 是 flex item，默认 min-width:auto 会把自身 min-content 当宽度下限，
+   窄屏时因此撑破父级内容盒（实测 420 视口下仍占 420px，右缘溢出 32px）。
+   显式置 0 才真正可收缩。 */
+.gradio-container main.contain { min-width: 0 !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
 .gradio-container button { border-radius:10px !important; font-weight:600 !important; }
@@ -91,7 +110,9 @@ button.cr-side-item:focus-visible { outline:2px solid #d9b25a; outline-offset:1p
 .cr-side-item.active { color:#765514; background:#fff1bf; font-weight:700; }
 .cr-side-item span:first-child { width:20px; text-align:center; }
 .cr-side-foot { margin:18px 4px 2px; padding:12px 10px; border-radius:11px; background:#fff7dc; color:var(--cr-ink2); font-size:11px; line-height:1.65; }
-.cr-main { min-width:0; }
+/* 窄屏守卫之一：任何一段内容都不允许把自身 min-content 宽度传导给外层
+   grid/flex。否则会出现「main 被撑到 953px、内容被裁且无法横滚」的整页塌陷。 */
+.cr-shell, .cr-main, .cr-wrap { min-width:0; max-width:100%; }
 .cr-band { position:relative; overflow:hidden; border-radius:16px; background:#fffdf7;
            color:var(--cr-ink); border:1px solid var(--cr-line); padding:22px 26px 20px; box-shadow:0 8px 24px rgba(137,105,35,.06); }
 .cr-band::after { content:""; position:absolute; width:260px; height:260px; right:-70px; top:-150px;
@@ -112,9 +133,9 @@ button.cr-side-item:focus-visible { outline:2px solid #d9b25a; outline-offset:1p
 .cr-stat-v { color:var(--cr-ink); font-size:22px; font-weight:800; line-height:1; }
 .cr-stat-s { margin-top:7px; color:var(--cr-ink2); font-size:11px; }
 .cr-panel { background:#fffdf7; border:1px solid var(--cr-line); border-radius:15px; padding:18px; box-shadow:0 6px 20px rgba(137,105,35,.05); }
-@media (max-width:1050px) { .gradio-container { padding-left:220px !important; } .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
-@media (max-width:760px) { .gradio-container { padding-left:12px !important; } .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; max-width:calc(100vw - 24px); padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:640px) { .gradio-container { padding:12px 10px 28px !important; } .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
+@media (max-width:1050px) { .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
+@media (max-width:760px) { .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; max-width:calc(100vw - 24px); padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
 /* ── 结果区元数据条 ── */
 .cr-header { background:#f9fbff; border:1px solid var(--cr-line); border-radius:12px;
              padding: 12px 14px; font-size: 12.5px; color: var(--cr-ink2);
@@ -206,10 +227,31 @@ button.cr-side-item:focus-visible { outline:2px solid #d9b25a; outline-offset:1p
 .cr-g-hint { font-size: 12px; font-weight: 400; color: var(--cr-ink3); }
 .cr-group-body { padding: 2px 16px 14px;
                  content-visibility: auto; contain-intrinsic-size: auto 600px; }
+/* ── 标签栏去留：保留 ──
+   侧栏与标签栏是同一份状态的两个入口（高亮由 _NAV_JS 双向同步）。
+   曾尝试 display:none 隐藏标签栏，实测反而破坏 Gradio 6 的标签 DOM 契约：
+   容器宽度归零后，Gradio 把放不下的标签全部搬进 .overflow-dropdown，
+   button[role="tab"] 只剩当前项，侧栏导航随之全失效。故保留标签栏，
+   窄屏交给 Gradio 原生 overflow 折叠（1 个可见 + 「更多」下拉）。
+   下面三行是窄屏塌陷的第一处修复：切断 min-content 逐层放大，
+   否则 8 个按钮的宽度会一路顶上去，把 main 撑到 953px 裁掉内容。
+   另两处（左留白 264px、main 按内容定宽）见文件顶部注释。 */
+.gradio-container .tabs,
+.gradio-container .tab-wrapper { min-width:0; max-width:100%; }
+.gradio-container .tabitem { min-width:0; max-width:100%; }
+/* Gradio 6 的标签栏是 .tab-container[role="tablist"]；
+   此前按 Gradio 4/5 写的 .tab-nav / .tab-nav button 匹配 0 个元素，
+   品牌化样式其实一直没生效，这里改挂到真实类名上。 */
 .gradio-container .tabs { margin-top:18px; }
-.gradio-container .tab-nav { gap:6px; border-bottom:1px solid var(--cr-line); padding:0 4px; }
-.gradio-container .tab-nav button { border:0 !important; background:transparent !important; color:var(--cr-ink2) !important; padding:12px 14px !important; border-radius:10px 10px 0 0 !important; }
-.gradio-container .tab-nav button.selected { color:var(--cr-brand) !important; background:var(--cr-brand-soft) !important; box-shadow:inset 0 -2px 0 var(--cr-brand); }
+.gradio-container .tab-container[role="tablist"] { gap:6px; padding:0 4px;
+  border-bottom:1px solid var(--cr-line); }
+.gradio-container .tab-container[role="tablist"] > button { border:0 !important;
+  background:transparent !important; color:var(--cr-ink2) !important;
+  padding:10px 14px !important; font-size:13px !important;
+  border-radius:10px 10px 0 0 !important; }
+.gradio-container .tab-container[role="tablist"] > button:hover { color:var(--cr-brand) !important; }
+.gradio-container .tab-container[role="tablist"] > button.selected { color:var(--cr-brand) !important;
+  background:var(--cr-brand-soft) !important; box-shadow:inset 0 -2px 0 var(--cr-brand); }
 .gradio-container .block { border-color:var(--cr-line) !important; }
 .cr-section-intro { color:var(--cr-ink2); font-size:14px; margin:10px 0 16px; line-height:1.7; }
 .cr-quick { display:flex; gap:10px; flex-wrap:wrap; margin:12px 0 18px; }
@@ -357,7 +399,7 @@ def _err_html(e):
 def _reject_html(reason, header_meta=None):
     head_html = ""
     if header_meta:
-        head_html = _header_block(header_meta)
+        head_html = snapshot.render_header_block(header_meta)
     return (
         f'<div class="cr-wrap">{head_html}<div class="cr-err">'
         f'<b>此输入不在本工具的支持范围内</b><br>{_e(reason)}<br><br>'
@@ -366,38 +408,6 @@ def _reject_html(reason, header_meta=None):
         f'<br><span style="color:#7a8192">本工具按「查到的官方数据」回答，'
         f'范围外的问题不做硬编答案。</span>'
         f'</div></div>'
-    )
-
-
-def _header_block(meta):
-    """顶部元数据条（10-16 瘦身：压成一行，覆盖范围/数据来源移除 ——
-    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。
-
-    模块名与状态中文名统一取自 core.snapshot（MODULE_NAMES / MODULE_CN），
-    不在 UI 层再维护一份映射 —— 否则新增模块时两处必然走偏。
-    """
-    if not meta:
-        return ""
-    mod = meta.get("模块状态", {})
-    mod_html = "　".join(
-        f'<span class="cr-mod cr-mod-{_attr(v)}">'
-        f'{_e(snapshot.MODULE_NAMES.get(k, k))}·{_e(snapshot.MODULE_CN.get(v, v))}</span>'
-        for k, v in mod.items()
-    )
-    notes_html = ""
-    if meta.get("附注"):
-        notes_html = (
-            f'<div class="cr-meta-notes">备注：{_e(meta["附注"])}</div>'
-        )
-    return (
-        '<div class="cr-header">'
-        f'<div class="cr-meta-line"><b>{_e(meta.get("查询条件", ""))}</b>'
-        f'　·　快照 {_e(meta.get("快照版本", ""))}'
-        f'　·　数据截止 {_e(meta.get("数据截止时间", ""))}'
-        f'　{mod_html}</div>'
-        f'{notes_html}'
-        f'<div class="cr-disclaimer">{_e(meta.get("免责声明", ""))}</div>'
-        '</div>'
     )
 
 
@@ -567,7 +577,7 @@ def render_m1(result):
             f'（每条附官方原文链接）</span></div>')
     note = _model_note(lm, bool(p and p[0].get("卖家提示")), "m1")
 
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}{head}{note}']
     if p:
         body = "".join(_m1_card(r, i) for i, r in enumerate(p, 1))
         parts.append(_group(
@@ -633,7 +643,7 @@ def render_m2(result):
     note = _model_note(lm, bool(result["近窗内"]
                                 and result["近窗内"][0]["摘要来源"] == "模型润色"), "m2")
 
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}{head}{note}']
 
     if result["近窗内"]:
         body = ('<div class="cr-tl">'
@@ -741,7 +751,7 @@ def render_m3(result):
     note = _model_note(lm, bool(result["动作"]
                                 and result["动作"][0]["动作来源"] == "模型改写"), "m3")
 
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}{note}']
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}{head}{note}']
 
     # 待确认事项（PRD D5-2）
     if result.get("待确认"):
@@ -800,7 +810,7 @@ def render_m4(result):
             '<span style="color:#7a8192;font-size:13px">'
             '通用大模型 vs 本工具 · 同一固定题干</span></div>')
 
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}{head}']
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}{head}']
     parts.append('<div class="cr-sec">固定题干</div>')
     parts.append(f'<div class="cr-empty" style="font-family:ui-monospace,Consolas,monospace;'
                  f'line-height:1.7">{_e(result["固定题干"])}</div>')
@@ -869,7 +879,7 @@ def render_m6(result):
     """
     if not result.get("ok"):
         return _reject_html(result.get("reason", "无法汇总"), result.get("header"))
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}'
              f'<div class="cr-head"><b>多区域法规汇总</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'{result["总条数"]} 条区域法规</span></div>']
@@ -890,7 +900,7 @@ def render_m6(result):
 def render_m5(result):
     if not result.get("ok"):
         return _reject_html(result.get("reason", "无法完成对比"), result.get("header"))
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}'
              f'<div class="cr-head"><b>区域差异对比</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'共同编号 {result["共同数量"]} 条</span></div>',
@@ -918,7 +928,7 @@ def render_m7(result):
     if not result.get("ok"):
         return _reject_html(result.get("reason", "无法生成上线准备度"),
                             result.get("header"))
-    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+    parts = [f'<div class="cr-wrap">{snapshot.render_header_block(result.get("header"))}'
              f'<div class="cr-head"><b>OPC 上线准备度</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'{result["总动作数"]} 项准备动作</span></div>',
@@ -1092,23 +1102,33 @@ NAV_ITEMS = (
 )
 
 # 侧栏点击 → 切换标签页；标签页被切换时反向同步高亮。
-# 纯前端实现：不产生服务端往返，且不依赖 Gradio 版本内部的 tab 实现细节，
-# 只依赖 role="tab" / aria-selected 这两个可访问性属性（它们是稳定契约）。
+# 纯前端实现：不产生服务端往返。主契约是可访问性属性 role="tab" / aria-selected；
+# 另需兜底 Gradio 的响应式折叠容器 .overflow-dropdown（见下面 findTab 注释）。
 _NAV_JS = r"""
 () => {
   const itemsSel = '.cr-side-item[data-tab]';
+  // Gradio 6 的标签栏是响应式的：放不下的标签会被折叠进 .overflow-dropdown，
+  // 此时 button[role="tab"] 里根本没有目标项（窄屏只剩 1 项）。若只查 tablist，
+  // 侧栏在窄屏 / 长标签场景下点了没反应 —— 所以按作用域逐层兜底查找。
+  const TAB_SCOPES = ['button[role="tab"]', '.overflow-dropdown button', '.tab-container button'];
+  const findTab = (key) => {
+    for (const sel of TAB_SCOPES) {
+      const hit = Array.from(document.querySelectorAll(sel))
+        .find(b => (b.textContent || '').includes(key));
+      if (hit) return hit;
+    }
+    return null;
+  };
   const sync = () => {
-    const tabs = Array.from(document.querySelectorAll('button[role="tab"]'));
-    const cur = tabs.find(b => b.getAttribute('aria-selected') === 'true')
-             || tabs.find(b => b.classList.contains('selected'));
-    const txt = cur ? cur.textContent.trim() : '';
+    const actives = Array.from(document.querySelectorAll(
+      'button[role="tab"][aria-selected="true"], button[role="tab"].selected'
+    ));
+    const txt = actives.map(b => b.textContent || '').join(' ');
     document.querySelectorAll(itemsSel).forEach(el => {
       const key = el.getAttribute('data-tab') || '';
-      el.classList.toggle('active', !!key && txt.includes(key));
+      el.classList.toggle('active', !!key && !!txt && txt.includes(key));
     });
   };
-  const findTab = (key) => Array.from(document.querySelectorAll('button[role="tab"]'))
-    .find(b => b.textContent.includes(key));
 
   if (!window.__crNavBound) {
     window.__crNavBound = true;
@@ -1145,15 +1165,42 @@ _NAV_JS = r"""
     }
     return !!list && document.querySelectorAll(itemsSel).length > 0;
   };
+  // 标签栏保留，侧栏与它是同一状态的两个入口；找不到 tablist 就静默不绑定，
+  // 标签栏本身仍可用，不额外引入失败分支。
   let tries = 0;
   const timer = setInterval(() => {
-    if (attach() || ++tries > 80) {
+    let ok = false;
+    try {
+      ok = attach();
+    } catch (e) {
+      ok = false;
+    }
+    if (ok || ++tries > 80) {
       clearInterval(timer);
-      sync();
+      try {
+        sync();
+      } catch (e) { /* 高亮失败不影响切换 */ }
     }
   }, 150);
-  attach();
-  sync();
+  try {
+    attach();
+    sync();
+  } catch (e) { /* 首帧未挂载，交给上面的定时器重试 */ }
+
+  // 宽度档位：Gradio 6 会给 @media 内的选择器加 .contain 前缀，
+  // 导致媒体查询无法命中 .gradio-container（见 CSS 注释），
+  // 窄屏留白改由 body 档位类 + 非媒体查询规则接管。
+  if (!window.__crBpBound) {
+    window.__crBpBound = true;
+    const applyBp = () => {
+      const w = window.innerWidth;
+      document.body.classList.toggle('cr-narrow', w <= 760);
+      document.body.classList.toggle('cr-mid', w > 760 && w <= 1050);
+    };
+    applyBp();
+    window.addEventListener('resize', applyBp, { passive: true });
+    window.addEventListener('orientationchange', applyBp, { passive: true });
+  }
 }
 """
 

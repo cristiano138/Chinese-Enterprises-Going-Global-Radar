@@ -15,7 +15,6 @@
 本模块是**纯确定性代码**，不联网、不调模型。
 """
 
-import re
 from urllib.parse import urlsplit
 
 # 允许的官方域（README「什么算官方来源」）：
@@ -31,8 +30,6 @@ OFFICIAL_HOSTS = (
     "cpsc.gov",
     "ftc.gov",
 )
-
-_URL_RE = re.compile(r"https?://[^\s<>\)\]\"']+")
 
 
 def is_official_url(url):
@@ -137,13 +134,3 @@ def rate(aligned, total):
     if total <= 0:
         return None
     return len(aligned) / total
-
-
-def find_invented_urls(text, allowed_urls):
-    """扫描自由文本里出现的 URL，标出**未被语料库授权**的那些。
-
-    用于自检与演示：直观看到「LLM 有没有自己编链接」。
-    """
-    found = _URL_RE.findall(text or "")
-    invented = [u for u in found if u not in allowed_urls]
-    return found, invented

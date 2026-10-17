@@ -252,12 +252,6 @@ def _sort_rows(rows):
     return sorted(rows, key=lambda r: (_validity_rank(r), _date_rank(r)))
 
 
-def row_label(row):
-    """给一条法规生成人类可读标签，用于日志/自检。"""
-    key = row.get("CELEX号") or row.get("官方编号") or "（无编号）"
-    return f"{row.get('机构','')} {key} {row.get('法规中文名','')}"
-
-
 if __name__ == "__main__":
     s = stats()
     print("=" * 66)

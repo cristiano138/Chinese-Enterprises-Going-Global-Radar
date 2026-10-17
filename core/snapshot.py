@@ -13,6 +13,7 @@
 """
 from __future__ import annotations
 
+import html
 import json
 import os
 from datetime import date, datetime, timezone, timedelta
@@ -115,6 +116,14 @@ MODULE_NAMES = {
     "M7": "OPC 上线准备",
 }
 
+# 合法状态集合：渲染时用它做白名单，避免异常值被拼进 class 属性
+_MODULE_ALL = frozenset(MODULE_CN)
+
+
+def _esc(value) -> str:
+    """HTML 转义（None 视为空串）。"""
+    return html.escape("" if value is None else str(value), quote=True)
+
 # 覆盖范围说明（顶部展示）
 COVERAGE_SCOPE = (
     "本期支持欧盟、美国；"
@@ -175,42 +184,39 @@ def header(category: str, market: str,
 
 
 def render_header_block(meta: Dict[str, object]) -> str:
-    """把元数据渲染成 HTML 顶部条（被 M1/M2/M3 复用）。"""
-    mod = meta.get("模块状态", {})
-    mod_html = "　".join(
-        f"<span class='cr-mod cr-mod-{v}'>"
-        f"{MODULE_NAMES.get(k, k)}·{MODULE_CN.get(v, v)}</span>"
-        for k, v in mod.items()
-    )
+    """把元数据渲染成 HTML 顶部条（全站唯一实现）。
+
+    10-16 瘦身：覆盖范围 / 数据来源已移除 —— 它们是静态信息，与单次查询无关，
+    属冗余内容；免责声明保留（红线）。原先 app_main 里另有一份同功能实现，
+    两套并存必然漂移，现在统一到这里，UI 层只负责调用。
+
+    所有动态值统一走 html.escape：语料里含 ``&`` ``<`` 等字符，未转义会破坏结构。
+    """
+    if not meta:
+        return ""
+    mod = meta.get("模块状态", {}) or {}
+    parts = []
+    for key, value in mod.items():
+        # 状态值只可能是枚举之一；异常值降级为「未查询」，不把原始串拼进 class。
+        status = value if value in _MODULE_ALL else MODULE_NA
+        parts.append(
+            f'<span class="cr-mod cr-mod-{status}">'
+            f'{_esc(MODULE_NAMES.get(key, key))}·{_esc(MODULE_CN.get(status, status))}'
+            f'</span>'
+        )
+    mod_html = "　".join(parts)
 
     notes_html = ""
     if meta.get("附注"):
-        notes_html = (
-            f"<div class='cr-meta-notes'>备注：{meta['附注']}</div>"
-        )
+        notes_html = f'<div class="cr-meta-notes">备注：{_esc(meta["附注"])}</div>'
 
     return (
-        "<div class='cr-header'>"
-        f"<div class='cr-meta-line'><b>查询条件</b>：{meta.get('查询条件', '')}　"
-        f"<b>查询日期</b>：{meta.get('查询日期', '')}　"
-        f"<b>快照版本</b>：{meta.get('快照版本', '')}　"
-        f"<b>数据截止时间</b>：{meta.get('数据截止时间', '')}</div>"
-        f"<div class='cr-meta-line'>模块状态：{mod_html}</div>"
-        f"<div class='cr-meta-line cr-meta-scope'><b>覆盖范围</b>：{meta.get('覆盖范围', '')}</div>"
-        f"<div class='cr-meta-line'><b>数据来源</b>：{meta.get('数据来源', '')}</div>"
-        f"{notes_html}"
-        f"<div class='cr-disclaimer'>{meta.get('免责声明', '')}</div>"
-        "</div>"
+        '<div class="cr-header">'
+        f'<div class="cr-meta-line"><b>{_esc(meta.get("查询条件", ""))}</b>'
+        f'　·　快照 {_esc(meta.get("快照版本", ""))}'
+        f'　·　数据截止 {_esc(meta.get("数据截止时间", ""))}'
+        f'　{mod_html}</div>'
+        f'{notes_html}'
+        f'<div class="cr-disclaimer">{_esc(meta.get("免责声明", ""))}</div>'
+        '</div>'
     )
-
-
-def module_status_for(count_ok: int, count_pending: int = 0,
-                      out_of_scope: bool = False) -> str:
-    """根据条目数判定模块状态。"""
-    if out_of_scope:
-        return MODULE_EMPTY
-    if count_ok == 0:
-        return MODULE_EMPTY
-    if count_pending > 0:
-        return MODULE_PARTIAL
-    return MODULE_READY

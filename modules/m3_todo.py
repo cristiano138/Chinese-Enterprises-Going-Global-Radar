@@ -297,12 +297,6 @@ def export_csv(result, selected_action_ids=None):
     return csv_filename(cat, mkt, today), raw
 
 
-def csv_filename_for(result, today=None):
-    """只生成文件名（便于前端展示）。"""
-    return csv_filename(result.get("品类", ""), result.get("市场", ""),
-                        today or result.get("today") or date.today())
-
-
 # ── 渲染成文本（供 CLI 与自检使用）─────────────────────────────
 def render_text(result):
     lines = []
