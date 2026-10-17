@@ -97,8 +97,18 @@ _fetch_us = _load_module(
 
 
 # ── 校验/防护层（已知脏数据模式：占位日期、格式错误的编号） ──────────────
-CELEX_RE = re.compile(r"^\d{8}[RLD]\d{4}(?:R\(\d+\))?$")
-FR_DOC_RE = re.compile(r"^\d{4}-\d{4,6}$")
+CELEX_RE = re.compile(r"^\d[0-9]{4}[RLD]\d{4}(?:R\(\d+\))?$")
+# FR 文档号格式（实测核实，不是猜测）：
+#   用库内全部 791 条真实 us_fr source_identifier + laws.latest_fr_document_number
+#   做过全量回归测试，覆盖以下全部历史格式，0 条漏判：
+#     2026-00895（现行：4位年份-5位序号）
+#     99-32676 / 00-5531（90年代末~2000年代初：2位年份-2~5位序号）
+#     E7-5303（2007年前后：1位字母+1位年份数字-序号，字母含义未知但真实存在）
+#     C1-2017-18463（更正公告子类型：C+序号-年份-原文档序号）
+#   第一版 r"^\d{4}-\d{4,6}$" 只覆盖了"现行格式"，实测对库内 8 条真实老文档号
+#   误判为"格式不符"——这些值本身跟库内旧值完全一致，根本不是脏数据，
+#   是正则覆盖面不够。教训：正则必须用真实数据全量回归，不能只测几个样本。
+FR_DOC_RE = re.compile(r"^(?:[A-Z]\d{1,2}-\d{4}-\d{3,6}|[A-Z]?\d{1,4}-\d{2,6})$")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}")
 
 REJECTED = object()
@@ -338,3 +348,346 @@ def query_us_official(title_number, part_number):
             out["fr_effective_on"] = effective_on
 
     return out
+
+
+# ── 数据库结构变更（沿用 backfill_law_metadata.py 的 ensure_columns 模式） ──
+NEW_LAW_COLUMNS = [
+    ("fr_effective_on", "TEXT"),
+    ("updated_at", "TEXT"),
+    ("effective_status_detail", "TEXT"),
+]
+
+
+def ensure_columns(con, dry_run):
+    cur = con.cursor()
+    cur.execute("PRAGMA table_info(laws)")
+    existing = {row[1] for row in cur.fetchall()}
+    for name, coltype in NEW_LAW_COLUMNS:
+        if name not in existing:
+            print(f"  ALTER TABLE laws ADD COLUMN {name} {coltype}")
+            if not dry_run:
+                cur.execute(f"ALTER TABLE laws ADD COLUMN {name} {coltype}")
+    if not dry_run:
+        con.commit()
+
+
+# ── 比对主流程 ─────────────────────────────────────────────────────────
+# 会被比对的字段（EU / US 各自只查自己有的字段，其余字段对另一方跳过）
+EU_FIELDS = (
+    "last_modification_date",
+    "in_force",
+    "latest_amendment_celex",
+    "latest_corrigendum_celex",
+)
+US_FIELDS = (
+    "latest_fr_document_number",
+    "fr_effective_on",
+)
+# latest_amendment_date 是 eCFR 侧的辅助参考字段（非权威生效日，见
+# query_us_official 的说明），laws 表没有这一列，不参与比对/写库，
+# 只在日志的 official_raw 里留痕供人工参考。
+US_AUX_FIELDS = ("latest_amendment_date",)
+
+
+def load_laws(con):
+    cur = con.cursor()
+    cur.execute("PRAGMA table_info(laws)")
+    existing_cols = {row[1] for row in cur.fetchall()}
+
+    base_cols = [
+        "id", "jurisdiction", "celex", "title_number", "part_number",
+        "last_modification_date", "in_force", "latest_amendment_celex",
+        "latest_corrigendum_celex", "latest_fr_document_number",
+    ]
+    # fr_effective_on 可能是刚才 --dry-run 模式下"打算加但还没真加"的新列，
+    # 这里按实际存在情况取，不存在就不选它（下游用 law.get() 拿默认 None）。
+    select_cols = [c for c in base_cols if c in existing_cols]
+    if "fr_effective_on" in existing_cols:
+        select_cols.append("fr_effective_on")
+
+    cur.execute(f"SELECT {', '.join(select_cols)} FROM laws")
+    cols = [d[0] for d in cur.description]
+    return [dict(zip(cols, row)) for row in cur.fetchall()]
+
+
+def check_one_law(law):
+    """查官方接口，跟库内旧值比对。返回 (official_dict, error_or_None)。
+
+    任何异常都捕获返回，不抛出——单条失败不能中断整体任务。
+    """
+    try:
+        if law["jurisdiction"] == "EU":
+            official = query_eu_official(law["celex"])
+        elif law["jurisdiction"] == "US":
+            official = query_us_official(law["title_number"], law["part_number"])
+        else:
+            return {}, f"未知 jurisdiction={law['jurisdiction']}"
+        return official, None
+    except Exception as e:
+        return {}, str(e)
+
+
+def apply_changes(con, law, official, dry_run, log_records):
+    """逐字段比对、校验、写回、记日志。返回本条变化数。
+
+    official 里 US_AUX_FIELDS（如 latest_amendment_date）只是辅助参考，
+    laws 表没有对应列，跳过比对/写库，不记变化日志（避免噪音——它只是
+    "这次查到的值"，没有旧值可比，天然每次都"不同"）。
+    """
+    cur = con.cursor()
+    changed_n = 0
+    for field, new_raw in official.items():
+        if field in US_AUX_FIELDS:
+            continue
+        old_value = law.get(field)
+        clean, reject_reason = sanitize(field, new_raw)
+        ts = now_str()
+        if clean is REJECTED:
+            log_records.append(
+                {
+                    "ts": ts,
+                    "law_id": law["id"],
+                    "jurisdiction": law["jurisdiction"],
+                    "field": field,
+                    "old_value": old_value,
+                    "new_value": new_raw,
+                    "action": "rejected_invalid_value",
+                    "reason": reject_reason,
+                }
+            )
+            continue
+        if clean == old_value:
+            continue  # 没变化，不占日志
+        log_records.append(
+            {
+                "ts": ts,
+                "law_id": law["id"],
+                "jurisdiction": law["jurisdiction"],
+                "field": field,
+                "old_value": old_value,
+                "new_value": clean,
+                "action": "auto_updated",
+                "reason": "",
+            }
+        )
+        if not dry_run:
+            cur.execute(
+                f"UPDATE laws SET {field}=?, updated_at=? WHERE id=?",
+                (clean, ts, law["id"]),
+            )
+        changed_n += 1
+    return changed_n
+
+
+# ── 过渡期 / 即将生效预警（只读 events 表，不改 laws 任何字段） ──────────
+# events 跟 law 的关联路径：events.document_id -> law_documents.document_id
+#   -> law_documents.law_id。 EU 用 resource_legal_date_deadline /
+#   resource_legal_date_entry-into-force；US 用 effective。
+DEADLINE_EVENT_TYPES = (
+    "resource_legal_date_deadline",
+    "resource_legal_date_entry-into-force",
+    "effective",
+)
+
+
+def load_future_events(con):
+    cur = con.cursor()
+    placeholders = ",".join("?" for _ in DEADLINE_EVENT_TYPES)
+    cur.execute(
+        f"""SELECT DISTINCT ld.law_id, e.event_type, e.date_value
+            FROM events e
+            JOIN law_documents ld ON e.document_id = ld.document_id
+            WHERE e.event_type IN ({placeholders})
+            ORDER BY ld.law_id, e.date_value""",
+        DEADLINE_EVENT_TYPES,
+    )
+    return cur.fetchall()
+
+
+def compute_upcoming_deadlines(con, today=None):
+    """扫 events 表里未来的 deadline/entry-into-force/effective 日期，
+    落在 WARN_WINDOW_DAYS 内的收进预警列表。不碰 laws 表任何字段。
+    """
+    today = today or datetime.now(BJT).date()
+    upcoming = []
+    for law_id, event_type, date_value in load_future_events(con):
+        dt = _parse_date_prefix(date_value)
+        if dt is None:
+            continue
+        d = dt.date()
+        if d <= today:
+            continue
+        days_remaining = (d - today).days
+        if days_remaining <= WARN_WINDOW_DAYS:
+            upcoming.append(
+                {
+                    "law_id": law_id,
+                    "event_type": event_type,
+                    "deadline_date": date_value,
+                    "days_remaining": days_remaining,
+                }
+            )
+    upcoming.sort(key=lambda x: x["days_remaining"])
+    return upcoming
+
+
+# ── 派生状态字段（六）：比 in_force 二元标记更细的现行效力描述 ───────────
+def compute_effective_status_detail(con, law):
+    """结合 in_force + events 里的 entry-into-force / deadline 日期 +
+    今天日期，推导更细的状态。不改变 in_force 字段本身的含义。
+
+    US 没有 in_force 字段（持续修订的汇编，没有单一生效/废止概念），
+    只能用"有无未来 effective 日期"做近似推断。
+    """
+    today = datetime.now(BJT).date()
+    cur = con.cursor()
+    cur.execute(
+        """SELECT e.event_type, e.date_value FROM events e
+           JOIN law_documents ld ON e.document_id = ld.document_id
+           WHERE ld.law_id=?""",
+        (law["id"],),
+    )
+    rows = cur.fetchall()
+
+    def dates_for(event_type):
+        out = []
+        for et, dv in rows:
+            if et == event_type:
+                dt = _parse_date_prefix(dv)
+                if dt:
+                    out.append(dt.date())
+        return out
+
+    if law["jurisdiction"] == "EU":
+        in_force = law.get("in_force")
+        if in_force == "0":
+            return "已废止"
+        entry_dates = dates_for("resource_legal_date_entry-into-force")
+        deadline_dates = dates_for("resource_legal_date_deadline")
+        if entry_dates and today < min(entry_dates):
+            return "即将生效(未到entry-into-force)"
+        if any(d > today for d in deadline_dates):
+            return "现行有效(过渡期内)"
+        return "现行有效(完全生效)" if in_force == "1" else "待确认"
+    else:
+        effective_dates = dates_for("effective")
+        if any(d > today for d in effective_dates):
+            return "现行有效(过渡期内)"
+        return "现行有效(持续修订)"
+
+
+# ── 日志输出 ──────────────────────────────────────────────────────────
+def write_log(records, dry_run):
+    if not records:
+        return
+    if dry_run:
+        return
+    os.makedirs(SQLITE_DIR, exist_ok=True)
+    with open(LOG_PATH, "a", encoding="utf-8") as f:
+        for rec in records:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def write_latest(summary, dry_run):
+    if dry_run:
+        return
+    os.makedirs(SQLITE_DIR, exist_ok=True)
+    with open(LATEST_PATH, "w", encoding="utf-8") as f:
+        json.dump(summary, f, ensure_ascii=False, indent=1)
+
+
+# ── 主流程 ────────────────────────────────────────────────────────────
+def main():
+    dry_run = "--dry-run" in sys.argv
+    limit = None
+    if "--limit" in sys.argv:
+        limit = int(sys.argv[sys.argv.index("--limit") + 1])
+
+    con = sqlite3.connect(DB_PATH)
+    con.text_factory = str
+
+    print("=" * 66)
+    print("  法规时效性结构化字段核验" + ("（演练模式，不写库）" if dry_run else ""))
+    print("=" * 66)
+
+    ensure_columns(con, dry_run)
+
+    laws = load_laws(con)
+    if limit:
+        laws = laws[:limit]
+
+    log_records = []
+    changed_count = 0
+    rejected_count = 0
+    failed = []
+
+    for i, law in enumerate(laws, 1):
+        print(f"  [{i:>2}/{len(laws)}] {law['id']} ...", end=" ")
+        official, err = check_one_law(law)
+        if err:
+            print(f"失败：{err}")
+            failed.append({"law_id": law["id"], "error": err})
+            time.sleep(REQUEST_INTERVAL)
+            continue
+
+        before_rejected = sum(
+            1 for r in log_records if r.get("action") == "rejected_invalid_value"
+        )
+        n_changed = apply_changes(con, law, official, dry_run, log_records)
+        after_rejected = sum(
+            1 for r in log_records if r.get("action") == "rejected_invalid_value"
+        )
+        rejected_count += after_rejected - before_rejected
+        changed_count += n_changed
+
+        detail = compute_effective_status_detail(con, law)
+        if not dry_run:
+            con.execute(
+                "UPDATE laws SET effective_status_detail=? WHERE id=?",
+                (detail, law["id"]),
+            )
+
+        flag = f" 变化{n_changed}处" if n_changed else ""
+        print(f"OK{flag}  状态={detail}")
+        time.sleep(REQUEST_INTERVAL)
+
+    if not dry_run:
+        con.commit()
+
+    upcoming = compute_upcoming_deadlines(con)
+
+    write_log(log_records, dry_run)
+    summary = {
+        "checked_at": now_str(),
+        "total_laws": len(laws),
+        "changed_count": changed_count,
+        "rejected_count": rejected_count,
+        "failed_count": len(failed),
+        "failed": failed,
+        "changes": [r for r in log_records if r.get("action") == "auto_updated"],
+        "rejected": [
+            r for r in log_records if r.get("action") == "rejected_invalid_value"
+        ],
+        "upcoming_deadlines": upcoming,
+    }
+    write_latest(summary, dry_run)
+
+    print()
+    print(
+        f"  核验完成：{len(laws)} 条；自动更新 {changed_count} 处；"
+        f"拒绝脏数据 {rejected_count} 处；查询失败 {len(failed)} 条；"
+        f"未来 {WARN_WINDOW_DAYS} 天内到期/生效预警 {len(upcoming)} 条"
+    )
+    if dry_run:
+        print("  （演练模式，未写库、未写日志文件）")
+    else:
+        print(f"  日志追加 → {os.path.relpath(LOG_PATH, GO_RADAR_ROOT)}")
+        print(f"  最新态   → {os.path.relpath(LATEST_PATH, GO_RADAR_ROOT)}")
+    print("=" * 66)
+
+    con.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
