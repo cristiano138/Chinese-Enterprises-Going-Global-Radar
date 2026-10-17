@@ -40,6 +40,7 @@ import importlib.util
 import hashlib
 import json
 import os
+import sqlite3
 import sys
 from datetime import datetime, timedelta, timezone
 
@@ -71,8 +72,6 @@ _freshness = _load_module(
 
 
 def _connect():
-    import sqlite3
-
     con = sqlite3.connect(DB_PATH)
     con.text_factory = str
     return con
@@ -199,28 +198,50 @@ def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
         seed_json, seed_sha256 = _seed_json_and_hash(seed_payload)
 
         cur = con.cursor()
-        cur.execute(
-            """INSERT INTO laws
-               (id, jurisdiction, title_number, part_number, celex,
-                seed_json, seed_sha256, official_title, association_review,
-                last_modification_date, in_force, latest_amendment_celex,
-                latest_corrigendum_celex, updated_at)
-               VALUES (?, 'EU', NULL, NULL, ?, ?, ?, ?, '未作适用性判断',
-                       ?, ?, ?, ?, ?)""",
-            (
-                law_id,
-                celex,
-                seed_json,
-                seed_sha256,
-                title,
-                official.get("last_modification_date"),
-                official.get("in_force"),
-                official.get("latest_amendment_celex"),
-                official.get("latest_corrigendum_celex"),
-                ts,
-            ),
-        )
-        con.commit()
+        try:
+            cur.execute(
+                """INSERT INTO laws
+                   (id, jurisdiction, title_number, part_number, celex,
+                    seed_json, seed_sha256, official_title, association_review,
+                    last_modification_date, in_force, latest_amendment_celex,
+                    latest_corrigendum_celex, updated_at)
+                   VALUES (?, 'EU', NULL, NULL, ?, ?, ?, ?, '未作适用性判断',
+                           ?, ?, ?, ?, ?)""",
+                (
+                    law_id,
+                    celex,
+                    seed_json,
+                    seed_sha256,
+                    title,
+                    official.get("last_modification_date"),
+                    official.get("in_force"),
+                    official.get("latest_amendment_celex"),
+                    official.get("latest_corrigendum_celex"),
+                    ts,
+                ),
+            )
+            con.commit()
+        except sqlite3.IntegrityError:
+            # 并发场景：两次几乎同时的调用都在 _law_exists() 检查时看到
+            # "不存在"，都走到这里插入，第二次会撞主键冲突——按"任何失败
+            # 都走返回值表达，不抛异常"的设计原则兜底，不让调用方处理
+            # 数据库层异常。
+            con.rollback()
+            _write_log(
+                {
+                    "ts": ts,
+                    "law_id": law_id,
+                    "action": "skipped_exists",
+                    "source": source,
+                    "reason": "并发写入冲突（主键已存在）",
+                }
+            )
+            return {
+                "ok": False,
+                "law_id": law_id,
+                "action": "skipped_exists",
+                "reason": "并发写入冲突，该 law_id 已被其他调用插入",
+            }
 
         _write_log(
             {
@@ -314,30 +335,50 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
         seed_json, seed_sha256 = _seed_json_and_hash(seed_payload)
 
         cur = con.cursor()
-        cur.execute(
-            """INSERT INTO laws
-               (id, jurisdiction, title_number, part_number, celex,
-                seed_json, seed_sha256, official_title, association_review,
-                latest_fr_document_number, fr_effective_on, updated_at)
-               VALUES (?, 'US', ?, ?, NULL, ?, ?, ?, '未作适用性判断',
-                       ?, ?, ?)""",
-            (
-                law_id,
-                title_number,
-                part_number,
-                seed_json,
-                seed_sha256,
-                None,  # official_title 留空：citation（如"16 CFR Part 1215"）只是
-                # 引用编号，不是法规标题文本，填进这一列会让人误以为标题已抓到——
-                # 真实标题需要额外查 eCFR title-level 结构才能拿到人类可读的
-                # Part label，骨架级建档不做这一步。citation 本身没有丢失，
-                # 完整保留在 seed_json 的"官方编号"字段里。
-                official.get("latest_fr_document_number"),
-                official.get("fr_effective_on"),
-                ts,
-            ),
-        )
-        con.commit()
+        try:
+            cur.execute(
+                """INSERT INTO laws
+                   (id, jurisdiction, title_number, part_number, celex,
+                    seed_json, seed_sha256, official_title, association_review,
+                    latest_fr_document_number, fr_effective_on, updated_at)
+                   VALUES (?, 'US', ?, ?, NULL, ?, ?, ?, '未作适用性判断',
+                           ?, ?, ?)""",
+                (
+                    law_id,
+                    title_number,
+                    part_number,
+                    seed_json,
+                    seed_sha256,
+                    None,  # official_title 留空：citation（如"16 CFR Part 1215"）
+                    # 只是引用编号，不是法规标题文本，填进这一列会让人误以为
+                    # 标题已抓到——真实标题需要额外查 eCFR title-level 结构
+                    # 才能拿到人类可读的 Part label，骨架级建档不做这一步。
+                    # citation 本身没有丢失，完整保留在 seed_json 的
+                    # "官方编号"字段里。
+                    official.get("latest_fr_document_number"),
+                    official.get("fr_effective_on"),
+                    ts,
+                ),
+            )
+            con.commit()
+        except sqlite3.IntegrityError:
+            # 并发场景兜底，跟 intake_eu_law 对称处理，见该函数内注释。
+            con.rollback()
+            _write_log(
+                {
+                    "ts": ts,
+                    "law_id": law_id,
+                    "action": "skipped_exists",
+                    "source": source,
+                    "reason": "并发写入冲突（主键已存在）",
+                }
+            )
+            return {
+                "ok": False,
+                "law_id": law_id,
+                "action": "skipped_exists",
+                "reason": "并发写入冲突，该 law_id 已被其他调用插入",
+            }
 
         _write_log(
             {
