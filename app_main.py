@@ -1277,8 +1277,9 @@ if __name__ == "__main__":
     # 后台预热智能判定（M1.5）：把演示常用输入的模型解析提前算进内存缓存，
     # 演示首点即毫秒级命中；不阻塞启动，失败静默（词典兜底照常）。
     m15_router.start_prewarm()
-    port = int(os.getenv("SERVER_PORT", os.getenv("PORT", "7860")))
-    host = "0.0.0.0" if os.getenv("SERVER_PORT") else "127.0.0.1"
+    port = int(os.getenv("PORT", os.getenv("SERVER_PORT", "7860")))
+    # 魔搭创空间通过 PORT 注入服务端口；本地运行也绑定全网卡，便于容器探活。
+    host = "0.0.0.0"
     _major = int(gr.__version__.split(".")[0])
     launch_kwargs = {"server_name": host, "server_port": port}
     if _major < 6:
