@@ -83,6 +83,11 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-side-logo { width:30px; height:30px; display:grid; place-items:center; border-radius:9px; background:#f7e4a9; color:#8c6414; font-size:16px; }
 .cr-side-label { padding:18px 10px 7px; color:var(--cr-ink3); font-size:11px; letter-spacing:.08em; }
 .cr-side-item { display:flex; align-items:center; gap:9px; padding:10px; margin:3px 0; border-radius:10px; color:var(--cr-ink2); font-size:13px; }
+/* 侧栏条目是真正的导航按钮：重置 Gradio/浏览器默认按钮样式，保留原视觉 */
+button.cr-side-item { width:100%; box-sizing:border-box; border:0; background:transparent; font:inherit; font-size:13px; text-align:left; cursor:pointer; -webkit-appearance:none; appearance:none; transition:background .15s ease, color .15s ease; }
+button.cr-side-item:not(.active):hover { background:#fff7dc; color:#765514; }
+button.cr-side-item.active:hover { background:#ffedb0; }
+button.cr-side-item:focus-visible { outline:2px solid #d9b25a; outline-offset:1px; }
 .cr-side-item.active { color:#765514; background:#fff1bf; font-weight:700; }
 .cr-side-item span:first-child { width:20px; text-align:center; }
 .cr-side-foot { margin:18px 4px 2px; padding:12px 10px; border-radius:11px; background:#fff7dc; color:var(--cr-ink2); font-size:11px; line-height:1.65; }
@@ -108,7 +113,7 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-stat-s { margin-top:7px; color:var(--cr-ink2); font-size:11px; }
 .cr-panel { background:#fffdf7; border:1px solid var(--cr-line); border-radius:15px; padding:18px; box-shadow:0 6px 20px rgba(137,105,35,.05); }
 @media (max-width:1050px) { .gradio-container { padding-left:220px !important; } .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
-@media (max-width:760px) { .gradio-container { padding-left:12px !important; } .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:760px) { .gradio-container { padding-left:12px !important; } .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; max-width:calc(100vw - 24px); padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media (max-width:640px) { .gradio-container { padding:12px 10px 28px !important; } .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
 /* ── 结果区元数据条 ── */
 .cr-header { background:#f9fbff; border:1px solid var(--cr-line); border-radius:12px;
@@ -1058,22 +1063,129 @@ def export_m3_csv(category, market):
     return path
 
 
+# ── 左侧导航 ←→ 标签页 的对应关系 ─────────────────────────────
+# 顺序与标签栏保持一致，避免「侧栏第 5 项」和「标签栏第 5 项」不是一个东西。
+# data-tab 的值必须是某个标签页文字里**必然出现的片段**：前端按它找到对应的
+# tab 按钮再触发点击，因此不需要依赖 Gradio 内部组件 id（那是自增数字，会变）。
+TAB_LABELS = (
+    "🔎 智能判定",
+    "🗺 法规地图",
+    "✅ 合规待办",
+    "📅 变化时间线",
+    "🌍 多区域汇总",
+    "🧭 区域对比",
+    "🚀 OPC 上线准备",
+    "⚖️ 模型对照",
+)
+(TAB_ROUTE, TAB_MAP, TAB_TODO, TAB_TIMELINE,
+ TAB_MULTI, TAB_COMPARE, TAB_OPC, TAB_MODEL) = TAB_LABELS
+
+NAV_ITEMS = (
+    ("⌂", "智能判定"),
+    ("▦", "法规地图"),
+    ("✓", "合规待办"),
+    ("◷", "变化时间线"),
+    ("🌍", "多区域汇总"),
+    ("🧭", "区域对比"),
+    ("🚀", "OPC 上线准备"),
+    ("⇄", "模型对照"),
+)
+
+# 侧栏点击 → 切换标签页；标签页被切换时反向同步高亮。
+# 纯前端实现：不产生服务端往返，且不依赖 Gradio 版本内部的 tab 实现细节，
+# 只依赖 role="tab" / aria-selected 这两个可访问性属性（它们是稳定契约）。
+_NAV_JS = r"""
+() => {
+  const itemsSel = '.cr-side-item[data-tab]';
+  const sync = () => {
+    const tabs = Array.from(document.querySelectorAll('button[role="tab"]'));
+    const cur = tabs.find(b => b.getAttribute('aria-selected') === 'true')
+             || tabs.find(b => b.classList.contains('selected'));
+    const txt = cur ? cur.textContent.trim() : '';
+    document.querySelectorAll(itemsSel).forEach(el => {
+      const key = el.getAttribute('data-tab') || '';
+      el.classList.toggle('active', !!key && txt.includes(key));
+    });
+  };
+  const findTab = (key) => Array.from(document.querySelectorAll('button[role="tab"]'))
+    .find(b => b.textContent.includes(key));
+
+  if (!window.__crNavBound) {
+    window.__crNavBound = true;
+    document.addEventListener('click', (ev) => {
+      const el = ev.target && ev.target.closest ? ev.target.closest(itemsSel) : null;
+      if (!el) return;
+      ev.preventDefault();
+      const key = el.getAttribute('data-tab');
+      const btn = findTab(key);
+      if (!btn) return;
+      btn.click();
+      // 先乐观高亮，等 MutationObserver 确认后再以真实状态为准
+      document.querySelectorAll(itemsSel).forEach(x =>
+        x.classList.toggle('active', x === el));
+      setTimeout(sync, 60);
+    }, true);
+    document.addEventListener('keydown', (ev) => {
+      if (ev.key !== 'Enter' && ev.key !== ' ') return;
+      const el = document.activeElement;
+      if (!el || !el.classList || !el.classList.contains('cr-side-item')) return;
+      ev.preventDefault();
+      el.click();
+    }, true);
+  }
+
+  const attach = () => {
+    const list = document.querySelector('[role="tablist"]');
+    if (list && !window.__crNavObserved) {
+      window.__crNavObserved = true;
+      new MutationObserver(sync).observe(list, {
+        attributes: true, subtree: true,
+        attributeFilter: ['aria-selected', 'class']
+      });
+    }
+    return !!list && document.querySelectorAll(itemsSel).length > 0;
+  };
+  let tries = 0;
+  const timer = setInterval(() => {
+    if (attach() || ++tries > 80) {
+      clearInterval(timer);
+      sync();
+    }
+  }, 150);
+  attach();
+  sync();
+}
+"""
+
+
+def _assert_nav_matches_tabs():
+    """侧栏每一项都必须能匹配到一个标签页，否则点击会静默失效。
+
+    这类「改名后导航悄悄失灵」的问题不会抛异常，只能靠构建期断言挡住。
+    """
+    missing = [text for _, text in NAV_ITEMS
+               if not any(text in label for label in TAB_LABELS)]
+    if missing:
+        raise ValueError(f"侧栏导航项在标签页中找不到对应：{missing}")
+
+
 def _sidebar_html():
-    """参考工作台的左侧导航；实际功能仍由下方标签页承载。
+    """左侧导航：真正的按钮，点击切换标签页。
 
     语料条数取快照自报的 CORPUS_ROWS_TOTAL —— 原先写死「86 条已核对语料」，
     一旦补录语料就变成假数字，而这类「看起来精确的静态数字」最难被发现。
     """
+    items = "".join(
+        f'<button type="button" class="cr-side-item{" active" if i == 0 else ""}"'
+        f' data-tab="{text}" aria-label="{text}">'
+        f'<span aria-hidden="true">{icon}</span><span>{text}</span></button>'
+        for i, (icon, text) in enumerate(NAV_ITEMS)
+    )
     return (
         '<div class="cr-side-brand"><span class="cr-side-logo">⌁</span>'
         '<span>合规雷达</span></div>'
         '<div class="cr-side-label">工作台</div>'
-        '<div class="cr-side-item active"><span>⌂</span><span>智能判定</span></div>'
-        '<div class="cr-side-item"><span>▦</span><span>法规地图</span></div>'
-        '<div class="cr-side-item"><span>✓</span><span>合规待办</span></div>'
-        '<div class="cr-side-item"><span>◷</span><span>变化时间线</span></div>'
-        '<div class="cr-side-item"><span>⇄</span><span>模型对照</span></div>'
-        '<div class="cr-side-item"><span>🚀</span><span>OPC 上线准备</span></div>'
+        f'{items}'
         '<div class="cr-side-label">当前数据</div>'
         f'<div class="cr-side-foot">覆盖 {"、".join(corpus.SUPPORTED_MARKETS.keys())}'
         f'<br>{snapshot.CORPUS_ROWS_TOTAL} 条候选语料（按核对状态分层）<br>每条结论附官方链接</div>'
@@ -1085,11 +1197,15 @@ def _overview_html(model_status):
     eu = snapshot.CORPUS_ROWS_BY_MARKET.get("欧盟", 0)
     us = snapshot.CORPUS_ROWS_BY_MARKET.get("美国", 0)
     model = "已接入" if llm.is_ready() else "规则降级"
+    audited = snapshot.CORPUS_ROWS_AUDITED
+    pending = max(snapshot.CORPUS_ROWS_TOTAL - audited, 0)
+    audit_note = (f"已核对 {audited} · 待核对 {pending}" if audited
+                  else f"快照 {snapshot.SNAPSHOT_VERSION}")
     return (
         '<div class="cr-overview">'
-        f'<div class="cr-stat"><div class="cr-stat-k">已核对法规</div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">候选法规</div>'
         f'<div class="cr-stat-v">{snapshot.CORPUS_ROWS_TOTAL}</div>'
-        f'<div class="cr-stat-s">快照 { _e(snapshot.SNAPSHOT_VERSION) }</div></div>'
+        f'<div class="cr-stat-s">{_e(audit_note)}</div></div>'
         f'<div class="cr-stat"><div class="cr-stat-k">覆盖区域</div>'
         f'<div class="cr-stat-v">2</div><div class="cr-stat-s">欧盟 {eu} · 美国 {us}</div></div>'
         f'<div class="cr-stat"><div class="cr-stat-k">入口品类</div>'
@@ -1103,6 +1219,7 @@ def _overview_html(model_status):
 
 
 def build_ui():
+    _assert_nav_matches_tabs()
     cfg = llm.config_summary()
     model_status = ("模型：已接入（理解输入用，结论仍 100% 来自核对语料）"
                     if cfg["ready"] else
@@ -1126,7 +1243,7 @@ def build_ui():
 
         with gr.Tabs():
             # ── ① 智能判定 ────────────────────────────────────
-            with gr.Tab("🔎 智能判定"):
+            with gr.Tab(TAB_ROUTE):
                 gr.HTML(
                     '<div class="cr-section-intro"><b>先说清楚你要卖什么、卖到哪里。</b> '
                     '系统会自动识别品类和市场，再从已核对语料中生成法规与待办。模型只理解输入，结论仍来自确定性规则和官方链接。</div>'
@@ -1153,7 +1270,7 @@ def build_ui():
                 )
 
             # ── ② 法规地图 ────────────────────────────────────
-            with gr.Tab("🗺 法规地图"):
+            with gr.Tab(TAB_MAP):
                 gr.HTML('<div class="cr-section-intro"><b>已知品类和市场？</b> 选择两个条件，快速查看适用法规、状态和官方来源。</div>')
                 with gr.Row():
                     cat1 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
@@ -1168,7 +1285,7 @@ def build_ui():
                     m1_map.query("儿童玩具", "欧盟", use_llm=False)))
 
             # ── ③ 合规待办 ────────────────────────────────────
-            with gr.Tab("✅ 合规待办"):
+            with gr.Tab(TAB_TODO):
                 gr.HTML('<div class="cr-section-intro"><b>把法规变成今天能执行的动作。</b> 按紧迫度查看待办，点开每条卡片核对适用条件、原文摘录和官方链接。</div>')
                 with gr.Row():
                     cat3 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
@@ -1188,7 +1305,7 @@ def build_ui():
                         inputs=[cat3, mkt3])
 
             # ── ④ 变化时间线 ──────────────────────────────────
-            with gr.Tab("📅 变化时间线"):
+            with gr.Tab(TAB_TIMELINE):
                 gr.HTML('<div class="cr-section-intro"><b>先看时间，再安排动作。</b> 关注法规发布日期、生效日期和过渡期节点，避免按旧规则准备。</div>')
                 with gr.Row():
                     cat2 = gr.Dropdown(choices=cat_choices, value="儿童玩具",
@@ -1208,7 +1325,7 @@ def build_ui():
                     m2_timeline.query("儿童玩具", "欧盟", use_llm=False)))
 
             # ── ⑤ 多区域汇总 ──────────────────────────────────
-            with gr.Tab("🌍 多区域汇总"):
+            with gr.Tab(TAB_MULTI):
                 gr.HTML('<div class="cr-section-intro"><b>一次查看同一品类在多个区域的法规。</b> 当前先支持欧盟与美国，结果按区域分组，所有条目附官方来源。</div>')
                 with gr.Row():
                     cat6 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
@@ -1217,7 +1334,7 @@ def build_ui():
                 m6_out = gr.HTML(render_m6(m6_multi_region.query("儿童玩具", mkt_choices)))
 
             # ── ⑥ 区域差异对比 ─────────────────────────────────
-            with gr.Tab("🧭 区域对比"):
+            with gr.Tab(TAB_COMPARE):
                 gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
                 with gr.Row():
                     cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
@@ -1225,7 +1342,7 @@ def build_ui():
                 m5_out = gr.HTML(render_m5(m5_compare.query("儿童玩具", mkt_choices)))
 
             # ── ⑦ OPC 上线准备 ────────────────────────────────
-            with gr.Tab("🚀 OPC 上线准备"):
+            with gr.Tab(TAB_OPC):
                 gr.HTML('<div class="cr-section-intro"><b>把合规待办排成小团队能执行的上线计划。</b> 按选品、测试、标签、文件、供应链和切换复核分阶段展示，并给出责任角色与官方依据。</div>')
                 with gr.Row():
                     cat7 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
@@ -1238,7 +1355,7 @@ def build_ui():
                                                       inputs=[cat7, markets7])
 
             # ── ⑧ 模型对照 ────────────────────────────────────
-            with gr.Tab("⚖️ 模型对照"):
+            with gr.Tab(TAB_MODEL):
                 gr.HTML('<div class="cr-section-intro"><b>同一道题，两套方法放在一起看。</b> 重点观察来源、编号和证据是否能被复核；当前页面只展示已录制的真实回放。</div>')
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
 
@@ -1263,6 +1380,10 @@ def build_ui():
         for w in (cat7, markets7):
             w.change(run_readiness, inputs=[cat7, markets7], outputs=m7_out)
         btn7.click(run_readiness, inputs=[cat7, markets7], outputs=m7_out)
+
+        # 侧栏导航：点侧栏切标签页，切标签页回写侧栏高亮。
+        # 纯前端事件（没有服务端函数），所以切换是即时的，不产生排队等待。
+        demo.load(None, js=_NAV_JS)
 
     return demo
 

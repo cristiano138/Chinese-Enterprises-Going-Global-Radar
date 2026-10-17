@@ -12,6 +12,7 @@
   F. 空选择不退化：取消全部市场勾选要明确拒绝，不能悄悄返回全选
   G. 键集一致：同一 query() 的成功分支与失败分支键集必须对得上
   H. 日期格式统一：数据截止时间与查询日期同为 ISO 8601
+  I. 侧栏导航：每一项都要能匹配到标签页（否则点击静默失效）
 
 不需要 gradio 也能跑完 A–H 的 query 级检查；装了 gradio 才做渲染级检查。
 """
@@ -161,6 +162,39 @@ def main():
               "data.europa.eu" in m2_html)
         check("M3 渲染出 ELI 永久标识链接（data.europa.eu）",
               "data.europa.eu" in m3_html)
+
+        # ── 【I】侧栏导航：点了要真能切，高亮要跟当前页签一致 ──
+        # 踩过的坑：侧栏曾是纯静态 HTML，active 写死在「智能判定」，
+        # 点其它项毫无反应 —— 不抛异常、自测也照不到，只有真机点击才发现。
+        print("\n【I】侧栏导航与标签页的一致性")
+        try:
+            app_main._assert_nav_matches_tabs()
+            nav_ok = True
+        except Exception as exc:                 # noqa: BLE001
+            nav_ok = False
+            print(f"       {exc}")
+        check("侧栏每一项都能匹配到一个标签页", nav_ok)
+
+        side_html = app_main._sidebar_html()
+        nav_keys = [text for _, text in app_main.NAV_ITEMS]
+        check("侧栏条目数与标签页数一致",
+              len(nav_keys) == len(app_main.TAB_LABELS),
+              f"{len(nav_keys)} vs {len(app_main.TAB_LABELS)}")
+        check("每个入口都渲染成带 data-tab 的按钮",
+              side_html.count("<button") == len(nav_keys)
+              and all(f'data-tab="{k}"' in side_html for k in nav_keys))
+        check("侧栏 data-tab 无重复项", len(nav_keys) == len(set(nav_keys)))
+        check("初始高亮有且仅有一项",
+              side_html.count("cr-side-item active") == 1,
+              f"实际 {side_html.count('cr-side-item active')} 项")
+
+        nav_js = app_main._NAV_JS
+        check("导航脚本按 data-tab 绑定侧栏条目",
+              ".cr-side-item[data-tab]" in nav_js)
+        check("导航脚本用 role=tab + aria-selected 判定当前页签",
+              'role="tab"' in nav_js and "aria-selected" in nav_js)
+        check("导航脚本支持键盘触发（Enter / 空格）",
+              "keydown" in nav_js and "Enter" in nav_js)
 
     print("\n" + "=" * 74)
     if FAIL:

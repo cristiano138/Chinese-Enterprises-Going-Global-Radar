@@ -70,6 +70,12 @@ DATA_CUTOFF = _normalize_date(_RELEASE.get("data_cutoff"))
 CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
 CORPUS_ROWS_BY_MARKET = _RELEASE.get("markets", {"欧盟": 29, "美国": 57})
 
+# 核对状态分布（由 validate_corpus → build_snapshot 写进快照）。
+# 概览卡片原先直接拿 CORPUS_ROWS_TOTAL 当「已核对法规」展示，等于把 57 条
+# 待核对语料也算成已核对 —— 这里把口径拆开，避免页面自报假数字。
+CORPUS_AUDIT_STATUS = _RELEASE.get("audit_status_distribution", {}) or {}
+CORPUS_ROWS_AUDITED = int(CORPUS_AUDIT_STATUS.get("已核对", 0) or 0)
+
 # 官方来源（PRD 附录 C3 允许集合）
 DATA_SOURCES = (
     "EUR-Lex SPARQL（publications.europa.eu/webapi/rdf/sparql）",
