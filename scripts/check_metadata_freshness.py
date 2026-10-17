@@ -266,26 +266,72 @@ def query_fr_effective_date(document_number, retries=3):
     raise RuntimeError(f"FR API 查询失败：{document_number} —— {last_err}")
 
 
-def query_us_official(law_id, title_number, part_number, prior_fr_doc_number):
-    """两步：
-    1) eCFR 查 latest_amendment_date，同时拿这次 eCFR 认为对应的最新 FR 文档号
-       （eCFR versions 接口的 content_versions 里有 fr_citation/document_number，
-       但 fetch_us.py 的 get_versions() 目前只返回修订日期列表，不返回文档号——
-       因此 latest_fr_document_number 本次沿用库内已有值，由用户按讨论结论
-       "先定文档号，再查生效日"：若 eCFR 侧查不到独立文档号，则仍用库内已有
-       文档号去查 FR，不编造新号。）
-    2) 用（库内已有，或未来可从 eCFR versions 原始响应里解析出的）FR 文档号
-       去查 FR API 拿 effective_on。
+def query_latest_fr_rule(title_number, part_number, retries=3):
+    """用 FR 官方搜索接口，按 CFR title+part 直接查最新一条 Rule（已定稿生效的
+    最终规则，排除 Proposed Rule 提案稿），拿到当前真正最新的文档号。
+
+    ⚠️ 实测核实（本次新增）：
+        eCFR 的 versions API（fetch_us.py 的 get_versions()）的
+        content_versions 里完全没有 FR 文档号字段，无法从 eCFR 侧推导。
+        FR 自己的 documents.json 搜索接口支持 conditions[cfr][title] /
+        conditions[cfr][part] / conditions[type][] 过滤，按 newest 排序
+        第一条就是当前最新的 Rule —— 这是比"沿用库内旧文档号"更可靠的
+        "先定文档号"实现，不依赖库内已有值。
+    """
+    import urllib.parse
+
+    params = {
+        "conditions[cfr][title]": title_number,
+        "conditions[cfr][part]": part_number,
+        "conditions[type][]": "RULE",
+        "order": "newest",
+        "per_page": "1",
+    }
+    url = f"{FR_API}.json?{urllib.parse.urlencode(params)}"
+    last_err = None
+    for i in range(retries):
+        try:
+            req = urllib.request.Request(
+                url, headers={"User-Agent": _UA, "Accept": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=30) as r:
+                data = json.loads(r.read().decode("utf-8"))
+            results = data.get("results") or []
+            return results[0]["document_number"] if results else None
+        except urllib.error.HTTPError as e:
+            last_err = f"HTTP {e.code}"
+            time.sleep(2 * (i + 1))
+        except Exception as e:
+            last_err = str(e)
+            time.sleep(2 * (i + 1))
+    raise RuntimeError(
+        f"FR 搜索失败：title={title_number} part={part_number} —— {last_err}"
+    )
+
+
+def query_us_official(title_number, part_number):
+    """两步（按讨论结论"先定文档号，再查生效日"）：
+    1) 用 FR 官方搜索接口按 CFR title+part 直接查最新 Rule 文档号
+       （query_latest_fr_rule，不依赖库内旧文档号）
+    2) 用这个文档号查 FR 详情接口拿 effective_on
+       （query_fr_effective_date，列表接口的 effective_on 始终为空，
+       实测确认必须查详情接口）
+    同时查 eCFR 的 latest_amendment_date 作为辅助参考（eCFR 字段本身的
+    局限——这是"编入汇编时间"不是"法律生效时间"——已在团队备忘里点破，
+    这里仍然采集，但不作为权威生效日，只做辅助展示）。
     """
     out = {}
+
     latest_amend, _ver_count, _recent, _earliest = _fetch_us.get_versions(
         title_number, part_number
     )
     if latest_amend:
-        out["latest_amendment_date"] = latest_amend
+        out["latest_amendment_date"] = latest_amend  # 辅助字段，非权威生效日
 
-    fr_doc_number = prior_fr_doc_number
+    time.sleep(REQUEST_INTERVAL)
+    fr_doc_number = query_latest_fr_rule(title_number, part_number)
     if fr_doc_number:
+        out["latest_fr_document_number"] = fr_doc_number
         time.sleep(REQUEST_INTERVAL)
         effective_on = query_fr_effective_date(fr_doc_number)
         if effective_on:
