@@ -65,8 +65,14 @@ _CSS = """
       --cr-beam:#e1b84d;--cr-glow:#fff0bd;
       --cr-hi:#4c8c62;--cr-mid:#a46f1a;--cr-lo:#ba554c;
       --cr-serif:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif}
-body, .gradio-container { background: var(--cr-bg) !important; }
+html, body, body > div, .gradio-container, .gradio-container > .main, .gradio-container .main, .gradio-container .contain {
+  background: var(--cr-bg) !important;
+  color: var(--cr-ink) !important;
+}
+body { min-width: 320px !important; }
 .gradio-container { max-width: 1440px !important; padding: 18px 24px 42px 264px !important; }
+.gradio-container .main { background: transparent !important; }
+footer { background: var(--cr-bg) !important; }
 .gradio-container .contain { max-width: 1180px !important; margin: 0 auto !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
