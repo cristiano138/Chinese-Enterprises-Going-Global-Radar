@@ -54,10 +54,12 @@ def stub(text, meta=None, ready=True):
     _meta = meta if meta is not None else {"ok": True, "reason": "", "cached": False}
 
     def fake_chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True,
-                  timeout=None):
+                  timeout=None, thinking=True):
+        # 形参必须与 core/llm.chat() 保持一致：模型侧新增参数时若漏改桩，
+        # 整条发布门禁会因 TypeError 直接变红（10-17 复审发现并修复）。
         CALLS.append({"prompt": prompt, "max_tokens": max_tokens,
                       "temperature": temperature, "use_cache": use_cache,
-                      "timeout": timeout})
+                      "timeout": timeout, "thinking": thinking})
         return text, _meta
 
     llm.chat = fake_chat
@@ -88,6 +90,8 @@ def main():
     check("timeout=MODEL_TIMEOUT（硬超时封顶，防止 26s+ 干等）",
           c.get("timeout") == m15_router.MODEL_TIMEOUT,
           f"实际 {c.get('timeout')}")
+    check("thinking=False（路由只抽槽位，关思考模式换延迟）",
+          c.get("thinking") is False, f"实际 {c.get('thinking')}")
     print()
 
     # ── 1b. 内存缓存：同一输入第二次不再调用模型（响应提速主力）──
@@ -196,7 +200,9 @@ def main():
     print("【7】llm.chat(timeout=…) 硬超时：慢模型及时降级，不干等")
     import time as _t
     _orig_api, _orig_ready_flag = llm._call_api, llm.READY
-    def _slow_api(prompt, max_tokens, temperature):
+    # 形参必须与 core/llm._call_api() 一致（含 thinking）；否则 llm.chat 的
+    # 超时分支会把 4 个位置参数传进来，模拟出的「超时」其实是 TypeError 假阳性。
+    def _slow_api(prompt, max_tokens, temperature, thinking=True):
         _t.sleep(3)
         return '{"ok":true}'
     llm._call_api = _slow_api

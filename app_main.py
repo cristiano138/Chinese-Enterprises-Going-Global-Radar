@@ -127,6 +127,7 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-mod-empty   { color:var(--cr-ink3); }
 .cr-mod-partial { color:var(--cr-mid); }
 .cr-mod-error   { color:var(--cr-lo); }
+.cr-mod-n_a     { color:var(--cr-ink3); }
 .cr-head { font-size: 15px; color:var(--cr-ink); margin: 6px 0 12px; }
 .cr-head b { font-size:20px; font-family:var(--cr-serif); font-weight:600; }
 .cr-sec { margin: 18px 0 8px; font-size: 16px; font-weight: 600; color:var(--cr-ink);
@@ -290,9 +291,22 @@ def _validity_badge(validity):
 
 
 def _link_list(r, key_primary="官方原文链接"):
+    """渲染可核验链接（主链接 + ELI 永久标识）。
+
+    ⚠️ ELI 取值的三个来源，缺一不可：
+      · M1 记录：m1_map 已把底表「ELI标识」映射成「ELI链接」；
+      · M2 事件 / M3 动作：**没有**「ELI链接」这个键，ELI 在「全部官方链接」列表里。
+    早期只读 r["ELI链接"]，于是 M2/M3 的欧盟 ELI 永久标识被静默丢掉 ——
+    链接还在（主链接正常），但少了那条「编号永不变」的兜底入口。
+    """
     links, seen = [], set()
     primary = r.get(key_primary) or ""
     eli = r.get("ELI链接") or ""
+    if not eli:
+        for url in (r.get("全部官方链接") or []):
+            if isinstance(url, str) and "data.europa.eu/eli" in url:
+                eli = url
+                break
     if primary and primary not in seen:
         seen.add(primary)
         links.append(f'<a class="cr-a" href="{_attr(primary)}" target="_blank" '
@@ -352,17 +366,17 @@ def _reject_html(reason, header_meta=None):
 
 def _header_block(meta):
     """顶部元数据条（10-16 瘦身：压成一行，覆盖范围/数据来源移除 ——
-    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。"""
+    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。
+
+    模块名与状态中文名统一取自 core.snapshot（MODULE_NAMES / MODULE_CN），
+    不在 UI 层再维护一份映射 —— 否则新增模块时两处必然走偏。
+    """
     if not meta:
         return ""
-    _MOD_NAMES = {"M1": "法规地图", "M2": "变化时间线",
-                  "M3": "合规待办", "M4": "模型对照"}
-    _MOD_CN = {"ready": "就绪", "partial": "部分", "empty": "空",
-               "error": "异常"}
     mod = meta.get("模块状态", {})
     mod_html = "　".join(
-        f'<span class="cr-mod cr-mod-{v}">'
-        f'{_MOD_NAMES.get(k, k)}·{_MOD_CN.get(v, v)}</span>'
+        f'<span class="cr-mod cr-mod-{_attr(v)}">'
+        f'{_e(snapshot.MODULE_NAMES.get(k, k))}·{_e(snapshot.MODULE_CN.get(v, v))}</span>'
         for k, v in mod.items()
     )
     notes_html = ""
@@ -655,6 +669,12 @@ _U_CLS = {"高": "b-u-high", "中": "b-u-mid", "低": "b-u-low"}
 def _m3_card(r, idx):
     """PRD D5-1：默认折叠（仅 动作 + 时点 + 条件状态）；
     点开展开  执行动作 → 适用条件 → 来源条款 → 原文摘录 → 官方原文。
+
+    ④ 的措辞说明：语料底表**没有收录条文正文**，「证据摘录」实际是一句话中文
+    要点（AI 预生成、已固化进 CSV）。PRD 要求「原文摘录可附审核后的中文解释，
+    英文原文保持可见」，所以这一格拆成两行：先给官方英文标题（可核验的原文，
+    来自底表），再明确标注中文要点的来源与性质 —— 不能把 AI 摘要直接标成
+    「原文摘录」，那是把不可核验的内容伪装成条文原文。
     """
     link = _link_list(r, key_primary="来源条款链接")
     deadline_summary = (f"⏰ {r['期限']}" if r.get("期限") else "持续义务")
@@ -668,6 +688,16 @@ def _m3_card(r, idx):
         f'</span>'
     )
 
+    raw = r.get("_raw") or {}
+    en_title = (raw.get("官方标题（英文）") or "").strip()
+    zh_digest = (r.get("证据摘录") or "").strip()
+    excerpt_rows = (
+        f'<div><b>原文标题（英文）</b>：'
+        f'{_e(en_title) if en_title else "（底表未收录英文标题）"}</div>'
+        + (f'<div style="color:#8a91a3">中文要点（AI 预生成，非条文原文）：'
+           f'{_e(zh_digest)}</div>' if zh_digest else "")
+    )
+
     # 证据链展开区（D5-1 五步）
     evidence = (
         '<div class="cr-evidence">'
@@ -676,7 +706,7 @@ def _m3_card(r, idx):
         f'（动作类型：{_e(r["动作类型"])}）</div>'
         f'<div><b>③ 来源条款</b>：{_e(r["官方编号"])}　'
         f'《{_e(r["依据法规"])}》</div>'
-        f'<div><b>④ 原文摘录</b>：{_e(r.get("证据摘录") or r.get("适用条件") or "以官方原文为准")}</div>'
+        f'<div><b>④ 原文摘录</b>：{excerpt_rows}</div>'
         f'<div><b>⑤ 官方原文</b>：{link}</div>'
         '</div>'
     )
@@ -826,9 +856,16 @@ def _region_record_card(row, index):
 
 
 def render_m6(result):
+    """M6 多区域汇总。
+
+    与 M1–M4 保持同一套外壳：顶部元数据条（PRD D3）+ 页脚免责声明（红线）。
+    早期版本这三个新页签只渲染内容，既不声明快照/截止时间、也不输出免责声明 ——
+    等于把「每条结论附官方链接 + 固定免责」的承诺只做在了老页签上。
+    """
     if not result.get("ok"):
-        return _reject_html(result.get("reason", "无法汇总"))
-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>多区域法规汇总</b>　'
+        return _reject_html(result.get("reason", "无法汇总"), result.get("header"))
+    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+             f'<div class="cr-head"><b>多区域法规汇总</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'{result["总条数"]} 条区域法规</span></div>']
     for region in result["区域"]:
@@ -836,14 +873,16 @@ def render_m6(result):
         parts.append(_group(f'{region["市场"]}法规清单', region["条数"], body, open_=True,
                             hint=f'已核对链接 {region["条数"] - region["被拦截"]} 条'))
     parts.append('<div class="cr-note">区域分别计数；同一横切法规在不同区域会分别展示。所有条目均经过官方链接白名单校验。</div>')
+    parts.append(_footer_block())
     parts.append('</div>')
     return "".join(parts)
 
 
 def render_m5(result):
     if not result.get("ok"):
-        return _reject_html(result.get("reason", "无法完成对比"))
-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>区域差异对比</b>　'
+        return _reject_html(result.get("reason", "无法完成对比"), result.get("header"))
+    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+             f'<div class="cr-head"><b>区域差异对比</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'共同编号 {result["共同数量"]} 条</span></div>',
              f'<div class="cr-note">{_e(result["说明"])} 快照 {_e(result["快照版本"])}，数据截止 {_e(result["数据截止时间"])}。</div>']
@@ -860,6 +899,7 @@ def render_m5(result):
         body = "".join(_region_record_card(r, i + 1) for i, r in enumerate(rows))
         parts.append(_group(f'{market}独有法规', len(rows), body, open_=False,
                             hint='官方编号未在其他所选区域出现'))
+    parts.append(_footer_block())
     parts.append('</div>')
     return "".join(parts)
 
@@ -867,8 +907,10 @@ def render_m5(result):
 # ── M7：OPC 上线准备度 ────────────────────────────────────────
 def render_m7(result):
     if not result.get("ok"):
-        return _reject_html(result.get("reason", "无法生成上线准备度"))
-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>OPC 上线准备度</b>　'
+        return _reject_html(result.get("reason", "无法生成上线准备度"),
+                            result.get("header"))
+    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
+             f'<div class="cr-head"><b>OPC 上线准备度</b>　'
              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
              f'{result["总动作数"]} 项准备动作</span></div>',
              f'<div class="cr-note">{_e(result["说明"])} 查询日期 {_e(result["查询日期"])}，'
@@ -894,6 +936,7 @@ def render_m7(result):
         if region.get("待确认"):
             pending = "".join(f'<div class="cr-note"><b>需确认：</b>{_e(x.get("需确认", ""))}<br>{_e(x.get("影响", ""))}<br><span class="cr-k">核对方向</span>{_e(x.get("如何核对", ""))}</div>' for x in region["待确认"])
             parts.append(_group(f'{region["市场"]}待确认事项', len(region["待确认"]), pending, open_=True))
+    parts.append(_footer_block())
     parts.append('</div>')
     return "".join(parts)
 
@@ -906,9 +949,17 @@ def run_readiness(category, markets):
 
 
 def export_readiness_csv(category, markets):
-    result = m7_opc_readiness.query(category, markets)
+    """导出 OPC 执行清单。失败返回 None（与 export_m3_csv 口径一致）。
+
+    DownloadButton 的回调里抛异常会在页面上变成红色报错堆栈；
+    M3 那边早就是「失败返回 None」，这里对齐，避免同一个 UI 里两种失败行为。
+    """
+    try:
+        result = m7_opc_readiness.query(category, markets)
+        name, data = m7_opc_readiness.export_csv(result)
+    except RuntimeError:
+        return None
     os.makedirs(EXPORT_DIR, exist_ok=True)
-    name, data = m7_opc_readiness.export_csv(result)
     path = os.path.join(EXPORT_DIR, name)
     with open(path, "wb") as handle:
         handle.write(data)
@@ -1004,7 +1055,11 @@ def export_m3_csv(category, market):
 
 
 def _sidebar_html():
-    """参考工作台的左侧导航；实际功能仍由下方标签页承载。"""
+    """参考工作台的左侧导航；实际功能仍由下方标签页承载。
+
+    语料条数取快照自报的 CORPUS_ROWS_TOTAL —— 原先写死「86 条已核对语料」，
+    一旦补录语料就变成假数字，而这类「看起来精确的静态数字」最难被发现。
+    """
     return (
         '<div class="cr-side-brand"><span class="cr-side-logo">⌁</span>'
         '<span>合规雷达</span></div>'
@@ -1016,7 +1071,8 @@ def _sidebar_html():
         '<div class="cr-side-item"><span>⇄</span><span>模型对照</span></div>'
         '<div class="cr-side-item"><span>🚀</span><span>OPC 上线准备</span></div>'
         '<div class="cr-side-label">当前数据</div>'
-        '<div class="cr-side-foot">覆盖欧盟与美国<br>86 条已核对语料<br>每条结论附官方链接</div>'
+        f'<div class="cr-side-foot">覆盖 {"、".join(corpus.SUPPORTED_MARKETS.keys())}'
+        f'<br>{snapshot.CORPUS_ROWS_TOTAL} 条已核对语料<br>每条结论附官方链接</div>'
     )
 
 
@@ -1157,7 +1213,7 @@ def build_ui():
                 m6_out = gr.HTML(render_m6(m6_multi_region.query("儿童玩具", mkt_choices)))
 
             # ── ⑥ 区域差异对比 ─────────────────────────────────
-            with gr.Tab("⚖️ 区域对比"):
+            with gr.Tab("🧭 区域对比"):
                 gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
                 with gr.Row():
                     cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")

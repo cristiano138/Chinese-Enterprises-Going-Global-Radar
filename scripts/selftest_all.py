@@ -14,6 +14,9 @@ SCRIPTS = [
     "scripts/selftest_m2_m3.py",
     "scripts/selftest_m5_m6.py",
     "scripts/selftest_m7.py",
+    # 跨模块输出契约（免责声明/元数据/ELI 链接/键集/空选择）
+    # —— 单模块自测照不到这一层，曾经因此出现「新页签漏了免责声明」。
+    "scripts/selftest_ui_contract.py",
 ]
 
 
@@ -36,6 +39,7 @@ def main() -> int:
     print("M3: PASS")
     print("M5/M6: PASS")
     print("M7: PASS")
+    print("输出契约: PASS")
     print("失败数：0")
     return 0
 

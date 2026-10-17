@@ -54,14 +54,43 @@ BJT = timezone(timedelta(hours=8))
 _UA = ("Mozilla/5.0 (compatible; ComplianceRadar-Freshness/1.0; "
        "+https://github.com/cristiano138/Chinese-Enterprises-Going-Global-Radar)")
 
+# 语料表里所有可能承载官方链接的列名（**必须与 CSV 实际列名完全一致**）。
+# 踩过的坑（10-16 发现，10-17 复审再次确认未合入）：这里曾写成 "ELI链接"，
+# 而底表的真实列名是 "ELI标识" —— 于是 29 条欧盟 ELI 永久标识从未被核验，
+# 页脚却照常显示「86/86 可访问」，等于把 25% 的链接漏检当成了全覆盖。
+# 新增链接列时只改这里，并保持下方 audit_url_fields() 的自检为绿。
+URL_FIELDS = ("官方链接", "ELI标识")
+
+
+def audit_url_fields(rows):
+    """口径自检：扫描语料中「出现过 http 取值」但没被 URL_FIELDS 覆盖的列。
+
+    只告警、不抛异常 —— 监控脚本不许把自己跑挂（见文件头「退出码永远 0」）。
+    """
+    if not rows:
+        return []
+    uncovered = []
+    for name in rows[0].keys():
+        if name in URL_FIELDS:
+            continue
+        hits = sum(1 for r in rows if (r.get(name) or "").strip().startswith("http"))
+        if hits:
+            uncovered.append((name, hits))
+    if uncovered:
+        print("⚠️ 口径告警：以下列含 http 取值但不在 URL_FIELDS 中，其链接不会被核验：")
+        for name, hits in uncovered:
+            print(f"   - {name}（{hits} 条）")
+    return uncovered
+
 
 def collect_urls():
-    """从语料表收集去重后的官方链接清单（官方链接 + ELI 链接）。"""
+    """从语料表收集去重后的官方链接清单（官方链接 + ELI 标识）。"""
     rows = corpus.load_corpus()
+    audit_url_fields(rows)
     urls = []
     seen = set()
     for r in rows:
-        for key in ("官方链接", "ELI链接"):
+        for key in URL_FIELDS:
             u = (r.get(key) or "").strip()
             if u.startswith("http") and u not in seen:
                 seen.add(u)

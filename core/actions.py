@@ -131,9 +131,14 @@ def extract_action_text(row):
     return text
 
 
-def _deadline(row, today):
-    """最近一个未来节点（适用 / 生效 / 废止）。返回 (date|None, event|None)。"""
-    fut = [e for e in dates.extract_events(row)
+def _deadline(row, today, events=None):
+    """最近一个未来节点（适用 / 生效 / 废止）。返回 (date|None, event|None)。
+
+    events 可传入已抽好的事件列表复用 —— build_candidate 原先对同一行要抽
+    3 次（期限一次、紧迫度一次、还有一次在别处），传进来就只抽一次。
+    """
+    evs = events if events is not None else dates.extract_events(row)
+    fut = [e for e in evs
            if e["date_obj"] > today
            and e["事件类型"] in (dates.T_APPLY, dates.T_ENTRY, dates.T_REPEAL)]
     if not fut:
@@ -142,14 +147,15 @@ def _deadline(row, today):
     return e["date_obj"], e
 
 
-def urgency(row, deadline_obj, today):
+def urgency(row, deadline_obj, today, events=None):
     """紧迫度：高 / 中 / 低（规则可解释，不靠模型判断）。"""
     if row.get("现行效力", "") == "已废止":
         return "高"
     if deadline_obj is not None:
         months = (deadline_obj - today).days / 30.44
         return "高" if months <= 18 else "中"
-    for e in dates.extract_events(row):
+    evs = events if events is not None else dates.extract_events(row)
+    for e in evs:
         if e["官方确认"] and dates.in_window(e["date_obj"], 12, today):
             return "中"
     return "低"
@@ -163,7 +169,8 @@ def build_candidate(row, today=None):
     if not a_type:
         return None
 
-    d_obj, d_ev = _deadline(row, today)
+    events = dates.extract_events(row)     # 只抽一次，下面两处复用
+    d_obj, d_ev = _deadline(row, today, events)
     act = extract_action_text(row)
     if not act:
         return None
@@ -173,7 +180,7 @@ def build_candidate(row, today=None):
         "动作": act,
         "动作类型": a_type,
         "类型含义": TYPE_MEANING.get(a_type, ""),
-        "紧迫度": urgency(row, d_obj, today),
+        "紧迫度": urgency(row, d_obj, today, events),
         "期限": d_obj.isoformat() if d_obj else "",
         "期限说明": (f"最晚不迟于 {d_obj.isoformat()}（{dates.TYPE_MEANING[d_ev['事件类型']]}）"
                      if d_obj and d_ev else ""),

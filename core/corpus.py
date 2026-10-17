@@ -95,15 +95,29 @@ def resolve_corpus_path():
 
 
 _CACHE = None
+_CACHE_MTIME = None
 
 
 def load_corpus(force=False):
-    """载入语料（进程内缓存）。返回 list[dict]。"""
-    global _CACHE
-    if _CACHE is not None and not force:
+    """载入语料（进程内缓存，按文件 mtime 自动失效）。返回 list[dict]。
+
+    约定：返回的是**内部缓存引用**，调用方只读，不要就地改字段。
+    （有需要改的场景自己 copy 一份，例如 core/actions 的临时整理逻辑。）
+
+    按 mtime 失效的原因：早期实现一旦载入就永久复用，改完底表必须重启进程
+    才生效 —— 数据核对阶段这坑很浪费人；而每次重新解析 86 行 CSV 又不贵，
+    用 mtime 比对就能兼顾「快」和「改了立刻生效」。
+    """
+    global _CACHE, _CACHE_MTIME
+    path = resolve_corpus_path()
+    try:
+        mtime = os.path.getmtime(path)
+    except OSError:
+        mtime = None
+    if _CACHE is not None and not force and mtime is not None \
+            and mtime == _CACHE_MTIME:
         return _CACHE
 
-    path = resolve_corpus_path()
     raw = _read_rows(path)
 
     rows = []
@@ -116,6 +130,7 @@ def load_corpus(force=False):
         rows.append(row)
 
     _CACHE = rows
+    _CACHE_MTIME = mtime
     return rows
 
 

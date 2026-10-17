@@ -142,7 +142,7 @@ def query(category, market, use_llm=True, today=None):
             for it, why in rejected:
                 dropped.append((it.get("key"), why))
 
-    for c in cands:
+    for index, c in enumerate(cands, 1):
         new_text = (rewritten.get(c["key"]) or "").strip()
         if new_text:
             c["动作"] = new_text
@@ -150,6 +150,11 @@ def query(category, market, use_llm=True, today=None):
         else:
             c["动作来源"] = "规则抽取"
         c["动作"] = c["动作"].strip()
+        # 稳定标识：勾选/导出都按它走，不按动作文本。
+        # 动作文本可能重复（两条法规的备注要点相同，或模型把两条改写成同一句），
+        # 按文本匹配会把没选中的那条一起导出 —— 而参数名一直叫 selected_action_ids，
+        # 语义本来就该是「标识」。
+        c["action_id"] = f"{index:03d}-{c['key']}"
 
     grouped = core_actions.group_by_type(cands)
 
@@ -226,8 +231,16 @@ def export_csv(result, selected_action_ids=None):
     if selected_action_ids is None:
         selected = list(range(len(actions_list)))
     else:
-        selected = [i for i, a in enumerate(actions_list)
-                    if a.get("动作") in selected_action_ids]
+        # 选择口径（向后兼容四种写法）：
+        #   action_id 字符串 → 按稳定标识精确匹配（推荐）
+        #   整数            → 按下标
+        #   动作文本        → 旧调用方仍可用（文本重复时可能多选，仅作兼容）
+        chosen = {str(x).strip() for x in selected_action_ids}
+        selected = [
+            i for i, a in enumerate(actions_list)
+            if (a.get("action_id") in chosen) or str(i) in chosen
+            or (a.get("动作") in chosen)
+        ]
 
     buf = io.StringIO(newline="")
     w = csv.writer(buf, quoting=csv.QUOTE_ALL)
@@ -251,7 +264,12 @@ def export_csv(result, selected_action_ids=None):
             ("条件待确认" if action.get("动作来源") == "规则抽取" else ""),
         ]))
         source_clause = action["官方编号"] or "（未标注）"
-        excerpt = action.get("证据摘录") or action.get("适用条件") or "（以官方原文为准）"
+        # 「来源条款」列填中文要点时必须带来源标注：底表没收录条文正文，
+        # 这个摘要是 AI 预生成的一句话中文说明，不能让它看起来像条文原文。
+        # 没有摘要则回落到原文缺省提示（不编造）。
+        excerpt_text = (action.get("证据摘录") or "").strip()
+        excerpt = (f"中文要点（AI 预生成，非条文原文）：{excerpt_text}"
+                   if excerpt_text else "（以官方原文为准 —— 见官方链接）")
 
         w.writerow([
             _csv_safe(cat),
