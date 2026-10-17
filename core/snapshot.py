@@ -41,7 +41,30 @@ def _load_release_snapshot():
 
 _RELEASE = _load_release_snapshot()
 SNAPSHOT_VERSION = _RELEASE.get("snapshot_version", "v1.0-pre-review")
-DATA_CUTOFF = _RELEASE.get("data_cutoff") or "2026-10-14"
+
+
+def _normalize_date(text, fallback="2026-10-14"):
+    """把 2026.10.14 / 2026年10月14日 之类写法统一成 ISO 8601（2026-10-14）。
+
+    底表「核对日期」列历史写法是点分（2026.10.14），曾被 build_snapshot 原样
+    写进 snapshot.json，结果页面上「数据截止 2026.10.14」和「查询日期
+    2026-10-17」两种格式并排 —— 同一行元数据出现两套日期写法，容易被误读成
+    版本号。这里做一次归一，展示层与导出层只认 ISO。
+    """
+    raw = (text or "").strip()
+    if not raw:
+        return fallback
+    digits = "".join(ch if ch.isdigit() else " " for ch in raw).split()
+    if len(digits) >= 3 and len(digits[0]) == 4:
+        y, m, d = digits[0], digits[1], digits[2]
+        if len(m) <= 2 and len(d) <= 2:
+            return f"{y}-{int(m):02d}-{int(d):02d}"
+    if len(raw) == 10 and raw[4] == "-" and raw[7] == "-":
+        return raw
+    return raw
+
+
+DATA_CUTOFF = _normalize_date(_RELEASE.get("data_cutoff"))
 
 # 发布脚本生成的总量；快照不存在时保留兼容兜底。
 CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
@@ -58,6 +81,33 @@ MODULE_READY = "ready"      # 有合格数据
 MODULE_EMPTY = "empty"      # 无合格数据
 MODULE_PARTIAL = "partial"  # 一部分合格，一部分仍在核验
 MODULE_ERROR = "error"      # 异常
+
+# 「本次未查询」（**不是「空」**）。
+# 踩过的坑：header() 曾把未传的模块状态默认成 MODULE_EMPTY，于是 M1 页签顶栏
+# 把明明有数据的 M2/M3/M4 标成「空」—— 状态语义被默认值污染。
+# 现在的做法：没传状态的模块**根本不出现在顶栏**（不列 = 未查询）；
+# MODULE_NA 保留给「显式想说明该模块本应参与但未跑」的场景。
+MODULE_NA = "n/a"
+
+# 状态中文名唯一出口（app_main 与 CLI 共用，禁止各处再写一份）
+MODULE_CN = {
+    MODULE_READY: "就绪",
+    MODULE_PARTIAL: "部分",
+    MODULE_EMPTY: "空",
+    MODULE_ERROR: "异常",
+    MODULE_NA: "未查询",
+}
+
+# 模块代号 → 页面上对用户可见的名字（不暴露内部代号）
+MODULE_NAMES = {
+    "M1": "法规地图",
+    "M2": "变化时间线",
+    "M3": "合规待办",
+    "M4": "模型对照",
+    "M5": "区域对比",
+    "M6": "多区域汇总",
+    "M7": "OPC 上线准备",
+}
 
 # 覆盖范围说明（顶部展示）
 COVERAGE_SCOPE = (
@@ -81,15 +131,27 @@ def now_bjt() -> str:
 
 
 def header(category: str, market: str,
-           m1_status: str = MODULE_EMPTY,
-           m2_status: str = MODULE_EMPTY,
-           m3_status: str = MODULE_EMPTY,
-           m4_status: str = MODULE_EMPTY,
-           extra_notes: str = "") -> Dict[str, object]:
+           m1_status: str = None,
+           m2_status: str = None,
+           m3_status: str = None,
+           m4_status: str = None,
+           extra_notes: str = "",
+           modules: Dict[str, str] = None) -> Dict[str, object]:
     """返回所有查询结果顶部的统一元数据字典。
 
     各模块分别报告状态 —— 一个模块为空不阻塞其他模块（PRD D3）。
+
+    只列出**本次查询真正跑过**的模块：没传状态的模块不出现（用 MODULE_NA 的
+    语义表达「未查询」，而不是默认成 MODULE_EMPTY 谎报「空」）。
+    ``modules`` 供 M5/M6/M7 等新模块自报状态（如 {"M5": MODULE_READY}）。
     """
+    statuses: Dict[str, str] = {}
+    for code, val in (("M1", m1_status), ("M2", m2_status),
+                      ("M3", m3_status), ("M4", m4_status)):
+        if val is not None:
+            statuses[code] = val
+    if modules:
+        statuses.update(modules)
     return {
         "查询条件": f"{category} / {market}",
         "类目": category,
@@ -99,12 +161,7 @@ def header(category: str, market: str,
         "数据截止时间": DATA_CUTOFF,
         "数据来源": "、".join(DATA_SOURCES),
         "覆盖范围": COVERAGE_SCOPE,
-        "模块状态": {
-            "M1": m1_status,
-            "M2": m2_status,
-            "M3": m3_status,
-            "M4": m4_status,
-        },
+        "模块状态": statuses,
         "附注": extra_notes.strip(),
         "免责声明": DISCLAIMER,
         "页脚提示": WAF_FOOTER_HINT,
@@ -115,7 +172,8 @@ def render_header_block(meta: Dict[str, object]) -> str:
     """把元数据渲染成 HTML 顶部条（被 M1/M2/M3 复用）。"""
     mod = meta.get("模块状态", {})
     mod_html = "　".join(
-        f"<span class='cr-mod cr-mod-{v}'>M{k}·{v}</span>"
+        f"<span class='cr-mod cr-mod-{v}'>"
+        f"{MODULE_NAMES.get(k, k)}·{MODULE_CN.get(v, v)}</span>"
         for k, v in mod.items()
     )
 

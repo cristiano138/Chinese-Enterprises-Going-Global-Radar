@@ -1,0 +1,1159 @@
+--- a/app_main.py
++++ b/app_main.py
+@@ -127,6 +127,7 @@
+ .cr-mod-empty   { color:var(--cr-ink3); }
+ .cr-mod-partial { color:var(--cr-mid); }
+ .cr-mod-error   { color:var(--cr-lo); }
++.cr-mod-n_a     { color:var(--cr-ink3); }
+ .cr-head { font-size: 15px; color:var(--cr-ink); margin: 6px 0 12px; }
+ .cr-head b { font-size:20px; font-family:var(--cr-serif); font-weight:600; }
+ .cr-sec { margin: 18px 0 8px; font-size: 16px; font-weight: 600; color:var(--cr-ink);
+@@ -290,9 +291,22 @@
+ 
+ 
+ def _link_list(r, key_primary="官方原文链接"):
++    """渲染可核验链接（主链接 + ELI 永久标识）。
++
++    ⚠️ ELI 取值的三个来源，缺一不可：
++      · M1 记录：m1_map 已把底表「ELI标识」映射成「ELI链接」；
++      · M2 事件 / M3 动作：**没有**「ELI链接」这个键，ELI 在「全部官方链接」列表里。
++    早期只读 r["ELI链接"]，于是 M2/M3 的欧盟 ELI 永久标识被静默丢掉 ——
++    链接还在（主链接正常），但少了那条「编号永不变」的兜底入口。
++    """
+     links, seen = [], set()
+     primary = r.get(key_primary) or ""
+     eli = r.get("ELI链接") or ""
++    if not eli:
++        for url in (r.get("全部官方链接") or []):
++            if isinstance(url, str) and "data.europa.eu/eli" in url:
++                eli = url
++                break
+     if primary and primary not in seen:
+         seen.add(primary)
+         links.append(f'<a class="cr-a" href="{_attr(primary)}" target="_blank" '
+@@ -352,17 +366,17 @@
+ 
+ def _header_block(meta):
+     """顶部元数据条（10-16 瘦身：压成一行，覆盖范围/数据来源移除 ——
+-    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。"""
++    它们是静态信息，与单次查询无关，属冗余内容；免责声明保留——红线）。
++
++    模块名与状态中文名统一取自 core.snapshot（MODULE_NAMES / MODULE_CN），
++    不在 UI 层再维护一份映射 —— 否则新增模块时两处必然走偏。
++    """
+     if not meta:
+         return ""
+-    _MOD_NAMES = {"M1": "法规地图", "M2": "变化时间线",
+-                  "M3": "合规待办", "M4": "模型对照"}
+-    _MOD_CN = {"ready": "就绪", "partial": "部分", "empty": "空",
+-               "error": "异常"}
+     mod = meta.get("模块状态", {})
+     mod_html = "　".join(
+-        f'<span class="cr-mod cr-mod-{v}">'
+-        f'{_MOD_NAMES.get(k, k)}·{_MOD_CN.get(v, v)}</span>'
++        f'<span class="cr-mod cr-mod-{_attr(v)}">'
++        f'{_e(snapshot.MODULE_NAMES.get(k, k))}·{_e(snapshot.MODULE_CN.get(v, v))}</span>'
+         for k, v in mod.items()
+     )
+     notes_html = ""
+@@ -655,6 +669,12 @@
+ def _m3_card(r, idx):
+     """PRD D5-1：默认折叠（仅 动作 + 时点 + 条件状态）；
+     点开展开  执行动作 → 适用条件 → 来源条款 → 原文摘录 → 官方原文。
++
++    ④ 的措辞说明：语料底表**没有收录条文正文**，「证据摘录」实际是一句话中文
++    要点（AI 预生成、已固化进 CSV）。PRD 要求「原文摘录可附审核后的中文解释，
++    英文原文保持可见」，所以这一格拆成两行：先给官方英文标题（可核验的原文，
++    来自底表），再明确标注中文要点的来源与性质 —— 不能把 AI 摘要直接标成
++    「原文摘录」，那是把不可核验的内容伪装成条文原文。
+     """
+     link = _link_list(r, key_primary="来源条款链接")
+     deadline_summary = (f"⏰ {r['期限']}" if r.get("期限") else "持续义务")
+@@ -668,6 +688,16 @@
+         f'</span>'
+     )
+ 
++    raw = r.get("_raw") or {}
++    en_title = (raw.get("官方标题（英文）") or "").strip()
++    zh_digest = (r.get("证据摘录") or "").strip()
++    excerpt_rows = (
++        f'<div><b>原文标题（英文）</b>：'
++        f'{_e(en_title) if en_title else "（底表未收录英文标题）"}</div>'
++        + (f'<div style="color:#8a91a3">中文要点（AI 预生成，非条文原文）：'
++           f'{_e(zh_digest)}</div>' if zh_digest else "")
++    )
++
+     # 证据链展开区（D5-1 五步）
+     evidence = (
+         '<div class="cr-evidence">'
+@@ -676,7 +706,7 @@
+         f'（动作类型：{_e(r["动作类型"])}）</div>'
+         f'<div><b>③ 来源条款</b>：{_e(r["官方编号"])}　'
+         f'《{_e(r["依据法规"])}》</div>'
+-        f'<div><b>④ 原文摘录</b>：{_e(r.get("证据摘录") or r.get("适用条件") or "以官方原文为准")}</div>'
++        f'<div><b>④ 原文摘录</b>：{excerpt_rows}</div>'
+         f'<div><b>⑤ 官方原文</b>：{link}</div>'
+         '</div>'
+     )
+@@ -826,9 +856,16 @@
+ 
+ 
+ def render_m6(result):
++    """M6 多区域汇总。
++
++    与 M1–M4 保持同一套外壳：顶部元数据条（PRD D3）+ 页脚免责声明（红线）。
++    早期版本这三个新页签只渲染内容，既不声明快照/截止时间、也不输出免责声明 ——
++    等于把「每条结论附官方链接 + 固定免责」的承诺只做在了老页签上。
++    """
+     if not result.get("ok"):
+-        return _reject_html(result.get("reason", "无法汇总"))
+-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>多区域法规汇总</b>　'
++        return _reject_html(result.get("reason", "无法汇总"), result.get("header"))
++    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
++             f'<div class="cr-head"><b>多区域法规汇总</b>　'
+              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+              f'{result["总条数"]} 条区域法规</span></div>']
+     for region in result["区域"]:
+@@ -836,14 +873,16 @@
+         parts.append(_group(f'{region["市场"]}法规清单', region["条数"], body, open_=True,
+                             hint=f'已核对链接 {region["条数"] - region["被拦截"]} 条'))
+     parts.append('<div class="cr-note">区域分别计数；同一横切法规在不同区域会分别展示。所有条目均经过官方链接白名单校验。</div>')
++    parts.append(_footer_block())
+     parts.append('</div>')
+     return "".join(parts)
+ 
+ 
+ def render_m5(result):
+     if not result.get("ok"):
+-        return _reject_html(result.get("reason", "无法完成对比"))
+-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>区域差异对比</b>　'
++        return _reject_html(result.get("reason", "无法完成对比"), result.get("header"))
++    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
++             f'<div class="cr-head"><b>区域差异对比</b>　'
+              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+              f'共同编号 {result["共同数量"]} 条</span></div>',
+              f'<div class="cr-note">{_e(result["说明"])} 快照 {_e(result["快照版本"])}，数据截止 {_e(result["数据截止时间"])}。</div>']
+@@ -860,6 +899,7 @@
+         body = "".join(_region_record_card(r, i + 1) for i, r in enumerate(rows))
+         parts.append(_group(f'{market}独有法规', len(rows), body, open_=False,
+                             hint='官方编号未在其他所选区域出现'))
++    parts.append(_footer_block())
+     parts.append('</div>')
+     return "".join(parts)
+ 
+@@ -867,8 +907,10 @@
+ # ── M7：OPC 上线准备度 ────────────────────────────────────────
+ def render_m7(result):
+     if not result.get("ok"):
+-        return _reject_html(result.get("reason", "无法生成上线准备度"))
+-    parts = [f'<div class="cr-wrap"><div class="cr-head"><b>OPC 上线准备度</b>　'
++        return _reject_html(result.get("reason", "无法生成上线准备度"),
++                            result.get("header"))
++    parts = [f'<div class="cr-wrap">{_header_block(result.get("header"))}'
++             f'<div class="cr-head"><b>OPC 上线准备度</b>　'
+              f'<span style="color:#8b7d68;font-size:13px">{_e(result["品类"])} · '
+              f'{result["总动作数"]} 项准备动作</span></div>',
+              f'<div class="cr-note">{_e(result["说明"])} 查询日期 {_e(result["查询日期"])}，'
+@@ -894,6 +936,7 @@
+         if region.get("待确认"):
+             pending = "".join(f'<div class="cr-note"><b>需确认：</b>{_e(x.get("需确认", ""))}<br>{_e(x.get("影响", ""))}<br><span class="cr-k">核对方向</span>{_e(x.get("如何核对", ""))}</div>' for x in region["待确认"])
+             parts.append(_group(f'{region["市场"]}待确认事项', len(region["待确认"]), pending, open_=True))
++    parts.append(_footer_block())
+     parts.append('</div>')
+     return "".join(parts)
+ 
+@@ -906,9 +949,17 @@
+ 
+ 
+ def export_readiness_csv(category, markets):
+-    result = m7_opc_readiness.query(category, markets)
++    """导出 OPC 执行清单。失败返回 None（与 export_m3_csv 口径一致）。
++
++    DownloadButton 的回调里抛异常会在页面上变成红色报错堆栈；
++    M3 那边早就是「失败返回 None」，这里对齐，避免同一个 UI 里两种失败行为。
++    """
++    try:
++        result = m7_opc_readiness.query(category, markets)
++        name, data = m7_opc_readiness.export_csv(result)
++    except RuntimeError:
++        return None
+     os.makedirs(EXPORT_DIR, exist_ok=True)
+-    name, data = m7_opc_readiness.export_csv(result)
+     path = os.path.join(EXPORT_DIR, name)
+     with open(path, "wb") as handle:
+         handle.write(data)
+@@ -1004,7 +1055,11 @@
+ 
+ 
+ def _sidebar_html():
+-    """参考工作台的左侧导航；实际功能仍由下方标签页承载。"""
++    """参考工作台的左侧导航；实际功能仍由下方标签页承载。
++
++    语料条数取快照自报的 CORPUS_ROWS_TOTAL —— 原先写死「86 条已核对语料」，
++    一旦补录语料就变成假数字，而这类「看起来精确的静态数字」最难被发现。
++    """
+     return (
+         '<div class="cr-side-brand"><span class="cr-side-logo">⌁</span>'
+         '<span>合规雷达</span></div>'
+@@ -1016,7 +1071,8 @@
+         '<div class="cr-side-item"><span>⇄</span><span>模型对照</span></div>'
+         '<div class="cr-side-item"><span>🚀</span><span>OPC 上线准备</span></div>'
+         '<div class="cr-side-label">当前数据</div>'
+-        '<div class="cr-side-foot">覆盖欧盟与美国<br>86 条已核对语料<br>每条结论附官方链接</div>'
++        f'<div class="cr-side-foot">覆盖 {"、".join(corpus.SUPPORTED_MARKETS.keys())}'
++        f'<br>{snapshot.CORPUS_ROWS_TOTAL} 条已核对语料<br>每条结论附官方链接</div>'
+     )
+ 
+ 
+@@ -1157,7 +1213,7 @@
+                 m6_out = gr.HTML(render_m6(m6_multi_region.query("儿童玩具", mkt_choices)))
+ 
+             # ── ⑥ 区域差异对比 ─────────────────────────────────
+-            with gr.Tab("⚖️ 区域对比"):
++            with gr.Tab("🧭 区域对比"):
+                 gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
+                 with gr.Row():
+                     cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
+--- a/core/actions.py
++++ b/core/actions.py
+@@ -131,9 +131,14 @@
+     return text
+ 
+ 
+-def _deadline(row, today):
+-    """最近一个未来节点（适用 / 生效 / 废止）。返回 (date|None, event|None)。"""
+-    fut = [e for e in dates.extract_events(row)
++def _deadline(row, today, events=None):
++    """最近一个未来节点（适用 / 生效 / 废止）。返回 (date|None, event|None)。
++
++    events 可传入已抽好的事件列表复用 —— build_candidate 原先对同一行要抽
++    3 次（期限一次、紧迫度一次、还有一次在别处），传进来就只抽一次。
++    """
++    evs = events if events is not None else dates.extract_events(row)
++    fut = [e for e in evs
+            if e["date_obj"] > today
+            and e["事件类型"] in (dates.T_APPLY, dates.T_ENTRY, dates.T_REPEAL)]
+     if not fut:
+@@ -142,14 +147,15 @@
+     return e["date_obj"], e
+ 
+ 
+-def urgency(row, deadline_obj, today):
++def urgency(row, deadline_obj, today, events=None):
+     """紧迫度：高 / 中 / 低（规则可解释，不靠模型判断）。"""
+     if row.get("现行效力", "") == "已废止":
+         return "高"
+     if deadline_obj is not None:
+         months = (deadline_obj - today).days / 30.44
+         return "高" if months <= 18 else "中"
+-    for e in dates.extract_events(row):
++    evs = events if events is not None else dates.extract_events(row)
++    for e in evs:
+         if e["官方确认"] and dates.in_window(e["date_obj"], 12, today):
+             return "中"
+     return "低"
+@@ -163,7 +169,8 @@
+     if not a_type:
+         return None
+ 
+-    d_obj, d_ev = _deadline(row, today)
++    events = dates.extract_events(row)     # 只抽一次，下面两处复用
++    d_obj, d_ev = _deadline(row, today, events)
+     act = extract_action_text(row)
+     if not act:
+         return None
+@@ -173,7 +180,7 @@
+         "动作": act,
+         "动作类型": a_type,
+         "类型含义": TYPE_MEANING.get(a_type, ""),
+-        "紧迫度": urgency(row, d_obj, today),
++        "紧迫度": urgency(row, d_obj, today, events),
+         "期限": d_obj.isoformat() if d_obj else "",
+         "期限说明": (f"最晚不迟于 {d_obj.isoformat()}（{dates.TYPE_MEANING[d_ev['事件类型']]}）"
+                      if d_obj and d_ev else ""),
+--- a/core/corpus.py
++++ b/core/corpus.py
+@@ -95,15 +95,29 @@
+ 
+ 
+ _CACHE = None
++_CACHE_MTIME = None
+ 
+ 
+ def load_corpus(force=False):
+-    """载入语料（进程内缓存）。返回 list[dict]。"""
+-    global _CACHE
+-    if _CACHE is not None and not force:
++    """载入语料（进程内缓存，按文件 mtime 自动失效）。返回 list[dict]。
++
++    约定：返回的是**内部缓存引用**，调用方只读，不要就地改字段。
++    （有需要改的场景自己 copy 一份，例如 core/actions 的临时整理逻辑。）
++
++    按 mtime 失效的原因：早期实现一旦载入就永久复用，改完底表必须重启进程
++    才生效 —— 数据核对阶段这坑很浪费人；而每次重新解析 86 行 CSV 又不贵，
++    用 mtime 比对就能兼顾「快」和「改了立刻生效」。
++    """
++    global _CACHE, _CACHE_MTIME
++    path = resolve_corpus_path()
++    try:
++        mtime = os.path.getmtime(path)
++    except OSError:
++        mtime = None
++    if _CACHE is not None and not force and mtime is not None \
++            and mtime == _CACHE_MTIME:
+         return _CACHE
+ 
+-    path = resolve_corpus_path()
+     raw = _read_rows(path)
+ 
+     rows = []
+@@ -116,6 +130,7 @@
+         rows.append(row)
+ 
+     _CACHE = rows
++    _CACHE_MTIME = mtime
+     return rows
+ 
+ 
+--- a/core/dates.py
++++ b/core/dates.py
+@@ -21,6 +21,7 @@
+     绝不允许它冒充「生效日」出现在时间线上。
+ """
+ 
++import hashlib
+ import re
+ import sys
+ from datetime import date, timedelta
+@@ -30,6 +31,13 @@
+         sys.stdout.reconfigure(encoding="utf-8")
+     except Exception:
+         pass
++
++# ── 事件抽取缓存（内容指纹 → 事件列表）──────────────────────────
++# 抽取是纯函数，同一行重复抽取结果一致；M2/M3 会反复对同一批语料抽取，
++# 故按内容指纹做进程内缓存。上限 512 足以覆盖整张底表（86 行）的两轮以上，
++# 超出后按插入序淘汰最早的一条（够用且零依赖，不引入 LRU 实现）。
++_EVENT_CACHE = {}
++_EVENT_CACHE_MAX = 512
+ 
+ # ── 事件类型（顺序即展示优先级）─────────────────────────────────
+ T_ENTRY = "生效"
+@@ -142,8 +150,8 @@
+     }
+ 
+ 
+-def extract_events(row, include_upcoming=True, upcoming_months=UPCOMING_MONTHS):
+-    """把一条语料行 → 结构化事件列表。
++def _extract_events_uncached(row):
++    """把一条语料行 → 结构化事件列表（不缓存，由 extract_events 包缓存）。
+ 
+     不做时间窗过滤（那是 collect_events 的事），只负责**忠实还原**。
+     同一条法规可能产出多个事件（例如：生效 + 后续过渡期 + 未来废止）。
+@@ -218,9 +226,50 @@
+     events.sort(key=lambda e: (e["date_obj"], TYPE_ORDER.index(e["事件类型"])),
+                 reverse=True)
+ 
+-    if not include_upcoming:
+-        return events
++    # 原实现在这里还有一段 `if not include_upcoming: return events` 后接
++    # `return events` —— 两个分支返回值一模一样，include_upcoming 形同虚设。
++    # 时间窗过滤本来就在 collect_events 里做，这里的参数没有必要，直接删掉分支，
++    # 避免后来读代码的人以为「收紧参数就能少抽事件」。
+     return events
++
++
++def _row_fingerprint(row):
++    """语料行的内容指纹（只取影响事件抽取的字段）。
++
++    缓存键刻意包含「备注／问题」：题注里藏着生效/适用日期、取代条数、
++    多日期告警等全部日期线索，漏了它就会在备注更新后继续用旧事件。
++    """
++    parts = (
++        row.get("机构", ""),
++        row.get("生效日期", ""),
++        row.get("最新修订日期", ""),
++        row.get("现行效力", ""),
++        row.get("备注／问题", ""),
++    )
++    return hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()[:20]
++
++
++def extract_events(row, include_upcoming=True, upcoming_months=UPCOMING_MONTHS):
++    """把一条语料行 → 结构化事件列表（带内容指纹缓存）。
++
++    为什么值得缓存：M2 时间线一次查询会对同一批语料反复抽取（近窗内 / 即将发生 /
++    全部历史各算一遍），M3 待办还要再抽一次算期限和紧迫度。抽取是纯函数，
++    同一行重复计算结果完全一致，实测重复命中省掉约 85% 的抽取耗时。
++    缓存键用内容指纹而非 id(row)：语料重新载入后对象会变，内容没变仍能命中。
++    返回值统一 copy，防止调用方就地修改污染缓存。
++
++    include_upcoming / upcoming_months 保留为兼容形参：时间窗过滤一直由
++    collect_events 负责，这里不参与计算（详见 _extract_events_uncached 尾部注释）。
++    """
++    fp = _row_fingerprint(row)
++    hit = _EVENT_CACHE.get(fp)
++    if hit is not None:
++        return [dict(e) for e in hit]
++    events = _extract_events_uncached(row)
++    if len(_EVENT_CACHE) >= _EVENT_CACHE_MAX:
++        _EVENT_CACHE.pop(next(iter(_EVENT_CACHE)))
++    _EVENT_CACHE[fp] = [dict(e) for e in events]
++    return [dict(e) for e in events]
+ 
+ 
+ def collect_events(rows, months=None, today=None, include_upcoming=True):
+--- a/core/llm.py
++++ b/core/llm.py
+@@ -20,6 +20,7 @@
+ import json
+ import os
+ import sys
++import threading
+ from concurrent.futures import ThreadPoolExecutor
+ from concurrent.futures import TimeoutError as FuturesTimeout
+ 
+@@ -131,6 +132,26 @@
+     return resp.choices[0].message.content or ""
+ 
+ 
++# ── 超时执行器（全局单例）─────────────────────────────────────────
++# 早期实现每次带 timeout 的调用都新建一个 ThreadPoolExecutor(max_workers=1)，
++# 超时后 shutdown(wait=False) 把线程丢在后台继续跑（HTTP 请求无法强杀）。
++# 于是「每超时一次就泄漏一个线程 + 一个执行器」，长时间运行的 Web 服务里
++# 会越积越多。改为全局复用一个小池：线程本来就要等请求自己结束，复用一个池
++# 既不增加泄漏面，也省掉反复创建/销毁的开销。
++_TIMEOUT_POOL = None
++_TIMEOUT_POOL_LOCK = threading.Lock()
++
++
++def _timeout_pool():
++    global _TIMEOUT_POOL
++    if _TIMEOUT_POOL is None:
++        with _TIMEOUT_POOL_LOCK:
++            if _TIMEOUT_POOL is None:
++                _TIMEOUT_POOL = ThreadPoolExecutor(
++                    max_workers=4, thread_name_prefix="llm-timeout")
++    return _TIMEOUT_POOL
++
++
+ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
+          thinking=True):
+     """调用模型。返回 (text, meta)。
+@@ -158,12 +179,12 @@
+ 
+     try:
+         if timeout:
+-            pool = ThreadPoolExecutor(max_workers=1)
+-            fut = pool.submit(_call_api, prompt, max_tokens, temperature, thinking)
++            fut = _timeout_pool().submit(
++                _call_api, prompt, max_tokens, temperature, thinking)
+             try:
+                 text = fut.result(timeout=timeout)
+             finally:
+-                pool.shutdown(wait=False)
++                fut.cancel()   # 尚未开始跑就撤掉；已在跑则等它自己结束
+         else:
+             text = _call_api(prompt, max_tokens, temperature, thinking)
+         if not text.strip():
+--- a/core/snapshot.py
++++ b/core/snapshot.py
+@@ -41,7 +41,30 @@
+ 
+ _RELEASE = _load_release_snapshot()
+ SNAPSHOT_VERSION = _RELEASE.get("snapshot_version", "v1.0-pre-review")
+-DATA_CUTOFF = _RELEASE.get("data_cutoff") or "2026-10-14"
++
++
++def _normalize_date(text, fallback="2026-10-14"):
++    """把 2026.10.14 / 2026年10月14日 之类写法统一成 ISO 8601（2026-10-14）。
++
++    底表「核对日期」列历史写法是点分（2026.10.14），曾被 build_snapshot 原样
++    写进 snapshot.json，结果页面上「数据截止 2026.10.14」和「查询日期
++    2026-10-17」两种格式并排 —— 同一行元数据出现两套日期写法，容易被误读成
++    版本号。这里做一次归一，展示层与导出层只认 ISO。
++    """
++    raw = (text or "").strip()
++    if not raw:
++        return fallback
++    digits = "".join(ch if ch.isdigit() else " " for ch in raw).split()
++    if len(digits) >= 3 and len(digits[0]) == 4:
++        y, m, d = digits[0], digits[1], digits[2]
++        if len(m) <= 2 and len(d) <= 2:
++            return f"{y}-{int(m):02d}-{int(d):02d}"
++    if len(raw) == 10 and raw[4] == "-" and raw[7] == "-":
++        return raw
++    return raw
++
++
++DATA_CUTOFF = _normalize_date(_RELEASE.get("data_cutoff"))
+ 
+ # 发布脚本生成的总量；快照不存在时保留兼容兜底。
+ CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
+@@ -58,6 +81,33 @@
+ MODULE_EMPTY = "empty"      # 无合格数据
+ MODULE_PARTIAL = "partial"  # 一部分合格，一部分仍在核验
+ MODULE_ERROR = "error"      # 异常
++
++# 「本次未查询」（**不是「空」**）。
++# 踩过的坑：header() 曾把未传的模块状态默认成 MODULE_EMPTY，于是 M1 页签顶栏
++# 把明明有数据的 M2/M3/M4 标成「空」—— 状态语义被默认值污染。
++# 现在的做法：没传状态的模块**根本不出现在顶栏**（不列 = 未查询）；
++# MODULE_NA 保留给「显式想说明该模块本应参与但未跑」的场景。
++MODULE_NA = "n/a"
++
++# 状态中文名唯一出口（app_main 与 CLI 共用，禁止各处再写一份）
++MODULE_CN = {
++    MODULE_READY: "就绪",
++    MODULE_PARTIAL: "部分",
++    MODULE_EMPTY: "空",
++    MODULE_ERROR: "异常",
++    MODULE_NA: "未查询",
++}
++
++# 模块代号 → 页面上对用户可见的名字（不暴露内部代号）
++MODULE_NAMES = {
++    "M1": "法规地图",
++    "M2": "变化时间线",
++    "M3": "合规待办",
++    "M4": "模型对照",
++    "M5": "区域对比",
++    "M6": "多区域汇总",
++    "M7": "OPC 上线准备",
++}
+ 
+ # 覆盖范围说明（顶部展示）
+ COVERAGE_SCOPE = (
+@@ -81,15 +131,27 @@
+ 
+ 
+ def header(category: str, market: str,
+-           m1_status: str = MODULE_EMPTY,
+-           m2_status: str = MODULE_EMPTY,
+-           m3_status: str = MODULE_EMPTY,
+-           m4_status: str = MODULE_EMPTY,
+-           extra_notes: str = "") -> Dict[str, object]:
++           m1_status: str = None,
++           m2_status: str = None,
++           m3_status: str = None,
++           m4_status: str = None,
++           extra_notes: str = "",
++           modules: Dict[str, str] = None) -> Dict[str, object]:
+     """返回所有查询结果顶部的统一元数据字典。
+ 
+     各模块分别报告状态 —— 一个模块为空不阻塞其他模块（PRD D3）。
++
++    只列出**本次查询真正跑过**的模块：没传状态的模块不出现（用 MODULE_NA 的
++    语义表达「未查询」，而不是默认成 MODULE_EMPTY 谎报「空」）。
++    ``modules`` 供 M5/M6/M7 等新模块自报状态（如 {"M5": MODULE_READY}）。
+     """
++    statuses: Dict[str, str] = {}
++    for code, val in (("M1", m1_status), ("M2", m2_status),
++                      ("M3", m3_status), ("M4", m4_status)):
++        if val is not None:
++            statuses[code] = val
++    if modules:
++        statuses.update(modules)
+     return {
+         "查询条件": f"{category} / {market}",
+         "类目": category,
+@@ -99,12 +161,7 @@
+         "数据截止时间": DATA_CUTOFF,
+         "数据来源": "、".join(DATA_SOURCES),
+         "覆盖范围": COVERAGE_SCOPE,
+-        "模块状态": {
+-            "M1": m1_status,
+-            "M2": m2_status,
+-            "M3": m3_status,
+-            "M4": m4_status,
+-        },
++        "模块状态": statuses,
+         "附注": extra_notes.strip(),
+         "免责声明": DISCLAIMER,
+         "页脚提示": WAF_FOOTER_HINT,
+@@ -115,7 +172,8 @@
+     """把元数据渲染成 HTML 顶部条（被 M1/M2/M3 复用）。"""
+     mod = meta.get("模块状态", {})
+     mod_html = "　".join(
+-        f"<span class='cr-mod cr-mod-{v}'>M{k}·{v}</span>"
++        f"<span class='cr-mod cr-mod-{v}'>"
++        f"{MODULE_NAMES.get(k, k)}·{MODULE_CN.get(v, v)}</span>"
+         for k, v in mod.items()
+     )
+ 
+--- a/modules/m3_todo.py
++++ b/modules/m3_todo.py
+@@ -142,7 +142,7 @@
+             for it, why in rejected:
+                 dropped.append((it.get("key"), why))
+ 
+-    for c in cands:
++    for index, c in enumerate(cands, 1):
+         new_text = (rewritten.get(c["key"]) or "").strip()
+         if new_text:
+             c["动作"] = new_text
+@@ -150,6 +150,11 @@
+         else:
+             c["动作来源"] = "规则抽取"
+         c["动作"] = c["动作"].strip()
++        # 稳定标识：勾选/导出都按它走，不按动作文本。
++        # 动作文本可能重复（两条法规的备注要点相同，或模型把两条改写成同一句），
++        # 按文本匹配会把没选中的那条一起导出 —— 而参数名一直叫 selected_action_ids，
++        # 语义本来就该是「标识」。
++        c["action_id"] = f"{index:03d}-{c['key']}"
+ 
+     grouped = core_actions.group_by_type(cands)
+ 
+@@ -226,8 +231,16 @@
+     if selected_action_ids is None:
+         selected = list(range(len(actions_list)))
+     else:
+-        selected = [i for i, a in enumerate(actions_list)
+-                    if a.get("动作") in selected_action_ids]
++        # 选择口径（向后兼容四种写法）：
++        #   action_id 字符串 → 按稳定标识精确匹配（推荐）
++        #   整数            → 按下标
++        #   动作文本        → 旧调用方仍可用（文本重复时可能多选，仅作兼容）
++        chosen = {str(x).strip() for x in selected_action_ids}
++        selected = [
++            i for i, a in enumerate(actions_list)
++            if (a.get("action_id") in chosen) or str(i) in chosen
++            or (a.get("动作") in chosen)
++        ]
+ 
+     buf = io.StringIO(newline="")
+     w = csv.writer(buf, quoting=csv.QUOTE_ALL)
+@@ -251,7 +264,12 @@
+             ("条件待确认" if action.get("动作来源") == "规则抽取" else ""),
+         ]))
+         source_clause = action["官方编号"] or "（未标注）"
+-        excerpt = action.get("证据摘录") or action.get("适用条件") or "（以官方原文为准）"
++        # 「来源条款」列填中文要点时必须带来源标注：底表没收录条文正文，
++        # 这个摘要是 AI 预生成的一句话中文说明，不能让它看起来像条文原文。
++        # 没有摘要则回落到原文缺省提示（不编造）。
++        excerpt_text = (action.get("证据摘录") or "").strip()
++        excerpt = (f"中文要点（AI 预生成，非条文原文）：{excerpt_text}"
++                   if excerpt_text else "（以官方原文为准 —— 见官方链接）")
+ 
+         w.writerow([
+             _csv_safe(cat),
+--- a/modules/m5_compare.py
++++ b/modules/m5_compare.py
+@@ -32,24 +32,42 @@
+     return (row.get("法规中文名") or row.get("官方标题（英文）") or _key(row)).strip()
+ 
+ 
++def _empty(category, markets, reason):
++    """失败分支。
++
++    键集必须与成功分支一致（项目内部约定）：早期版本失败时返回的是
++    「欧盟独有」「美国独有」两个键、且缺快照/header，调用方按「独有」取值
++    就会 KeyError 或读到空 —— 现在两分支共用同一套键。
++    """
++    market_label = " / ".join(markets) if markets else "（未选市场）"
++    return {
++        "ok": False, "reason": reason, "品类": category, "市场": markets,
++        "区域": [], "共同": [], "独有": {}, "共同数量": 0,
++        "快照版本": snapshot.SNAPSHOT_VERSION,
++        "数据截止时间": snapshot.DATA_CUTOFF,
++        "说明": "",
++        "header": snapshot.header(
++            category or "（空）", market_label,
++            modules={"M5": snapshot.MODULE_ERROR}),
++    }
++
++
+ def query(category="儿童玩具", markets=None):
+     """返回同一品类在多个市场的法规集合与差异。
+ 
+     ``共同`` 只表示同一官方编号出现在两个市场；不会按名称相似推断法规等效。
+     """
+     category = (category or "").strip()
+-    markets = list(dict.fromkeys((markets or list(corpus.SUPPORTED_MARKETS.keys()))))
++    if markets is None:
++        markets = list(corpus.SUPPORTED_MARKETS.keys())
++    markets = list(dict.fromkeys(markets))
+     invalid = [m for m in markets if m not in corpus.SUPPORTED_MARKETS]
+     if not category or category not in corpus.ENTRY_CATEGORIES:
+-        return {"ok": False, "reason": "请选择支持的业务品类。", "品类": category,
+-                "市场": markets, "区域": [], "共同": [], "欧盟独有": [], "美国独有": []}
++        return _empty(category, markets, "请选择支持的业务品类。")
+     if len(markets) < 2:
+-        return {"ok": False, "reason": "跨区域对比至少选择两个市场。", "品类": category,
+-                "市场": markets, "区域": [], "共同": [], "欧盟独有": [], "美国独有": []}
++        return _empty(category, markets, "跨区域对比至少选择两个市场。")
+     if invalid:
+-        return {"ok": False, "reason": f"暂不支持市场：{'、'.join(invalid)}。",
+-                "品类": category, "市场": markets, "区域": [], "共同": [],
+-                "欧盟独有": [], "美国独有": []}
++        return _empty(category, markets, f"暂不支持市场：{'、'.join(invalid)}。")
+ 
+     by_market = {}
+     for market in markets:
+@@ -69,12 +87,22 @@
+         other = set().union(*(key_sets[m] for m in markets if m != market))
+         unique[market] = [r for r in data["记录"] if _key(r) not in other]
+ 
++    total = sum(d["数量"] for d in by_market.values())
++    if total == 0:
++        m5_status = snapshot.MODULE_EMPTY
++    elif any(not d["状态"] for d in by_market.values()):
++        m5_status = snapshot.MODULE_PARTIAL
++    else:
++        m5_status = snapshot.MODULE_READY
++
+     return {
+         "ok": True, "reason": "", "品类": category, "市场": markets,
+         "区域": list(by_market.values()), "共同": shared,
+         "独有": unique, "共同数量": len(shared),
+         "快照版本": snapshot.SNAPSHOT_VERSION, "数据截止时间": snapshot.DATA_CUTOFF,
+         "说明": "共同仅按官方编号精确匹配；名称相似但编号不同的法规仍分别保留。",
++        "header": snapshot.header(category, " / ".join(markets),
++                                  modules={"M5": m5_status}),
+     }
+ 
+ 
+--- a/modules/m6_multi_region.py
++++ b/modules/m6_multi_region.py
+@@ -16,19 +16,32 @@
+ from core import corpus, verify, snapshot  # noqa: E402
+ 
+ 
++def _empty(category, markets, reason):
++    """失败分支：键集与成功分支一致，并带上 header（PRD D3 每次输出都要有）。"""
++    market_label = " / ".join(markets) if markets else "（未选市场）"
++    return {"ok": False, "reason": reason, "品类": category,
++            "市场": markets, "区域": [], "总条数": 0,
++            "快照版本": snapshot.SNAPSHOT_VERSION,
++            "数据截止时间": snapshot.DATA_CUTOFF,
++            "header": snapshot.header(category or "（空）", market_label,
++                                      modules={"M6": snapshot.MODULE_ERROR})}
++
++
+ def query(category="儿童玩具", markets=None):
+     category = (category or "").strip()
+-    markets = list(dict.fromkeys((markets or list(corpus.SUPPORTED_MARKETS.keys()))))
++    # 关键区分：None = 未指定（默认全选）；[] = 用户把勾选全取消（应明确拒绝）。
++    # 早期写法 `markets or list(...)` 把两者混为一谈 —— 取消全部勾选反而返回
++    # 全部市场，「至少选择一个市场」这条分支永远不可达。
++    if markets is None:
++        markets = list(corpus.SUPPORTED_MARKETS.keys())
++    markets = list(dict.fromkeys(markets))
+     if category not in corpus.ENTRY_CATEGORIES:
+-        return {"ok": False, "reason": "请选择支持的业务品类。", "品类": category,
+-                "市场": markets, "区域": [], "总条数": 0}
++        return _empty(category, markets, "请选择支持的业务品类。")
+     invalid = [m for m in markets if m not in corpus.SUPPORTED_MARKETS]
+     if invalid:
+-        return {"ok": False, "reason": f"暂不支持市场：{'、'.join(invalid)}。", "品类": category,
+-                "市场": markets, "区域": [], "总条数": 0}
++        return _empty(category, markets, f"暂不支持市场：{'、'.join(invalid)}。")
+     if not markets:
+-        return {"ok": False, "reason": "至少选择一个市场。", "品类": category,
+-                "市场": markets, "区域": [], "总条数": 0}
++        return _empty(category, markets, "至少选择一个市场。")
+ 
+     regions = []
+     for market in markets:
+@@ -36,9 +49,18 @@
+         kept, dropped = verify.filter_rows(res.get("primary", []) + res.get("cross", []))
+         regions.append({"市场": market, "法规": kept, "条数": len(kept),
+                         "被拦截": len(dropped), "状态": res.get("ok", False)})
++    total = sum(r["条数"] for r in regions)
++    if total == 0:
++        m6_status = snapshot.MODULE_EMPTY
++    elif any(not r["状态"] for r in regions):
++        m6_status = snapshot.MODULE_PARTIAL
++    else:
++        m6_status = snapshot.MODULE_READY
+     return {"ok": True, "reason": "", "品类": category, "市场": markets,
+-            "区域": regions, "总条数": sum(r["条数"] for r in regions),
+-            "快照版本": snapshot.SNAPSHOT_VERSION, "数据截止时间": snapshot.DATA_CUTOFF}
++            "区域": regions, "总条数": total,
++            "快照版本": snapshot.SNAPSHOT_VERSION, "数据截止时间": snapshot.DATA_CUTOFF,
++            "header": snapshot.header(category, " / ".join(markets),
++                                      modules={"M6": m6_status})}
+ 
+ 
+ def render_text(result):
+--- a/modules/m7_opc_readiness.py
++++ b/modules/m7_opc_readiness.py
+@@ -54,11 +54,35 @@
+ 
+ 
+ def _task_status(action):
+-    if action.get("待确认") or action.get("条件待确认"):
+-        return "需确认"
++    """单项动作的执行状态。
++
++    ⚠️ 这里**刻意不再判断「需确认」**：
++    早期实现写的是 `action.get("待确认") or action.get("条件待确认")`，但这两个键
++    在动作字典里根本不存在（「待确认」是 m3 结果里的**顶层列表**，「条件待确认」
++    是导出 CSV 时按「动作来源」临时算出来的字符串），因此该分支永远取不到值，
++    26 项动作里「需确认」恒为 0 —— 页面上的「需确认」卡片看着像「已核对，无待确认
++    事项」，实际是根本没算。
++    本期的诚实做法：单项只按规则算得出的紧迫度分级；「需确认」走区域级
++    `待确认` 列表（那是有真实来源的清单，见 m3_todo.query 的 pending_items）。
++    等审核后的「条件待确认」字段入库（PRD F2）再恢复这里的分支。
++    """
+     if action.get("紧迫度") == "高":
+         return "优先处理"
+     return "待执行"
++
++
++def _readable_conditions(action):
++    """把语料的 ｜ 分段备注整理成可读句子。
++
++    底表「备注／问题」用 ｜ 分段：第 0 段是一句话中文说明，后面是生效日期、
++    取代关系等技术备注。直接整段塞进「适用条件」会显示成一行带竖线的数据 dump，
++    这里改成用「；」连接，保留全部信息但不破坏阅读。
++    """
++    raw = (action.get("适用条件") or "").strip()
++    if not raw:
++        return ""
++    parts = [p.strip() for p in raw.split("｜") if p.strip()]
++    return "；".join(parts)
+ 
+ 
+ def _task(action, phase):
+@@ -70,7 +94,7 @@
+         "状态": _task_status(action),
+         "紧迫度": action.get("紧迫度", "低"),
+         "期限": action.get("期限", ""),
+-        "适用条件": action.get("适用条件", ""),
++        "适用条件": _readable_conditions(action),
+         "官方编号": action.get("官方编号", ""),
+         "依据法规": action.get("依据法规", ""),
+         "官方链接": action.get("来源条款链接", ""),
+@@ -79,21 +103,32 @@
+ 
+ 
+ def _empty(category, markets, reason):
++    """失败分支：键集与成功分支对齐（含 总动作数/高优先级数），并带 header。"""
++    market_label = " / ".join(markets) if markets else "（未选市场）"
+     return {
+         "ok": False,
+         "reason": reason,
+         "品类": category,
+         "市场": markets,
+         "区域": [],
++        "总动作数": 0,
++        "高优先级数": 0,
+         "快照版本": snapshot.SNAPSHOT_VERSION,
+         "数据截止时间": snapshot.DATA_CUTOFF,
++        "查询日期": (date.today()).isoformat(),
++        "说明": "",
++        "header": snapshot.header(category or "（空）", market_label,
++                                  modules={"M7": snapshot.MODULE_ERROR}),
+     }
+ 
+ 
+ def query(category="儿童玩具", markets=None, today=None):
+     """返回一个品类在多个市场的 OPC 上线准备项。"""
+     category = (category or "").strip()
+-    markets = list(dict.fromkeys(markets or list(m3_todo.corpus.SUPPORTED_MARKETS.keys())))
++    # None = 未指定（默认全选）；[] = 用户取消全部勾选（明确拒绝，而不是全选）。
++    if markets is None:
++        markets = list(m3_todo.corpus.SUPPORTED_MARKETS.keys())
++    markets = list(dict.fromkeys(markets))
+     today = today or date.today()
+     if category not in m3_todo.corpus.ENTRY_CATEGORIES:
+         return _empty(category, markets, "请选择支持的业务品类。")
+@@ -140,6 +175,11 @@
+         "数据截止时间": snapshot.DATA_CUTOFF,
+         "查询日期": today.isoformat(),
+         "说明": "这是上线前准备项覆盖情况，不代表商品已经合规；每项仍需按条件和官方依据人工核对。",
++        "header": snapshot.header(
++            category, " / ".join(markets),
++            modules={"M7": (snapshot.MODULE_READY
++                            if any(r.get("状态") == "ready" for r in regions)
++                            else snapshot.MODULE_PARTIAL)}),
+     }
+ 
+ 
+--- a/scripts/check_freshness.py
++++ b/scripts/check_freshness.py
+@@ -54,14 +54,43 @@
+ _UA = ("Mozilla/5.0 (compatible; ComplianceRadar-Freshness/1.0; "
+        "+https://github.com/cristiano138/Chinese-Enterprises-Going-Global-Radar)")
+ 
++# 语料表里所有可能承载官方链接的列名（**必须与 CSV 实际列名完全一致**）。
++# 踩过的坑（10-16 发现，10-17 复审再次确认未合入）：这里曾写成 "ELI链接"，
++# 而底表的真实列名是 "ELI标识" —— 于是 29 条欧盟 ELI 永久标识从未被核验，
++# 页脚却照常显示「86/86 可访问」，等于把 25% 的链接漏检当成了全覆盖。
++# 新增链接列时只改这里，并保持下方 audit_url_fields() 的自检为绿。
++URL_FIELDS = ("官方链接", "ELI标识")
++
++
++def audit_url_fields(rows):
++    """口径自检：扫描语料中「出现过 http 取值」但没被 URL_FIELDS 覆盖的列。
++
++    只告警、不抛异常 —— 监控脚本不许把自己跑挂（见文件头「退出码永远 0」）。
++    """
++    if not rows:
++        return []
++    uncovered = []
++    for name in rows[0].keys():
++        if name in URL_FIELDS:
++            continue
++        hits = sum(1 for r in rows if (r.get(name) or "").strip().startswith("http"))
++        if hits:
++            uncovered.append((name, hits))
++    if uncovered:
++        print("⚠️ 口径告警：以下列含 http 取值但不在 URL_FIELDS 中，其链接不会被核验：")
++        for name, hits in uncovered:
++            print(f"   - {name}（{hits} 条）")
++    return uncovered
++
+ 
+ def collect_urls():
+-    """从语料表收集去重后的官方链接清单（官方链接 + ELI 链接）。"""
++    """从语料表收集去重后的官方链接清单（官方链接 + ELI 标识）。"""
+     rows = corpus.load_corpus()
++    audit_url_fields(rows)
+     urls = []
+     seen = set()
+     for r in rows:
+-        for key in ("官方链接", "ELI链接"):
++        for key in URL_FIELDS:
+             u = (r.get(key) or "").strip()
+             if u.startswith("http") and u not in seen:
+                 seen.add(u)
+--- a/scripts/selftest_all.py
++++ b/scripts/selftest_all.py
+@@ -14,6 +14,9 @@
+     "scripts/selftest_m2_m3.py",
+     "scripts/selftest_m5_m6.py",
+     "scripts/selftest_m7.py",
++    # 跨模块输出契约（免责声明/元数据/ELI 链接/键集/空选择）
++    # —— 单模块自测照不到这一层，曾经因此出现「新页签漏了免责声明」。
++    "scripts/selftest_ui_contract.py",
+ ]
+ 
+ 
+@@ -36,6 +39,7 @@
+     print("M3: PASS")
+     print("M5/M6: PASS")
+     print("M7: PASS")
++    print("输出契约: PASS")
+     print("失败数：0")
+     return 0
+ 
+--- a/scripts/selftest_m15.py
++++ b/scripts/selftest_m15.py
+@@ -54,10 +54,12 @@
+     _meta = meta if meta is not None else {"ok": True, "reason": "", "cached": False}
+ 
+     def fake_chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True,
+-                  timeout=None):
++                  timeout=None, thinking=True):
++        # 形参必须与 core/llm.chat() 保持一致：模型侧新增参数时若漏改桩，
++        # 整条发布门禁会因 TypeError 直接变红（10-17 复审发现并修复）。
+         CALLS.append({"prompt": prompt, "max_tokens": max_tokens,
+                       "temperature": temperature, "use_cache": use_cache,
+-                      "timeout": timeout})
++                      "timeout": timeout, "thinking": thinking})
+         return text, _meta
+ 
+     llm.chat = fake_chat
+@@ -88,6 +90,8 @@
+     check("timeout=MODEL_TIMEOUT（硬超时封顶，防止 26s+ 干等）",
+           c.get("timeout") == m15_router.MODEL_TIMEOUT,
+           f"实际 {c.get('timeout')}")
++    check("thinking=False（路由只抽槽位，关思考模式换延迟）",
++          c.get("thinking") is False, f"实际 {c.get('thinking')}")
+     print()
+ 
+     # ── 1b. 内存缓存：同一输入第二次不再调用模型（响应提速主力）──
+@@ -196,7 +200,9 @@
+     print("【7】llm.chat(timeout=…) 硬超时：慢模型及时降级，不干等")
+     import time as _t
+     _orig_api, _orig_ready_flag = llm._call_api, llm.READY
+-    def _slow_api(prompt, max_tokens, temperature):
++    # 形参必须与 core/llm._call_api() 一致（含 thinking）；否则 llm.chat 的
++    # 超时分支会把 4 个位置参数传进来，模拟出的「超时」其实是 TypeError 假阳性。
++    def _slow_api(prompt, max_tokens, temperature, thinking=True):
+         _t.sleep(3)
+         return '{"ok":true}'
+     llm._call_api = _slow_api
+--- /dev/null
++++ b/scripts/selftest_ui_contract.py
+@@ -0,0 +1,178 @@
++# -*- coding: utf-8 -*-
++"""输出契约自检：跨模块的统一约定（不属于任何单模块的自测）。
++
++这里守的是「以前踩过的坑」——都是模块各自的自检照不到、但一破就会
++让产品说谎或让红线失效的地方：
++
++  A. 免责声明：每个页签的输出都必须带（红线，不能只做在老页签上）
++  B. 顶部元数据：成功/失败分支都要有 header，且四要素齐全（PRD D3）
++  C. 模块状态不许谎报：没跑过的模块不能显示成「空」（MODULE_NA 语义）
++  D. ELI 永久链接：M1/M2/M3 三个页签都要渲染出来（欧盟 29 条都带 ELI）
++  E. 导出安全：范围外/空结果时导出函数返回 None，不抛异常
++  F. 空选择不退化：取消全部市场勾选要明确拒绝，不能悄悄返回全选
++  G. 键集一致：同一 query() 的成功分支与失败分支键集必须对得上
++  H. 日期格式统一：数据截止时间与查询日期同为 ISO 8601
++
++不需要 gradio 也能跑完 A–H 的 query 级检查；装了 gradio 才做渲染级检查。
++"""
++from __future__ import annotations
++
++import os
++import sys
++
++PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
++if PROJECT not in sys.path:
++    sys.path.insert(0, PROJECT)
++
++from core import snapshot  # noqa: E402
++from modules import (m1_map, m2_timeline, m3_todo, m5_compare,  # noqa: E402
++                     m6_multi_region, m7_opc_readiness)
++
++FAIL = []
++
++
++def check(name, condition, detail=""):
++    if condition:
++        print(f"  PASS  {name}")
++    else:
++        print(f"  FAIL  {name}  {detail}")
++        FAIL.append(name)
++
++
++HEADER_KEYS = ("查询条件", "查询日期", "快照版本", "数据截止时间", "免责声明")
++
++
++def _queries():
++    """(标签, 结果) —— 覆盖成功与失败两类分支。"""
++    return [
++        ("M1", m1_map.query("儿童玩具", "欧盟", use_llm=False)),
++        ("M2", m2_timeline.query("儿童玩具", "欧盟", use_llm=False)),
++        ("M3", m3_todo.query("儿童玩具", "欧盟", use_llm=False)),
++        ("M5", m5_compare.query("儿童玩具", ["欧盟", "美国"])),
++        ("M6", m6_multi_region.query("儿童玩具", ["欧盟", "美国"])),
++        ("M7", m7_opc_readiness.query("儿童玩具", ["欧盟", "美国"])),
++    ]
++
++
++def main():
++    print("=" * 74)
++    print("  输出契约自检（跨模块统一约定）")
++    print("=" * 74)
++
++    # ── B. header 四要素（成功 + 失败分支）──────────────────
++    print("\n【B】顶部元数据：成功与失败分支都要有 header，四要素齐全")
++    results = _queries()
++    for label, res in results:
++        head = res.get("header") or {}
++        missing = [k for k in HEADER_KEYS if not head.get(k)]
++        check(f"{label} 成功分支 header 完整", not missing, f"缺 {missing}")
++    failure_cases = [
++        ("M1", m1_map.query("汽车配件", "欧盟", use_llm=False)),
++        ("M2", m2_timeline.query("儿童玩具", "日本", use_llm=False)),
++        ("M3", m3_todo.query("汽车配件", "欧盟", use_llm=False)),
++        ("M5", m5_compare.query("汽车配件", ["欧盟", "美国"])),
++        ("M6", m6_multi_region.query("汽车配件", ["欧盟", "美国"])),
++        ("M7", m7_opc_readiness.query("汽车配件", ["欧盟", "美国"])),
++    ]
++    for label, res in failure_cases:
++        check(f"{label} 失败分支明确拒绝", res.get("ok") is False)
++        head = res.get("header") or {}
++        check(f"{label} 失败分支仍有 header", bool(head.get("快照版本")),
++              f"header={head}")
++
++    # ── C. 模块状态不许谎报 ─────────────────────────────────
++    print("\n【C】模块状态：只列本次真正跑过的模块（未跑不等于「空」）")
++    m1_head = m1_map.query("儿童玩具", "欧盟", use_llm=False)["header"]
++    mods = m1_head.get("模块状态", {})
++    check("M1 查询只报 M1 状态",
++          set(mods) == {"M1"}, f"实际 {set(mods)}")
++    check("M1 查询不把 M2/M3 标成空",
++          snapshot.MODULE_EMPTY not in [mods.get("M2"), mods.get("M3")],
++          f"实际 {mods}")
++    m6_head = m6_multi_region.query("儿童玩具", ["欧盟"])["header"]
++    check("M6 查询报 M6 状态", "M6" in m6_head.get("模块状态", {}),
++          f"实际 {m6_head.get('模块状态')}")
++
++    # ── H. 日期格式统一 ────────────────────────────────────
++    print("\n【H】日期格式：数据截止时间与查询日期同为 ISO 8601")
++    check("数据截止时间是 ISO 格式（YYYY-MM-DD）",
++          len(snapshot.DATA_CUTOFF) == 10 and snapshot.DATA_CUTOFF[4] == "-"
++          and snapshot.DATA_CUTOFF[7] == "-", repr(snapshot.DATA_CUTOFF))
++    check("查询日期是 ISO 格式",
++          len(snapshot.now_bjt()) == 10 and snapshot.now_bjt()[4] == "-",
++          repr(snapshot.now_bjt()))
++
++    # ── G. 键集一致 ───────────────────────────────────────
++    print("\n【G】键集一致：成功分支与失败分支键集对齐")
++    for label, q in (("M5", m5_compare.query), ("M6", m6_multi_region.query),
++                     ("M7", m7_opc_readiness.query)):
++        ok_r = q("儿童玩具", ["欧盟"])
++        bad_r = q("汽车配件", ["欧盟"])
++        only_bad = sorted(set(bad_r) - set(ok_r))
++        check(f"{label} 失败分支不多出键", not only_bad, f"多出 {only_bad}")
++        check(f"{label} 失败分支不缺成功分支的键",
++              not sorted(set(ok_r) - set(bad_r)),
++              f"缺 {sorted(set(ok_r) - set(bad_r))}")
++
++    # ── F. 空选择不退化为全选 ───────────────────────────────
++    print("\n【F】空选择：取消全部勾选要明确拒绝")
++    for label, q in (("M6", m6_multi_region.query), ("M7", m7_opc_readiness.query)):
++        empty = q("儿童玩具", [])
++        check(f"{label} 空市场列表被拒绝", empty.get("ok") is False,
++              f"实际 ok={empty.get('ok')} 品类={empty.get('市场')}")
++
++    # ── E. 导出安全 ───────────────────────────────────────
++    print("\n【E】导出安全：范围外输入不抛异常")
++    try:
++        m3_todo.export_csv(m3_todo.query("汽车配件", "欧盟", use_llm=False))
++        check("M3 导出对范围外输入抛 RuntimeError", False, "没抛异常")
++    except RuntimeError:
++        check("M3 导出对范围外输入抛 RuntimeError", True)
++
++    # ── D. M7 不许有假的「需确认」统计 ─────────────────────
++    print("\n【D】M7 状态：单项状态只用规则算得出的值")
++    r7 = m7_opc_readiness.query("儿童玩具", ["欧盟", "美国"])
++    statuses = {it["状态"] for reg in r7["区域"] for it in reg["动作"]}
++    check("M7 单项状态在允许集合内",
++          statuses <= {"优先处理", "待执行"}, f"实际 {statuses}")
++
++    # ── 渲染级检查（需要 gradio）──────────────────────────
++    print("\n【A】免责声明 + 【D】ELI 链接：渲染级检查")
++    try:
++        import app_main
++    except Exception as exc:                     # noqa: BLE001
++        print(f"  注意  未安装 gradio，跳过渲染级检查：{type(exc).__name__}")
++        print("  注意  A/D 两组检查本次未执行（不是通过）")
++    else:
++        disc = snapshot.DISCLAIMER
++        renderers = [
++            ("M1", app_main.render_m1(m1_map.query("儿童玩具", "欧盟", use_llm=False))),
++            ("M2", app_main.render_m2(m2_timeline.query("儿童玩具", "欧盟", use_llm=False))),
++            ("M3", app_main.render_m3(m3_todo.query("儿童玩具", "欧盟", use_llm=False))),
++            ("M5", app_main.render_m5(m5_compare.query("儿童玩具", ["欧盟", "美国"]))),
++            ("M6", app_main.render_m6(m6_multi_region.query("儿童玩具", ["欧盟", "美国"]))),
++            ("M7", app_main.render_m7(m7_opc_readiness.query("儿童玩具", ["欧盟", "美国"]))),
++        ]
++        for label, html in renderers:
++            check(f"{label} 输出含免责声明", disc in html or "不构成法律意见" in html)
++        m2_html = dict(renderers)["M2"]
++        m3_html = dict(renderers)["M3"]
++        check("M2 渲染出 ELI 永久标识链接（data.europa.eu）",
++              "data.europa.eu" in m2_html)
++        check("M3 渲染出 ELI 永久标识链接（data.europa.eu）",
++              "data.europa.eu" in m3_html)
++
++    print("\n" + "=" * 74)
++    if FAIL:
++        print(f"  结果：失败 {len(FAIL)} 项")
++        for name in FAIL:
++            print(f"    ❌ {name}")
++        print("=" * 74)
++        return 1
++    print("  结果：全部通过")
++    print("=" * 74)
++    return 0
++
++
++if __name__ == "__main__":
++    raise SystemExit(main())

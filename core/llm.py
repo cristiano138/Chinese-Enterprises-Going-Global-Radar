@@ -20,6 +20,7 @@ import hashlib
 import json
 import os
 import sys
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
@@ -131,6 +132,26 @@ def _call_api(prompt, max_tokens, temperature, thinking=True):
     return resp.choices[0].message.content or ""
 
 
+# ── 超时执行器（全局单例）─────────────────────────────────────────
+# 早期实现每次带 timeout 的调用都新建一个 ThreadPoolExecutor(max_workers=1)，
+# 超时后 shutdown(wait=False) 把线程丢在后台继续跑（HTTP 请求无法强杀）。
+# 于是「每超时一次就泄漏一个线程 + 一个执行器」，长时间运行的 Web 服务里
+# 会越积越多。改为全局复用一个小池：线程本来就要等请求自己结束，复用一个池
+# 既不增加泄漏面，也省掉反复创建/销毁的开销。
+_TIMEOUT_POOL = None
+_TIMEOUT_POOL_LOCK = threading.Lock()
+
+
+def _timeout_pool():
+    global _TIMEOUT_POOL
+    if _TIMEOUT_POOL is None:
+        with _TIMEOUT_POOL_LOCK:
+            if _TIMEOUT_POOL is None:
+                _TIMEOUT_POOL = ThreadPoolExecutor(
+                    max_workers=4, thread_name_prefix="llm-timeout")
+    return _TIMEOUT_POOL
+
+
 def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
          thinking=True):
     """调用模型。返回 (text, meta)。
@@ -158,12 +179,12 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
 
     try:
         if timeout:
-            pool = ThreadPoolExecutor(max_workers=1)
-            fut = pool.submit(_call_api, prompt, max_tokens, temperature, thinking)
+            fut = _timeout_pool().submit(
+                _call_api, prompt, max_tokens, temperature, thinking)
             try:
                 text = fut.result(timeout=timeout)
             finally:
-                pool.shutdown(wait=False)
+                fut.cancel()   # 尚未开始跑就撤掉；已在跑则等它自己结束
         else:
             text = _call_api(prompt, max_tokens, temperature, thinking)
         if not text.strip():

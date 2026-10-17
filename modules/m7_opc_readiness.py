@@ -54,11 +54,35 @@ TYPE_TO_ROLE = {
 
 
 def _task_status(action):
-    if action.get("待确认") or action.get("条件待确认"):
-        return "需确认"
+    """单项动作的执行状态。
+
+    ⚠️ 这里**刻意不再判断「需确认」**：
+    早期实现写的是 `action.get("待确认") or action.get("条件待确认")`，但这两个键
+    在动作字典里根本不存在（「待确认」是 m3 结果里的**顶层列表**，「条件待确认」
+    是导出 CSV 时按「动作来源」临时算出来的字符串），因此该分支永远取不到值，
+    26 项动作里「需确认」恒为 0 —— 页面上的「需确认」卡片看着像「已核对，无待确认
+    事项」，实际是根本没算。
+    本期的诚实做法：单项只按规则算得出的紧迫度分级；「需确认」走区域级
+    `待确认` 列表（那是有真实来源的清单，见 m3_todo.query 的 pending_items）。
+    等审核后的「条件待确认」字段入库（PRD F2）再恢复这里的分支。
+    """
     if action.get("紧迫度") == "高":
         return "优先处理"
     return "待执行"
+
+
+def _readable_conditions(action):
+    """把语料的 ｜ 分段备注整理成可读句子。
+
+    底表「备注／问题」用 ｜ 分段：第 0 段是一句话中文说明，后面是生效日期、
+    取代关系等技术备注。直接整段塞进「适用条件」会显示成一行带竖线的数据 dump，
+    这里改成用「；」连接，保留全部信息但不破坏阅读。
+    """
+    raw = (action.get("适用条件") or "").strip()
+    if not raw:
+        return ""
+    parts = [p.strip() for p in raw.split("｜") if p.strip()]
+    return "；".join(parts)
 
 
 def _task(action, phase):
@@ -70,7 +94,7 @@ def _task(action, phase):
         "状态": _task_status(action),
         "紧迫度": action.get("紧迫度", "低"),
         "期限": action.get("期限", ""),
-        "适用条件": action.get("适用条件", ""),
+        "适用条件": _readable_conditions(action),
         "官方编号": action.get("官方编号", ""),
         "依据法规": action.get("依据法规", ""),
         "官方链接": action.get("来源条款链接", ""),
@@ -79,21 +103,32 @@ def _task(action, phase):
 
 
 def _empty(category, markets, reason):
+    """失败分支：键集与成功分支对齐（含 总动作数/高优先级数），并带 header。"""
+    market_label = " / ".join(markets) if markets else "（未选市场）"
     return {
         "ok": False,
         "reason": reason,
         "品类": category,
         "市场": markets,
         "区域": [],
+        "总动作数": 0,
+        "高优先级数": 0,
         "快照版本": snapshot.SNAPSHOT_VERSION,
         "数据截止时间": snapshot.DATA_CUTOFF,
+        "查询日期": (date.today()).isoformat(),
+        "说明": "",
+        "header": snapshot.header(category or "（空）", market_label,
+                                  modules={"M7": snapshot.MODULE_ERROR}),
     }
 
 
 def query(category="儿童玩具", markets=None, today=None):
     """返回一个品类在多个市场的 OPC 上线准备项。"""
     category = (category or "").strip()
-    markets = list(dict.fromkeys(markets or list(m3_todo.corpus.SUPPORTED_MARKETS.keys())))
+    # None = 未指定（默认全选）；[] = 用户取消全部勾选（明确拒绝，而不是全选）。
+    if markets is None:
+        markets = list(m3_todo.corpus.SUPPORTED_MARKETS.keys())
+    markets = list(dict.fromkeys(markets))
     today = today or date.today()
     if category not in m3_todo.corpus.ENTRY_CATEGORIES:
         return _empty(category, markets, "请选择支持的业务品类。")
@@ -140,6 +175,11 @@ def query(category="儿童玩具", markets=None, today=None):
         "数据截止时间": snapshot.DATA_CUTOFF,
         "查询日期": today.isoformat(),
         "说明": "这是上线前准备项覆盖情况，不代表商品已经合规；每项仍需按条件和官方依据人工核对。",
+        "header": snapshot.header(
+            category, " / ".join(markets),
+            modules={"M7": (snapshot.MODULE_READY
+                            if any(r.get("状态") == "ready" for r in regions)
+                            else snapshot.MODULE_PARTIAL)}),
     }
 
 
