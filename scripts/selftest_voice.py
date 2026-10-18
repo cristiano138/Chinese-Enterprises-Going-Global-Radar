@@ -76,6 +76,26 @@ def test_asr():
     check("配置摘要不含密钥明文",
           "key" in cfg and cfg["key"] in ("已配置", "未配置"), cfg["detail"][:28])
 
+    # 缓存：必须按后端隔离，否则切换 local/cloud 会复用另一套模型的结果，
+    # 界面还会把旧结果标成新后端（违反「如实标注」）。
+    import shutil
+    old_dir = asr.CACHE_DIR
+    tmp_dir = tempfile.mkdtemp(prefix="cr_asr_cache_")
+    try:
+        asr.CACHE_DIR = tmp_dir
+        d = "0" * 64
+        k_local = asr._cache_key("local", d)
+        k_cloud = asr._cache_key("cloud", d)
+        check("缓存键按后端隔离（local ≠ cloud）", k_local != k_cloud)
+        asr._cache_put(k_local, "本地结果", "local")
+        check("缓存写回后端名（命中时可如实标注）",
+              asr._cache_get(k_local) == ("本地结果", "local"),
+              str(asr._cache_get(k_local)))
+        check("换后端不串味（另一个键查不到）", asr._cache_get(k_cloud) is None)
+    finally:
+        asr.CACHE_DIR = old_dir
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
     # 静音音频：后端可用则必须不炸；不可用则必须给出原因
     tmp = os.path.join(tempfile.gettempdir(), "cr_voice_selftest.wav")
     asr._write_silent_wav(tmp)

@@ -117,9 +117,20 @@ def available():
 
 
 # ── 缓存：音频 sha256 → 文本（不存音频） ─────────────────────────
-def _cache_path(digest):
+def _cache_path(key):
     os.makedirs(CACHE_DIR, exist_ok=True)
-    return os.path.join(CACHE_DIR, f"asr_{digest[:16]}.json")
+    return os.path.join(CACHE_DIR, f"asr_{key[:16]}.json")
+
+
+def _cache_key(backend, digest):
+    """缓存键必须带后端名。
+
+    本地 Whisper 与云端是两套模型，同一段音频的转写结果可能不同。
+    只按音频内容做键的话，用户切换后端会拿到另一个后端的结果，
+    而且界面会把旧结果标成新后端 —— 违反「如实标注」。
+    """
+    raw = f"{backend}:{digest}".encode()
+    return hashlib.sha256(raw).hexdigest()
 
 
 def _digest(path):
@@ -130,21 +141,25 @@ def _digest(path):
     return h.hexdigest()
 
 
-def _cache_get(digest):
-    p = _cache_path(digest)
+def _cache_get(key):
+    """返回 (text, backend) 或 None。backend 可能为空（旧格式缓存文件）。"""
+    p = _cache_path(key)
     if not os.path.exists(p):
         return None
     try:
         with open(p, encoding="utf-8") as f:
-            return json.load(f).get("text")
+            data = json.load(f)
+        if isinstance(data, dict) and isinstance(data.get("text"), str):
+            return data["text"], (data.get("backend") or "")
     except Exception:
         return None
+    return None
 
 
-def _cache_put(digest, text):
+def _cache_put(key, text, backend=""):
     try:
-        with open(_cache_path(digest), "w", encoding="utf-8") as f:
-            json.dump({"text": text}, f, ensure_ascii=False)
+        with open(_cache_path(key), "w", encoding="utf-8") as f:
+            json.dump({"text": text, "backend": backend}, f, ensure_ascii=False)
     except Exception:
         pass
 
@@ -263,11 +278,14 @@ def transcribe(path):
         meta["reason"] = f"音频读取失败：{type(e).__name__}"
         return "", meta
 
-    hit = _cache_get(digest)
+    key = _cache_key(avail["backend"], digest)
+    hit = _cache_get(key)
     if hit is not None:
+        text, hit_backend = hit
         meta.update(ok=True, cached=True,
+                    backend=hit_backend or avail["backend"],
                     seconds=round(time.time() - t0, 2))
-        return hit, meta
+        return text, meta
 
     try:
         if avail["backend"] == "cloud":
@@ -286,7 +304,7 @@ def transcribe(path):
         meta["seconds"] = round(time.time() - t0, 2)
         return "", meta
 
-    _cache_put(digest, text)
+    _cache_put(key, text, avail["backend"])
     meta.update(ok=True, seconds=round(time.time() - t0, 2))
     return text, meta
 
