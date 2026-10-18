@@ -71,7 +71,26 @@ _freshness = _load_module(
 )
 
 
+def db_ready():
+    """依赖的离线 sqlite 库是否已就位。
+
+    `sqlite/regulations.sqlite3` 含 laws / units 表，属于大体积离线数据，
+    被 .gitignore 的 `*.sqlite` 规则排除，不会随仓库分发。
+    缺库时 sqlite3.connect() 会**静默新建空库**，后续查询全部报 no such table，
+    排查成本高 —— 因此所有入口先显式检查。
+    """
+    return os.path.isfile(DB_PATH)
+
+
+def _missing_db_result():
+    return {"ok": False, "law_id": "", "action": "rejected",
+            "reason": f"离线语料库缺失：{DB_PATH}；"
+                      f"请从项目离线包放入 sqlite/regulations.sqlite3 后再调用"}
+
+
 def _connect():
+    if not db_ready():
+        raise FileNotFoundError(_missing_db_result()["reason"])
     con = sqlite3.connect(DB_PATH)
     con.text_factory = str
     return con
@@ -114,6 +133,8 @@ def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
          人工核对过的记录，不假装已经核实）。
       5) INSERT 进 laws 表，写意图日志。
     """
+    if not db_ready():
+        return _missing_db_result()
     law_id = f"EU:{celex}"
     ts = _now_str()
     con = _connect()
@@ -268,6 +289,8 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
     查询，这里用 query_us_official() 的返回是否为空 dict 作为代理判断——
     如果 eCFR 和 FR 都查不到任何字段，大概率是 title/part 号错误。
     """
+    if not db_ready():
+        return _missing_db_result()
     law_id = f"US:{title_number}:{part_number}"
     ts = _now_str()
     con = _connect()
