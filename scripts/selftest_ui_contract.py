@@ -13,12 +13,15 @@
   G. 键集一致：同一 query() 的成功分支与失败分支键集必须对得上
   H. 日期格式统一：数据截止时间与查询日期同为 ISO 8601
 
-不需要 gradio 也能跑完 A–H 的 query 级检查；装了 gradio 才做渲染级检查。
+A–H 是 query 级检查；I 及免责声明、ELI 和 UI 配置检查需要使用项目隔离环境中的 Gradio。缺少 Gradio 或应用导入失败时，测试明确失败，不把未执行当作通过。
 """
 from __future__ import annotations
 
+import json
 import os
+import re
 import sys
+from unittest.mock import patch
 
 PROJECT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if PROJECT not in sys.path:
@@ -141,10 +144,75 @@ def main():
     try:
         import app_main
     except Exception as exc:                     # noqa: BLE001
-        print(f"  注意  未安装 gradio，跳过渲染级检查：{type(exc).__name__}")
-        print("  注意  A/D 两组检查本次未执行（不是通过）")
+        check("应用可导入并执行 A/D/I 渲染检查", False,
+              f"{type(exc).__name__}: {exc}；请使用项目 Gradio 环境")
     else:
         disc = snapshot.DISCLAIMER
+
+        # ── 首页统计与 M5/M6 命名回归 ─────────────────────────
+        print("\n【I】首页统计与 M5/M6 页面契约")
+
+        def overview_fixture(total, audit_distribution):
+            with patch.object(snapshot, "CORPUS_ROWS_TOTAL", total), \
+                    patch.object(snapshot, "CORPUS_ROWS_BY_AUDIT_STATUS",
+                                 audit_distribution):
+                return app_main._overview_html("模型：未配置")
+
+        def stat_values(html):
+            return dict(re.findall(
+                r'<div class="cr-stat"><div class="cr-stat-k">([^<]+)</div>'
+                r'<div class="cr-stat-v">([^<]+)</div>', html))
+
+        with open(os.path.join(PROJECT, "data", "snapshot.json"), encoding="utf-8") as f:
+            release = json.load(f)
+        check("审核统计直接读取当前快照",
+              snapshot.CORPUS_ROWS_BY_AUDIT_STATUS == release.get("audit_status_distribution", {}))
+        actual_stats = stat_values(app_main._overview_html("模型：未配置"))
+        check("首页候选总数匹配当前快照",
+              actual_stats.get("候选总数") == str(release["total_rows"]), str(actual_stats))
+        for status in ("已核对", "待核对"):
+            value = release.get("audit_status_distribution", {}).get(status)
+            expected = "未提供" if value is None else str(value)
+            check(f"首页{status}匹配当前快照", actual_stats.get(status) == expected, str(actual_stats))
+
+        fixture_a = overview_fixture(12, {"已核对": 4, "待核对": 8})
+        stats_a = stat_values(fixture_a)
+        check("首页显示候选总数", stats_a.get("候选总数") == "12", str(stats_a))
+        check("首页显示已核对数", stats_a.get("已核对") == "4", str(stats_a))
+        check("首页显示待核对数", stats_a.get("待核对") == "8", str(stats_a))
+
+        fixture_b = overview_fixture(3, {"已核对": 0, "待核对": 3})
+        stats_b = stat_values(fixture_b)
+        check("首页统计支持零已核对 fixture", stats_b.get("已核对") == "0", str(stats_b))
+        check("首页统计支持另一组候选总数", stats_b.get("候选总数") == "3", str(stats_b))
+
+        fixture_missing = overview_fixture(7, {"已核对": 7})
+        stats_missing = stat_values(fixture_missing)
+        check("审核分布缺失时不伪造待核对数",
+              stats_missing.get("待核对") == "未提供", str(stats_missing))
+        for distribution in ({}, None, {"已核对": None, "待核对": None}):
+            missing_stats = stat_values(overview_fixture(7, distribution))
+            check(f"缺失或空审核分布不伪造数量 {distribution!r}",
+                  missing_stats.get("已核对") == "未提供"
+                  and missing_stats.get("待核对") == "未提供", str(missing_stats))
+
+        check("core.snapshot M5 模块名统一",
+              snapshot.MODULE_NAMES.get("M5") == "区域对比")
+        check("core.snapshot M6 模块名统一",
+              snapshot.MODULE_NAMES.get("M6") == "多区域汇总")
+
+        ui = app_main.build_ui()
+        tab_labels = [c["props"].get("label") for c in ui.get_config_file()["components"]
+                      if c["type"] == "tabitem"]
+        m5_index = tab_labels.index("🧭 M5 区域对比")
+        m6_index = tab_labels.index("🌍 M6 多区域汇总")
+        check("M5 导航位于 M6 之前", m5_index < m6_index, str(tab_labels))
+        check("M5 导航标题统一", "🧭 M5 区域对比" in tab_labels, str(tab_labels))
+        check("M6 导航标题统一", "🌍 M6 多区域汇总" in tab_labels, str(tab_labels))
+        callback_names = {fn.fn.__name__ for fn in ui.fns.values() if fn.fn}
+        check("M5 回调仍保留", "run_compare" in callback_names)
+        check("M6 回调仍保留", "run_multi_region" in callback_names)
+
         renderers = [
             ("M1", app_main.render_m1(m1_map.query("儿童玩具", "欧盟", use_llm=False))),
             ("M2", app_main.render_m2(m2_timeline.query("儿童玩具", "欧盟", use_llm=False))),

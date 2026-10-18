@@ -70,10 +70,15 @@ html, body, body > div, .gradio-container, .gradio-container > .main, .gradio-co
   color: var(--cr-ink) !important;
 }
 body { min-width: 320px !important; }
-.gradio-container { max-width: 1440px !important; padding: 18px 24px 42px 264px !important; }
+/* 内嵌媒体查询保留根选择器，避免 Gradio 6 为顶层媒体规则添加 .contain 前缀。 */
+.gradio-container { max-width: 1440px !important; padding: 18px 24px 42px 264px !important;
+  @media (max-width:1050px) { padding-left:220px !important; }
+  @media (max-width:760px) { padding-left:12px !important; }
+  @media (max-width:640px) { padding:12px 10px 28px !important; }
+}
 .gradio-container .main { background: transparent !important; }
 footer { background: var(--cr-bg) !important; }
-.gradio-container .contain { max-width: 1180px !important; margin: 0 auto !important; }
+.gradio-container .contain { width:100%; min-width:0; max-width: 1180px !important; margin: 0 auto !important; }
 .cr-wrap { font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
            color:var(--cr-ink); }
 .gradio-container button { border-radius:10px !important; font-weight:600 !important; }
@@ -113,9 +118,9 @@ footer { background: var(--cr-bg) !important; }
 .cr-stat-v { color:var(--cr-ink); font-size:22px; font-weight:800; line-height:1; }
 .cr-stat-s { margin-top:7px; color:var(--cr-ink2); font-size:11px; }
 .cr-panel { background:#fffdf7; border:1px solid var(--cr-line); border-radius:15px; padding:18px; box-shadow:0 6px 20px rgba(137,105,35,.05); }
-@media (max-width:1050px) { .gradio-container { padding-left:220px !important; } .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
-@media (max-width:760px) { .gradio-container { padding-left:12px !important; } .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-@media (max-width:640px) { .gradio-container { padding:12px 10px 28px !important; } .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
+@media (max-width:1050px) { .cr-sidebar { left:12px; width:190px; } .cr-scope { right:-18px; opacity:.18; } }
+@media (max-width:760px) { .cr-shell { display:block; } .cr-sidebar { position:static; display:flex; align-items:center; gap:7px; overflow:auto; width:auto; padding:8px; margin-bottom:14px; } .cr-side-brand { border:0; padding:5px 9px; white-space:nowrap; } .cr-side-label,.cr-side-foot { display:none; } .cr-side-item { margin:0; white-space:nowrap; padding:8px 9px; } .cr-overview { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:640px) { .cr-band { padding:18px 17px 16px; border-radius:13px; } .cr-band h1 { font-size:23px; margin-top:18px; } .cr-band-guide { line-height:1.7; } .cr-band-meta { line-height:1.8; } .cr-overview { gap:8px; margin-top:12px; } .cr-stat { padding:12px; } .cr-stat-v { font-size:19px; } }
 /* ── 结果区元数据条 ── */
 .cr-header { background:#f9fbff; border:1px solid var(--cr-line); border-radius:12px;
              padding: 12px 14px; font-size: 12.5px; color: var(--cr-ink2);
@@ -1088,14 +1093,25 @@ def _sidebar_html():
 
 def _overview_html(model_status):
     """参考图的数据概览卡片，数据只来自当前发布快照。"""
+    audit = snapshot.CORPUS_ROWS_BY_AUDIT_STATUS or {}
+    audited = audit.get("已核对")
+    pending = audit.get("待核对")
+    audited = "未提供" if audited is None else audited
+    pending = "未提供" if pending is None else pending
     eu = snapshot.CORPUS_ROWS_BY_MARKET.get("欧盟", 0)
     us = snapshot.CORPUS_ROWS_BY_MARKET.get("美国", 0)
     model = "已接入" if llm.is_ready() else "规则降级"
     return (
         '<div class="cr-overview">'
-        f'<div class="cr-stat"><div class="cr-stat-k">已核对法规</div>'
-        f'<div class="cr-stat-v">{snapshot.CORPUS_ROWS_TOTAL}</div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">候选总数</div>'
+        f'<div class="cr-stat-v">{_e(snapshot.CORPUS_ROWS_TOTAL)}</div>'
         f'<div class="cr-stat-s">快照 { _e(snapshot.SNAPSHOT_VERSION) }</div></div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">已核对</div>'
+        f'<div class="cr-stat-v">{_e(audited)}</div>'
+        '<div class="cr-stat-s">按当前快照审核分布</div></div>'
+        f'<div class="cr-stat"><div class="cr-stat-k">待核对</div>'
+        f'<div class="cr-stat-v">{_e(pending)}</div>'
+        '<div class="cr-stat-s">按当前快照审核分布</div></div>'
         f'<div class="cr-stat"><div class="cr-stat-k">覆盖区域</div>'
         f'<div class="cr-stat-v">2</div><div class="cr-stat-s">欧盟 {eu} · 美国 {us}</div></div>'
         f'<div class="cr-stat"><div class="cr-stat-k">入口品类</div>'
@@ -1213,22 +1229,22 @@ def build_ui():
                 m2_out = gr.HTML(render_m2(
                     m2_timeline.query("儿童玩具", "欧盟", use_llm=False)))
 
-            # ── ⑤ 多区域汇总 ──────────────────────────────────
-            with gr.Tab("🌍 多区域汇总"):
+            # ── ⑤ 区域差异对比 ─────────────────────────────────
+            with gr.Tab("🧭 M5 区域对比"):
+                gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
+                with gr.Row():
+                    cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
+                    btn5 = gr.Button("开始对比", variant="primary")
+                m5_out = gr.HTML(render_m5(m5_compare.query("儿童玩具", mkt_choices)))
+
+            # ── ⑥ 多区域汇总 ──────────────────────────────────
+            with gr.Tab("🌍 M6 多区域汇总"):
                 gr.HTML('<div class="cr-section-intro"><b>一次查看同一品类在多个区域的法规。</b> 当前先支持欧盟与美国，结果按区域分组，所有条目附官方来源。</div>')
                 with gr.Row():
                     cat6 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
                     markets6 = gr.CheckboxGroup(choices=mkt_choices, value=mkt_choices, label="目标区域（可多选）")
                     btn6 = gr.Button("汇总法规", variant="primary")
                 m6_out = gr.HTML(render_m6(m6_multi_region.query("儿童玩具", mkt_choices)))
-
-            # ── ⑥ 区域差异对比 ─────────────────────────────────
-            with gr.Tab("🧭 区域对比"):
-                gr.HTML('<div class="cr-section-intro"><b>同一品类，欧盟和美国要求有什么不同？</b> 按官方编号精确匹配共同条目，区域独有条目单独列出，不把名称相似误判为同一法规。</div>')
-                with gr.Row():
-                    cat5 = gr.Dropdown(choices=cat_choices, value="儿童玩具", label="商品类目")
-                    btn5 = gr.Button("开始对比", variant="primary")
-                m5_out = gr.HTML(render_m5(m5_compare.query("儿童玩具", mkt_choices)))
 
             # ── ⑦ OPC 上线准备 ────────────────────────────────
             with gr.Tab("🚀 OPC 上线准备"):

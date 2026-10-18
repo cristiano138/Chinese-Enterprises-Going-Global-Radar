@@ -21,6 +21,7 @@ import json
 import os
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
@@ -33,6 +34,37 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 CACHE_DIR = os.path.join(PROJECT, "data", "cache")
+
+
+def _env_float(name, default):
+    try:
+        v = float(os.getenv(name, "").strip() or default)
+        return v if v > 0 else default
+    except Exception:
+        return default
+
+
+def _env_int(name, default):
+    try:
+        v = int(float(os.getenv(name, "").strip() or default))
+        return v if v > 0 else default
+    except Exception:
+        return default
+
+
+# ── 缓存治理默认值（可用环境变量覆盖，不改 DeepSeek 三件套配置）──────
+# 过期时间：默认 7 天。法规口径与提示词都会变，长期复用旧文本风险高于省下的额度。
+CACHE_TTL_SECONDS = _env_float("LLM_CACHE_TTL_SECONDS", 7 * 24 * 3600)
+# 条目上限：防止缓存目录无限增长
+CACHE_MAX_FILES = _env_int("LLM_CACHE_MAX_FILES", 512)
+# 单条上限：防止异常长文本撑爆磁盘（200KB）
+CACHE_MAX_BYTES = _env_int("LLM_CACHE_MAX_BYTES", 200 * 1024)
+# 单次调用总预算（秒）：超时即降级，不让用户干等
+DEFAULT_TIMEOUT = _env_float("LLM_TIMEOUT_SECONDS", 45)
+# 同时在途调用上限：等于超时线程池大小，避免无界排队
+MAX_INFLIGHT = _env_int("LLM_MAX_INFLIGHT", 4)
+# 缓存键格式版本：结构变更时整体失效，避免新旧格式互相误读
+CACHE_VERSION = "v2"
 
 
 def _load_env():
@@ -84,51 +116,114 @@ def _client_get():
     global _client
     if _client is None:
         from openai import OpenAI
-        _client = OpenAI(api_key=TOKEN, base_url=BASE, timeout=120)
+        # max_retries=0：SDK 默认自带重试会把一次慢请求放大成多次，
+        # 与本模块自己的超时预算叠加，反而更难在预算内返回/降级。
+        _client = OpenAI(api_key=TOKEN, base_url=BASE, timeout=120, max_retries=0)
     return _client
 
 
 # ── 缓存：高频调用结果缓存，省额度、免重复计费（README 2.1.6）──────────
-def _cache_path(prompt):
-    h = hashlib.sha256(prompt.encode("utf-8")).hexdigest()[:16]
-    os.makedirs(CACHE_DIR, exist_ok=True)
-    return os.path.join(CACHE_DIR, f"llm_{h}.json")
+def cache_key(prompt, max_tokens, temperature, thinking):
+    """计算缓存键。
+
+    只纳入**非敏感**模型配置：服务地址、模型名、生成参数、思考开关与格式版本。
+    **绝不写入 Token**（下同），避免凭据落盘。
+    早期实现只按提示词取键，导致换模型/换参数后仍返回旧文本（配置表面改了实际没生效）。
+    """
+    payload = json.dumps({
+        "v": CACHE_VERSION,
+        "prompt": prompt,
+        "base": BASE,
+        "model": MODEL,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+        "thinking": bool(thinking),
+    }, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
 
 
-def _cache_get(prompt):
-    p = _cache_path(prompt)
-    if os.path.exists(p):
-        try:
-            with open(p, encoding="utf-8") as f:
-                return json.load(f).get("text")
-        except Exception:
-            return None
-    return None
+def _cache_path(key):
+    return os.path.join(CACHE_DIR, f"llm_{key}.json")
 
 
-def _cache_put(prompt, text):
+def _cache_get(key, ttl=None):
+    """读缓存。任何故障（目录不可建、文件损坏、过期）都按「未命中」处理，
+    绝不向上抛异常 —— 缓存是优化，不能成为主链路的单点故障。"""
+    ttl = CACHE_TTL_SECONDS if ttl is None else ttl
     try:
-        with open(_cache_path(prompt), "w", encoding="utf-8") as f:
-            json.dump({"text": text}, f, ensure_ascii=False)
+        p = _cache_path(key)
+        if not os.path.exists(p):
+            return None
+        if ttl and (time.time() - os.path.getmtime(p)) > ttl:
+            # 过期即弃用，不让旧结论冒充新结果
+            try:
+                os.remove(p)
+            except Exception:
+                pass
+            return None
+        with open(p, encoding="utf-8") as f:
+            val = json.load(f).get("text")
+        return val if isinstance(val, str) and val.strip() else None
+    except Exception:
+        return None
+
+
+def _cache_put(key, text, max_files=None, max_bytes=None):
+    """写缓存：原子落盘 + 单条尺寸上限 + 目录条目上限（按最旧优先淘汰）。"""
+    max_files = CACHE_MAX_FILES if max_files is None else max_files
+    max_bytes = CACHE_MAX_BYTES if max_bytes is None else max_bytes
+    try:
+        if len((text or "").encode("utf-8")) > max_bytes:
+            return
+        os.makedirs(CACHE_DIR, exist_ok=True)
+        p = _cache_path(key)
+        tmp = f"{p}.{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"text": text, "ts": time.time()}, f, ensure_ascii=False)
+        os.replace(tmp, p)  # 原子替换：并发下不会读到写了一半的文件
+        _cache_enforce_limit(max_files)
     except Exception:
         pass
 
 
-def _call_api(prompt, max_tokens, temperature, thinking=True):
+def _cache_enforce_limit(max_files):
+    try:
+        names = [n for n in os.listdir(CACHE_DIR)
+                 if n.startswith("llm_") and n.endswith(".json")]
+        if len(names) <= max_files:
+            return
+        paths = [(os.path.getmtime(os.path.join(CACHE_DIR, n)), n) for n in names]
+        paths.sort()
+        for _, n in paths[:len(paths) - max_files]:
+            try:
+                os.remove(os.path.join(CACHE_DIR, n))
+            except Exception:
+                pass
+    except Exception:
+        pass
+
+
+def _call_api(prompt, max_tokens, temperature, thinking=True, http_timeout=None):
     """实际发起一次模型请求（同步阻塞）。抽出来便于外层加硬超时。
 
     DeepSeek 思考模式开关：通过 extra_body={"thinking": {"type": "enabled/disabled"}}
     控制思维链输出（OpenAI 兼容格式，见官方文档「思考模式开关与思考强度控制」）。
     thinking 参数由调用方（chat()）按场景决定——
     主模型（M1/M2/M3 润色）默认开启；M1.5 路由层单独关闭（见 m15_router.py）。
+
+    http_timeout：把外层剩余预算传到底层 HTTP，避免「外层已放弃、底层还在慢慢重连」。
     """
-    resp = _client_get().chat.completions.create(
+    kwargs = dict(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=max_tokens,
         temperature=temperature,
         extra_body={"thinking": {"type": "enabled" if thinking else "disabled"}},
     )
+    if http_timeout:
+        # 留出一点余量，让外层 FuturesTimeout 先触发，返回可控的降级文案
+        kwargs["timeout"] = max(1.0, http_timeout - 1.0)
+    resp = _client_get().chat.completions.create(**kwargs)
     return resp.choices[0].message.content or ""
 
 
@@ -148,8 +243,30 @@ def _timeout_pool():
         with _TIMEOUT_POOL_LOCK:
             if _TIMEOUT_POOL is None:
                 _TIMEOUT_POOL = ThreadPoolExecutor(
-                    max_workers=4, thread_name_prefix="llm-timeout")
+                    max_workers=MAX_INFLIGHT, thread_name_prefix="llm-timeout")
     return _TIMEOUT_POOL
+
+
+# 在途计数：线程池的等待队列是无界的，慢模型期间新请求会一直排队，
+# 排到超时才失败 —— 对调用方表现为「整个功能卡住」。
+# 这里做准入：池满就直接返回降级结果，不再递交注定排不到执行的任务。
+_INFLIGHT = 0
+_INFLIGHT_LOCK = threading.Lock()
+
+
+def _acquire_slot():
+    global _INFLIGHT
+    with _INFLIGHT_LOCK:
+        if _INFLIGHT >= MAX_INFLIGHT:
+            return False
+        _INFLIGHT += 1
+        return True
+
+
+def _release_slot():
+    global _INFLIGHT
+    with _INFLIGHT_LOCK:
+        _INFLIGHT = max(0, _INFLIGHT - 1)
 
 
 def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
@@ -172,17 +289,26 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
         return "", {"ok": False, "reason": "模型链路未配置（缺 Token/Base/Model）",
                     "cached": False}
 
+    # 未显式指定时套用总预算（默认 45s）。润色是可选增强，
+    # 不能因为模型变慢就把确定性清单一起拖住。
+    budget = DEFAULT_TIMEOUT if timeout is None else timeout
+    key = cache_key(prompt, max_tokens, temperature, thinking)
+
     if use_cache:
-        hit = _cache_get(prompt)
+        hit = _cache_get(key)
         if hit is not None:
             return hit, {"ok": True, "reason": "", "cached": True}
 
+    if not _acquire_slot():
+        return "", {"ok": False,
+                    "reason": f"模型并发已满（上限 {MAX_INFLIGHT}），已跳过润色",
+                    "cached": False, "busy": True}
     try:
-        if timeout:
+        if budget:
             fut = _timeout_pool().submit(
-                _call_api, prompt, max_tokens, temperature, thinking)
+                _call_api, prompt, max_tokens, temperature, thinking, budget)
             try:
-                text = fut.result(timeout=timeout)
+                text = fut.result(timeout=budget)
             finally:
                 fut.cancel()   # 尚未开始跑就撤掉；已在跑则等它自己结束
         else:
@@ -192,16 +318,18 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
             return "", {"ok": False, "reason": "模型返回空内容（可能 max_tokens 不足）",
                         "cached": False}
         if use_cache:
-            _cache_put(prompt, text)
+            _cache_put(key, text)
         return text, {"ok": True, "reason": "", "cached": False}
     except FuturesTimeout:
         return "", {"ok": False,
-                    "reason": f"模型响应超过 {timeout}s，已及时降级",
+                    "reason": f"模型响应超过 {budget}s，已及时降级",
                     "cached": False, "timeout": True}
     except Exception as e:
         return "", {"ok": False,
                     "reason": f"{type(e).__name__}: {str(e)[:160]}",
                     "cached": False}
+    finally:
+        _release_slot()
 
 
 # ── M1 专用提示词 ────────────────────────────────────────────────
