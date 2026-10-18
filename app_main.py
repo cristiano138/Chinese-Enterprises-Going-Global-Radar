@@ -38,7 +38,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from core import asr, corpus, law_store, llm, snapshot, verify  # noqa: E402
+# llm 先读取项目 .env，ASR 随后才能取得文件中的配置。
+from core import llm  # noqa: E402
+from core import asr, corpus, law_store, snapshot, verify  # noqa: E402
 from modules import (m1_map, m2_timeline, m3_todo, m4_compare, m5_compare,  # noqa: E402
                      m6_multi_region, m7_opc_readiness, m15_router)
 
@@ -1060,10 +1062,14 @@ def _asr_status_line():
     try:
         cfg = asr.config_summary()
     except Exception:  # noqa: BLE001
-        return "语音入口：不可用（ASR 模块异常，打字不受影响）"
+        return "录音/上传转写暂不可用：语音服务状态检查失败，请联系管理员；可继续打字。"
     if cfg.get("enabled"):
-        return f"语音入口：{cfg.get('detail')}　语言 {cfg.get('lang')}"
-    return f"语音入口：未启用 —— {cfg.get('detail')}（打字不受影响）"
+        return (f"语音入口：{_e(cfg.get('detail'))}　语言 {_e(cfg.get('lang'))}。"
+                "配置已识别，实际可用性以转写结果为准；请核对文字后再开始判定。")
+    return (f"录音/上传转写暂不可用：{_e(cfg.get('detail'))}。"
+            "请管理员配置 ASR_API_BASE、ASR_API_KEY、ASR_MODEL 并启用云端 ASR，"
+            "或安装本地 faster-whisper 并准备 ASR_LOCAL_MODEL 对应模型；重启后生效。"
+            "录音和上传共用语音服务，可继续打字。")
 
 
 def _voice_hint(msg="", kind="error"):
@@ -1112,7 +1118,8 @@ def run_route_with_voice(audio_path, text, context):
 
     返回 (判定 HTML, 回填文本)。转写失败只解释原因，不产出任何合规结论。
     """
-    said = (text or "").strip()
+    original_text = text or ""
+    said = original_text.strip()
     meta = None
     if audio_path:
         try:
@@ -1124,7 +1131,7 @@ def run_route_with_voice(audio_path, text, context):
             return (_voice_hint(
                 f"<b>这句话没听清</b><br>{_e(reason)}<br><br>"
                 '<span style="color:var(--cr-ink2)">'
-                '可以直接在输入框打字，或检查麦克风后再说一次。</span>'), said)
+                '可以直接在输入框打字，或重新录音、上传音频。</span>'), original_text)
         said = heard
         return (_voice_echo_html(said, meta) + _voice_hint(
             "转写完成，请核对输入框中的文字，确认后点击「开始判定」。", kind="info"), said)
@@ -1139,7 +1146,7 @@ def run_route_with_voice(audio_path, text, context):
 def run_voice_transcription(audio_path, text, context):
     """转写按钮只填文字，永不自动查询法规。"""
     if not audio_path:
-        return _voice_hint("请先录音，再点击「转写到输入框」。"), text or ""
+        return _voice_hint("请先录音或上传音频，再点击「转写到输入框」。"), text or ""
     return run_route_with_voice(audio_path, text, context)
 
 
@@ -1284,8 +1291,8 @@ def build_ui():
                 )
                 with gr.Row(elem_classes=["cr-voice-row"]):
                     audio_in = gr.Audio(
-                        sources=["microphone"], type="filepath", format="wav",
-                        label="录音（可选，最长60秒）", scale=1,
+                        sources=["microphone", "upload"], type="filepath", format="wav",
+                        label="录音或上传音频（可选，最长60秒）", scale=1,
                         interactive=_asr_on,
                     )
                     q_text = gr.Textbox(
@@ -1304,7 +1311,7 @@ def build_ui():
                     q_btn = gr.Button("开始判定", variant="primary", scale=3)
                     q_clear = gr.ClearButton([audio_in, q_text], value="清空录音/文字",
                                              scale=1)
-                gr.Markdown(f"<small style='color:var(--cr-ink2)'>{_asr_status_line()}</small>")
+                gr.HTML('<div class="cr-note" role="status">' + _asr_status_line() + '</div>')
                 q_out = gr.HTML(_route_initial())
                 gr.Markdown(
                     "<small style='color:#a4493f'>"
