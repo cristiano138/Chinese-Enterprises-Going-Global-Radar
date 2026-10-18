@@ -1098,8 +1098,8 @@ def _voice_echo_html(text, meta):
         ok = meta.get("ok")
         badge = ('<span class="cr-badge b-ok">语音转写</span>' if ok
                  else '<span class="cr-badge b-warn">转写失败</span>')
-        detail = (f'后端 {_e(_ASR_BACKEND_ZH.get(meta.get("backend"),
-                                              meta.get("backend") or "—"))}'
+        backend_name = _ASR_BACKEND_ZH.get(meta.get("backend"), meta.get("backend") or "—")
+        detail = (f'后端 {_e(backend_name)}'
                   f' · 耗时 {_e(meta.get("seconds"))}s'
                   f'{" · 缓存命中" if meta.get("cached") else ""}')
     return (
