@@ -1020,7 +1020,11 @@ def run_compare(category):
 
 
 def run_route(text, context):
-    """M1.5 智能路由回调（输入驱动）。任何异常都不白屏。"""
+    """M1.5 智能路由回调（输入驱动）。任何异常都不白屏。
+
+    纯文字路径；带录音的路径见 run_route_with_voice —— 它转写完文本后复用本函数，
+    保证「语音」与「打字」永远出同一份结论，不会长出第二套渲染逻辑。
+    """
     try:
         res = m15_router.route(text, context)
         if res.get("ok"):
@@ -1110,14 +1114,8 @@ def run_route_with_voice(audio_path, text, context):
     if not said:
         return _voice_hint("请先说一句话，或在输入框里描述你的商品与目标市场。"), said
 
-    try:
-        res = m15_router.route(said, context or "")
-        body = m15_router.render_parse(res)
-        if res.get("ok"):
-            body += render_m1(res["m1"])
-        return _voice_echo_html(said, meta) + body, said
-    except Exception as e:  # noqa: BLE001
-        return _err_html(e), said
+    # 复用纯文字链路 —— 语音与打字必须出同一份结论，不能有第二套渲染
+    return _voice_echo_html(said, meta) + run_route(said, context), said
 
 
 def _route_initial():
