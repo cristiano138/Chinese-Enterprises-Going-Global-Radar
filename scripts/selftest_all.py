@@ -17,6 +17,8 @@ SCRIPTS = [
     # 跨模块输出契约（免责声明/元数据/ELI 链接/键集/空选择）
     # —— 单模块自测照不到这一层，曾经因此出现「新页签漏了免责声明」。
     "scripts/selftest_ui_contract.py",
+    # 语音输入链路（ASR 降级契约 + 路由复用 + 界面回调）—— 离线可跑
+    "scripts/selftest_voice.py",
 ]
 
 
@@ -40,6 +42,7 @@ def main() -> int:
     print("M5/M6: PASS")
     print("M7: PASS")
     print("输出契约: PASS")
+    print("语音输入: PASS")
     print("失败数：0")
     return 0
 

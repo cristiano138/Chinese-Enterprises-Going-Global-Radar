@@ -38,7 +38,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
-from core import corpus, llm, snapshot, verify  # noqa: E402
+from core import asr, corpus, llm, snapshot, verify  # noqa: E402
 from modules import (m1_map, m2_timeline, m3_todo, m4_compare, m5_compare,  # noqa: E402
                      m6_multi_region, m7_opc_readiness, m15_router)
 
@@ -140,6 +140,12 @@ body, .gradio-container { background: var(--cr-bg) !important; }
 .cr-badge { display:inline-block; font-size:12px; padding:1px 6px; border-radius:3px;
             margin-left:6px; vertical-align: middle;
             border:1px solid currentColor; background:transparent; }
+/* ── 语音回显：先把「听到什么」摆在结论之前 ── */
+.cr-echo { margin:0 0 12px; padding:12px 14px; border-radius:12px;
+           background:#fff7dc; border:1px solid #efdfae; border-left:4px solid var(--cr-brand);
+           color:var(--cr-ink); font-size:13.5px; line-height:1.7; }
+.cr-echo b { color:#795714; }
+.cr-echo .cr-echo-meta { margin-top:6px; color:var(--cr-ink2); font-size:12px; line-height:1.65; }
 .b-ok   { color:var(--cr-hi); }
 .b-warn { color:var(--cr-lo); }
 .b-q    { color:var(--cr-mid); }
@@ -1025,6 +1031,95 @@ def run_route(text, context):
         return _err_html(e)
 
 
+# ── 语音输入：只做「声音 → 文字」，判定仍走 M1.5 原链路 ─────────────
+_ASR_BACKEND_ZH = {"local": "本地 Whisper", "cloud": "云端转写"}
+
+
+def _asr_status_line():
+    """语音入口可用性（不加载模型，只报配置）。"""
+    try:
+        cfg = asr.config_summary()
+    except Exception:  # noqa: BLE001
+        return "语音入口：不可用（ASR 模块异常，打字不受影响）"
+    if cfg.get("enabled"):
+        return f"语音入口：{cfg.get('detail')}　语言 {cfg.get('lang')}"
+    return f"语音入口：未启用 —— {cfg.get('detail')}（打字不受影响）"
+
+
+def _voice_hint(msg="", kind="error"):
+    """语音区提示。这里只解释「发生了什么」，不给任何合规结论。"""
+    if not msg:
+        return (
+            '<div class="cr-wrap"><div class="cr-empty">'
+            '🎤 可以直接说一句（例：「我要把毛绒玩具卖到德国」），'
+            '也可以在输入框里打字或粘贴整份资料。'
+            '转写结果会<b>回填到输入框</b>，确认或改错后再点「开始判定」。<br>'
+            '<span style="font-size:12px;color:var(--cr-ink2)">'
+            '语音与打字走同一条链路：识别「品类 × 市场」→ 本地核对语料查表 → '
+            '每条结论回挂官方链接。语音不参与任何合规判断。</span>'
+            '</div></div>'
+        )
+    cls = "cr-err" if kind == "error" else "cr-empty"
+    return f'<div class="cr-wrap"><div class="{cls}">{msg}</div></div>'
+
+
+def _voice_echo_html(text, meta):
+    """把「听到了什么」摆在结论之前 —— 用户必须先看见转写原文。"""
+    if not meta:
+        badge = '<span class="cr-badge b-info">文字输入</span>'
+        detail = ""
+    else:
+        ok = meta.get("ok")
+        badge = ('<span class="cr-badge b-ok">语音转写</span>' if ok
+                 else '<span class="cr-badge b-warn">转写失败</span>')
+        detail = (f'后端 {_e(_ASR_BACKEND_ZH.get(meta.get("backend"),
+                                              meta.get("backend") or "—"))}'
+                  f' · 耗时 {_e(meta.get("seconds"))}s'
+                  f'{" · 缓存命中" if meta.get("cached") else ""}')
+    return (
+        '<div class="cr-echo">'
+        f'🎤 <b>听到</b>：{_e(text)}　{badge}'
+        f'<div class="cr-echo-meta">已回填到输入框，可改错后重新判定。'
+        f'{("　" + detail) if detail else ""}'
+        f'<br>语音只做「声音 → 文字」，品类与市场由确定性规则识别，'
+        f'法规结论全部来自核对语料 —— 转写错字不会变成错结论。</div>'
+        '</div>'
+    )
+
+
+def run_route_with_voice(audio_path, text, context):
+    """① 标签页统一入口：有录音先转写，否则直接用文本框内容。
+
+    返回 (判定 HTML, 回填文本)。转写失败只解释原因，不产出任何合规结论。
+    """
+    said = (text or "").strip()
+    meta = None
+    if audio_path:
+        try:
+            heard, meta = asr.transcribe(audio_path)
+        except Exception as e:  # noqa: BLE001 —— 语音永不打断主链路
+            heard, meta = "", {"ok": False, "reason": str(e), "backend": None}
+        if not heard:
+            reason = (meta or {}).get("reason") or "未知原因"
+            return (_voice_hint(
+                f"<b>这句话没听清</b><br>{_e(reason)}<br><br>"
+                '<span style="color:var(--cr-ink2)">'
+                '可以直接在输入框打字，或检查麦克风后再说一次。</span>'), said)
+        said = heard
+
+    if not said:
+        return _voice_hint("请先说一句话，或在输入框里描述你的商品与目标市场。"), said
+
+    try:
+        res = m15_router.route(said, context or "")
+        body = m15_router.render_parse(res)
+        if res.get("ok"):
+            body += render_m1(res["m1"])
+        return _voice_echo_html(said, meta) + body, said
+    except Exception as e:  # noqa: BLE001
+        return _err_html(e), said
+
+
 def _route_initial():
     """M1.5 页签的初始展示（词典路径，不联网、零成本）。"""
     try:
@@ -1107,6 +1202,11 @@ def build_ui():
     model_status = ("模型：已接入（理解输入用，结论仍 100% 来自核对语料）"
                     if cfg["ready"] else
                     "模型：未配置 —— 输出原始清单（数据完整，链接可核验）")
+    # 语音入口可用性（缺依赖/缺配置时自动关闭，打字链路不受影响）
+    try:
+        _asr_on = bool(asr.config_summary().get("enabled"))
+    except Exception:  # noqa: BLE001
+        _asr_on = False
 
     # 类目下拉 —— 仅 5 个业务类目入口；横切维度随品类附带，不单独查
     cat_choices = list(corpus.SUPPORTED_CATEGORIES)
@@ -1132,18 +1232,28 @@ def build_ui():
                     '系统会自动识别品类和市场，再从已核对语料中生成法规与待办。模型只理解输入，结论仍来自确定性规则和官方链接。</div>'
                     '<div class="cr-quick"><span>适合：产品描述</span><span>适合：BOM / 合同要点</span><span>结果：法规 + 待办 + 证据</span></div>'
                 )
-                q_text = gr.Textbox(
-                    lines=4,
-                    value="我要把洋娃娃卖到美国去，要做哪些合规工作？",
-                    label="① 你的生意（一句话，或整份产品/合同文件）",
-                )
+                with gr.Row():
+                    audio_in = gr.Audio(
+                        sources=["microphone"], type="filepath", format="wav",
+                        label="🎤 按住说话（可选）", scale=1,
+                        interactive=_asr_on,
+                    )
+                    q_text = gr.Textbox(
+                        lines=4, scale=3,
+                        value="我要把洋娃娃卖到美国去，要做哪些合规工作？",
+                        label="① 你的生意（一句话，或整份产品/合同文件）",
+                    )
                 q_ctx = gr.Textbox(
                     lines=2, value="",
                     placeholder=("选填：产品材质 / 结构、客户要求、合同关键信息…"
                                  "（仅辅助识别，不存储）"),
                     label="② 补充上下文（选填）",
                 )
-                q_btn = gr.Button("开始判定", variant="primary")
+                with gr.Row():
+                    q_btn = gr.Button("开始判定", variant="primary", scale=3)
+                    q_clear = gr.ClearButton([audio_in, q_text], value="清空录音/文字",
+                                             scale=1)
+                gr.Markdown(f"<small style='color:var(--cr-ink2)'>{_asr_status_line()}</small>")
                 q_out = gr.HTML(_route_initial())
                 gr.Markdown(
                     "<small style='color:#a4493f'>"
@@ -1243,7 +1353,8 @@ def build_ui():
                 m4_out = gr.HTML(render_m4(m4_compare.query()))
 
         # 事件绑定（每页签自足，互不干扰）
-        q_btn.click(run_route, inputs=[q_text, q_ctx], outputs=q_out)
+        q_btn.click(run_route_with_voice, inputs=[audio_in, q_text, q_ctx],
+                    outputs=[q_out, q_text])
         for w in (cat1, mkt1, use1):
             w.change(run_map, inputs=[cat1, mkt1, use1], outputs=m1_out)
         btn1.click(run_map, inputs=[cat1, mkt1, use1], outputs=m1_out)

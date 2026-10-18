@@ -1,0 +1,16 @@
+# 本地语音识别依赖（可选）
+#
+# 只在本机想用「按住说话」时才装：pip install -r requirements-asr.txt
+# 不装不影响任何主流程 —— core/asr.py 会把语音入口自动关掉，文本框照常可用。
+# 云端转写不需要这个文件（走 HTTP，只用 requests）。
+#
+# 装完后还要下模型：python scripts/prepare_asr.py
+
+faster-whisper>=1.2.0
+
+# ⚠️ av 必须锁 <19。
+# faster-whisper 1.2.1 内部仍调用 av.open(..., metadata_errors="ignore")，
+# 而 PyAV 19 已移除该参数，会直接报：
+#   TypeError: open() got an unexpected keyword argument 'metadata_errors'
+# 实测 av 18.1.0 正常。
+av>=11,<19
