@@ -1040,7 +1040,7 @@ def run_compare(category):
 def run_route(text, context):
     """M1.5 智能路由回调（输入驱动）。任何异常都不白屏。
 
-    判定按钮只读取当前文本框。语音先通过独立按钮转写，用户核对后才调用本函数，
+    判定按钮只读取当前文本框。录音结束或手动上传转写后，用户核对才调用本函数，
     不会重新转写旧录音或覆盖用户修改。
     """
     try:
@@ -1289,6 +1289,10 @@ def build_ui():
                     '系统会自动识别品类和市场，再从已核对语料中生成法规与待办。模型只理解输入，结论仍来自确定性规则和官方链接。</div>'
                     '<div class="cr-quick"><span>适合：产品描述</span><span>适合：BOM / 合同要点</span><span>结果：法规 + 待办 + 证据</span></div>'
                 )
+                gr.Markdown("**点击开始录音即可说话，再点击结束录音，自动转写到输入框。** 最长60秒；首次使用请允许浏览器访问麦克风，未开始录音请检查地址栏权限。核对文字后再点「开始判定」。")
+                with gr.Row():
+                    q_record_start = gr.Button("点击开始录音", variant="primary", interactive=_asr_on)
+                    q_record_stop = gr.Button("结束录音并转写", interactive=_asr_on)
                 with gr.Row(elem_classes=["cr-voice-row"]):
                     audio_in = gr.Audio(
                         sources=["microphone", "upload"], type="filepath", format="wav",
@@ -1419,6 +1423,13 @@ def build_ui():
                 clause_button.click(run_clause_search, inputs=[clause_id, clause_heading], outputs=clause_out)
 
         # 事件绑定（每页签自足，互不干扰）
+        q_record_start.click(lambda: gr.Audio(value=None, recording=True),
+                             outputs=audio_in, queue=False, api_visibility="private")
+        q_record_stop.click(lambda: gr.Audio(recording=False),
+                            outputs=audio_in, queue=False, api_visibility="private")
+        audio_in.stop_recording(run_voice_transcription, inputs=[audio_in, q_text, q_ctx],
+                                outputs=[q_out, q_text], concurrency_limit=2,
+                                concurrency_id="asr", api_name="transcribe_recording")
         q_transcribe.click(run_voice_transcription, inputs=[audio_in, q_text, q_ctx],
                            outputs=[q_out, q_text], concurrency_limit=2,
                            concurrency_id="asr")
