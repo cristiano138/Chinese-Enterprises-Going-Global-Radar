@@ -76,6 +76,31 @@ def test_asr():
     check("配置摘要不含密钥明文",
           "key" in cfg and cfg["key"] in ("已配置", "未配置"), cfg["detail"][:28])
 
+    # 缓存：必须按后端隔离，否则切换 local/cloud 会复用另一套模型的结果，
+    # 界面还会把旧结果标成新后端（违反「如实标注」）。
+    import shutil
+    from unittest.mock import patch
+    old_dir, old_enabled = asr.CACHE_DIR, asr.CACHE_ENABLED
+    tmp_dir = tempfile.mkdtemp(prefix="cr_asr_cache_")
+    try:
+        asr.CACHE_DIR, asr.CACHE_ENABLED = tmp_dir, True
+        audio = b"cache-backend-fixture"
+        k_local = asr._cache_key(audio, "local")
+        k_cloud = asr._cache_key(audio, "cloud")
+        check("缓存键按后端隔离（local ≠ cloud）", k_local != k_cloud)
+        asr._cache_put(k_local, "本地结果")
+        with patch.object(asr, 'available', return_value={'enabled': True, 'backend': 'local'}), \
+                patch.object(asr, '_read_wav', return_value=audio), \
+                patch.object(asr, '_transcribe_local', side_effect=AssertionError('命中缓存不应调用模型')):
+            cached_text, cached_meta = asr.transcribe('cache-fixture.wav')
+        check("缓存命中时如实标注后端",
+              cached_text == "本地结果" and cached_meta['ok'] and
+              cached_meta['cached'] and cached_meta['backend'] == 'local', str(cached_meta))
+        check("换后端不串味（另一个键查不到）", asr._cache_get(k_cloud) is None)
+    finally:
+        asr.CACHE_DIR, asr.CACHE_ENABLED = old_dir, old_enabled
+        shutil.rmtree(tmp_dir, ignore_errors=True)
+
     # 静音音频：后端可用则必须不炸；不可用则必须给出原因
     tmp = os.path.join(tempfile.gettempdir(), "cr_voice_selftest.wav")
     asr._write_silent_wav(tmp)

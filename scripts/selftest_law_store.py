@@ -118,6 +118,32 @@ class Tests(unittest.TestCase):
         with self.assertRaises(ValueError):
             law_content.apply(path, data['sha256'], self.path)
 
+    def test_eurlex_containers_and_annexes(self):
+        body = 'Article 1\n' + 'Official fixture text. ' * 8
+        for container in ['id="document1"', 'class="eli-container"',
+                          'class="extra eli-container other"']:
+            with self.subTest(container=container):
+                raw = ('<html><body><nav>OUTSIDE</nav><div ' + container + '>'
+                       '<p>Directive title</p><div class="eli-container"><p>' + body +
+                       '</p><script>HIDDEN_SCRIPT</script><style>HIDDEN_STYLE</style></div>'
+                       '<p>END_MAIN</p></div><aside>OUTSIDE</aside>'
+                       '<div class="eli-container" id="anx_I"><p>ANNEX I</p>'
+                       '<p>ANNEX_BODY</p></div></body></html>').encode()
+                url = 'https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32009L0048'
+                with patch.object(law_content, 'fetch', return_value=(raw, url)):
+                    result = law_content.stage('EU:32009L0048', self.directory, self.path)
+                self.assertTrue(result['ok'], result)
+                candidate = json.loads(Path(result['candidate']).read_text(encoding='utf-8'))
+                self.assertIn('END_MAIN', candidate['body'])
+                self.assertIn('ANNEX_BODY', candidate['body'])
+                for excluded in ['OUTSIDE', 'HIDDEN_SCRIPT', 'HIDDEN_STYLE']:
+                    self.assertNotIn(excluded, candidate['body'])
+                self.assertEqual(''.join(u['body'] for u in candidate['units']), candidate['body'])
+                self.assertTrue(law_content.apply(result['candidate'], result['sha256'], self.path)['ok'])
+                self.assertTrue(law_store.retrieve('EU:32009L0048', 'ANNEX', path=self.path)['units'])
+        with patch.object(law_content, 'fetch', return_value=(b'<html><body>Article 1 no known container</body></html>', url)):
+            self.assertFalse(law_content.stage('EU:32009L0048', self.directory, self.path)['ok'])
+
     def test_official_type_errors(self):
         for value in [[], {}, None, 12, True]:
             self.assertIs(fresh.sanitize('fr_effective_on', value)[0], fresh.REJECTED)

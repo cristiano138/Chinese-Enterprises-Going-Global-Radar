@@ -157,6 +157,11 @@ footer { background: var(--cr-bg) !important; }
            color:var(--cr-ink); font-size:13.5px; line-height:1.7; }
 .cr-echo b { color:#795714; }
 .cr-echo .cr-echo-meta { margin-top:6px; color:var(--cr-ink2); font-size:12px; line-height:1.65; }
+/* 窄屏：语音块整块落到输入框上方，避免被压成竖排小字与输入框抢宽 */
+@media (max-width:760px) {
+  .cr-voice-row { flex-direction:column !important; align-items:stretch !important; gap:10px !important; }
+  .cr-voice-row > * { width:100% !important; min-width:0 !important; }
+}
 .b-ok   { color:var(--cr-hi); }
 .b-warn { color:var(--cr-lo); }
 .b-q    { color:var(--cr-mid); }
@@ -1277,7 +1282,7 @@ def build_ui():
                     '系统会自动识别品类和市场，再从已核对语料中生成法规与待办。模型只理解输入，结论仍来自确定性规则和官方链接。</div>'
                     '<div class="cr-quick"><span>适合：产品描述</span><span>适合：BOM / 合同要点</span><span>结果：法规 + 待办 + 证据</span></div>'
                 )
-                with gr.Row():
+                with gr.Row(elem_classes=["cr-voice-row"]):
                     audio_in = gr.Audio(
                         sources=["microphone"], type="filepath", format="wav",
                         label="录音（可选，最长60秒）", scale=1,

@@ -153,7 +153,7 @@
 > - **双后端，零密钥可跑** —— 本地 `faster-whisper` 或云端 `/audio/transcriptions`；两者都不可用时语音入口自动置灰，打字链路完全不受影响。
 > - **隐私口径** —— 应用不另存录音，转写缓存默认关闭；启用云端 ASR 时录音会发送到配置的服务，不应输入客户敏感信息。
 > - **安全边界** —— 只接受 RIFF/WAVE，音频最大 10 MiB、最长 60 秒；单次转写等待上限 45 秒，最多 2 个并发任务。
-> - **自检** —— `scripts/selftest_voice.py`（20 项）、`scripts/selftest_asr_safety.py`（22 项）和 `scripts/selftest_voice_confirmation.py`（两步确认回归），均已并入 `selftest_all.py` 发布门禁。
+> - **自检** —— `scripts/selftest_voice.py`（23 项，含后端缓存隔离及来源标注）、`scripts/selftest_asr_safety.py`（22 项）和 `scripts/selftest_voice_confirmation.py`（两步确认回归），均已并入 `selftest_all.py` 发布门禁。
 
 ---
 

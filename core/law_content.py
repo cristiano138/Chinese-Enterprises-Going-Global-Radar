@@ -43,10 +43,12 @@ class DocumentHTML(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag in {'script', 'style'}:
             self.skip += 1
-        if dict(attrs).get('id') == 'document1':
-            self.depth = 1
-        elif self.depth and tag not in {'br', 'hr', 'img', 'meta', 'link', 'input', 'wbr'}:
+        attributes = dict(attrs)
+        if self.depth and tag not in {'br', 'hr', 'img', 'meta', 'link', 'input', 'wbr'}:
             self.depth += 1
+        elif not self.depth and (attributes.get('id') == 'document1' or
+                                 'eli-container' in attributes.get('class', '').split()):
+            self.depth = 1
         if self.depth and tag in {'p', 'div', 'br', 'tr', 'h1', 'h2', 'h3'}:
             self.parts.append('\n')
 
