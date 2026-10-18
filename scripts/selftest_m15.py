@@ -200,9 +200,9 @@ def main():
     print("【7】llm.chat(timeout=…) 硬超时：慢模型及时降级，不干等")
     import time as _t
     _orig_api, _orig_ready_flag = llm._call_api, llm.READY
-    # 形参必须与 core/llm._call_api() 一致（含 thinking）；否则 llm.chat 的
-    # 超时分支会把 4 个位置参数传进来，模拟出的「超时」其实是 TypeError 假阳性。
-    def _slow_api(prompt, max_tokens, temperature, thinking=True):
+    # 形参必须与 core/llm._call_api() 一致（含 thinking 与 http_timeout）；否则 llm.chat 的
+    # 超时分支会把 5 个位置参数传进来，模拟出的「超时」其实是 TypeError 假阳性。
+    def _slow_api(prompt, max_tokens, temperature, thinking=True, http_timeout=None):
         _t.sleep(3)
         return '{"ok":true}'
     llm._call_api = _slow_api

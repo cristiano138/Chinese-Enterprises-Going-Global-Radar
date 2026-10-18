@@ -69,6 +69,7 @@ DATA_CUTOFF = _normalize_date(_RELEASE.get("data_cutoff"))
 # 发布脚本生成的总量；快照不存在时保留兼容兜底。
 CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
 CORPUS_ROWS_BY_MARKET = _RELEASE.get("markets", {"欧盟": 29, "美国": 57})
+CORPUS_ROWS_BY_AUDIT_STATUS = _RELEASE.get("audit_status_distribution", {})
 
 # 官方来源（PRD 附录 C3 允许集合）
 DATA_SOURCES = (

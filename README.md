@@ -152,7 +152,7 @@
 > - **转写错字不会变成错结论** —— 实测合成语音把「毛绒玩具」听成「毛绒丸具」，路由照样命中「儿童玩具 × 欧盟」，因为槽位靠词典/规则、结论靠查表。
 > - **双后端，零密钥可跑** —— 本地 `faster-whisper`（默认）或云端 `/audio/transcriptions`；两者都不可用时语音入口自动隐藏，打字链路完全不受影响。任何失败只返回原因，不抛异常、不产出结论。
 > - **隐私口径** —— 音频只在内存中处理，缓存只存「音频 sha256 → 文本」，不存音频、不留原图。
-> - **自检** —— `scripts/selftest_voice.py`（20 项，已并入 `selftest_all.py` 发布门禁）。
+> - **自检** —— `scripts/selftest_voice.py`（23 项，已并入 `selftest_all.py` 发布门禁）。
 
 ---
 
@@ -214,9 +214,25 @@
 
 ---
 
+## 魔搭部署与版本核验（2026-10-17）
+
+当前采用 Python + Gradio，`app.py` 转发到 `app_main.py`；保留淡黄色工作台、开场动画、M1/M1.5/M2/M3/M5/M6/M7 和 CSV 导出，M4 仍为占位。法规查询与校验由规则执行，模型仅辅助理解与摘要，失败自动降级。DeepSeek 的三个配置变量保持不变。
+
+- 根目录 `ms_deploy.json` 使用官方 schema，选择免费 CPU、Python 3.11 镜像和 Gradio 6.2.0；`requirements.txt` 与其一致。
+- 服务监听 `0.0.0.0`，端口优先 `PORT`、其次 `SERVER_PORT`、默认 7860。已有空间需要在设置中核对 SDK、版本和基础镜像；上传 JSON 本身不证明设置已生效。
+- 更新已有空间：https://www.modelscope.cn/studios/zhanxy2551/ComplianceRadar 。登录有写权限的账号，进入文件页，按原目录覆盖上传运行文件，不要套额外的顶层文件夹。
+- 必需内容：`app.py`、`app_main.py`、`requirements.txt`、`ms_deploy.json`、完整 `core/`、完整 `modules/`、`data/语料核对表_完整版.csv`、`data/snapshot.json`、`data/data_quality_report.json`。建议同时上传 LICENSE、THIRD_PARTY_NOTICES.md 和本说明。
+- 严禁上传 `.env`、访问令牌、`.git/`、虚拟环境、缓存和临时导出。网页上传不一定遵守 `.gitignore`，必须核对文件清单。
+- 在平台环境变量中设置 `MODEL_API_TOKEN`（私密）、`MODEL_API_BASE`、`MODEL_NAME`，沿用现有 DeepSeek 配置；不配置时仅确定性功能可用，不把令牌预填到前端。
+- 上传后重建或重启，确认日志无安装或启动错误；对比平台文件中的 `app_main.py` 与本地版本，然后打开应用检查淡黄色、左侧导航、区域对比、多区域汇总、OPC 及 CSV 下载。仅空间页面返回 200 或显示运行中，不算新版本已上传验证。
+- 本轮完整回归在本地现有 Gradio 环境通过；目标 Gradio 6.2.0 的独立环境测试与平台构建须单独验证，不冒充已通过。
+- 美国 57 条法规仍待人工核对，M3/M7 禁止据其生成执行任务；此版本只能按数据边界试用，不构成法律意见。
+
+官方配置定义：https://modelscope.cn/api/v1/studios/deploy_schema.json
+
 ## 快速开始
 
-> ℹ️ M1 / M2 / M3 已实现可用；M4（对照演示）与部署仍在进行中（截至 2026-10-15）。
+> ℹ️ M1 / M2 / M3 / M5 / M6 / M7 已实现可用；M4（对照演示）仍为占位。部署配置已补齐，线上版本以创空间重建后的运行页面为准。
 
 ### 环境要求
 
@@ -302,7 +318,7 @@ $PY scripts/selftest_m1.py       # M1：分层断言（覆盖率 / 回挂率 / �
 $PY scripts/selftest_m15.py      # M1.5 路由：模型路径（桩注入 llm.chat / is_ready，离线、30 项）
 $PY scripts/selftest_m2_m3.py    # M2/M3：固定日期、证据链、CSV 和边界
 $PY modules/m15_router.py        # M1.5 路由：词典路径（离线确定性，含 ok ⇒ m1.ok 不变量）
-$PY scripts/selftest_voice.py    # 语音链路：ASR 降级 / 路由复用 / 界面回调（离线，20 项）
+$PY scripts/selftest_voice.py    # 语音链路：ASR 降级 / 路由复用 / 界面回调（离线，23 项）
 ```
 
 两份自检脚本均可离线复跑，退出码 0 = 无失败项。
@@ -383,7 +399,7 @@ compliance-radar/
 │   ├── selftest_m2_m3.py       M2/M3 自检（固定日期 / 证据链 / CSV / 边界）
 │   ├── selftest_all.py         发布前总闸门（四模块 + 语料体检）
 │   ├── prepare_asr.py          语音模型一键准备（镜像下载 + 实体文件落盘）
-│   ├── selftest_voice.py       语音链路自检（ASR 降级 / 路由复用 / 界面回调，20 项）
+│   ├── selftest_voice.py       语音链路自检（ASR 降级 / 路由复用 / 界面回调，23 项）
 │   ├── validate_corpus.py      主语料重复键、必填字段、链接和状态体检
 │   └── build_snapshot.py       生成 data/snapshot.json 发布快照
 │   └── audit_guide.py          文档链接与数据批量核对器

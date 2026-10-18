@@ -2,7 +2,7 @@
 # 部署平台（ModelScope 创空间）会自动安装本文件列出的依赖
 
 # --- Web 界面 ---
-gradio>=4.44.0
+gradio==6.2.0
 
 # --- HTTP 请求（数据抓取） ---
 requests>=2.32.0

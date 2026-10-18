@@ -597,7 +597,24 @@ def write_latest(summary, dry_run):
 
 
 # ── 主流程 ────────────────────────────────────────────────────────────
+def _require_db():
+    """依赖的离线 sqlite 库是否就位。
+
+    sqlite/regulations.sqlite3 是大体积离线数据，被 .gitignore 的 *.sqlite
+    排除、不随仓库分发。缺库时 sqlite3.connect() 会静默新建空库，
+    后续 ALTER/SELECT 才报 no such table，排查成本高 —— 入口先显式拦一道。
+    """
+    if os.path.isfile(DB_PATH):
+        return True
+    print("× 未找到离线语料库：" + DB_PATH)
+    print("  本脚本需要 laws / units 表所在的 sqlite 库；该库不随 Git 分发。")
+    print("  请从项目离线数据包放入 sqlite/regulations.sqlite3 后重跑。")
+    return False
+
+
 def main():
+    if not _require_db():
+        return 1
     dry_run = "--dry-run" in sys.argv
     limit = None
     if "--limit" in sys.argv:

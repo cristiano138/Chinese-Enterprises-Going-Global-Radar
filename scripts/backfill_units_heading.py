@@ -66,7 +66,18 @@ def extract_heading(body):
     return label
 
 
+def _require_db():
+    if os.path.isfile(DB_PATH):
+        return True
+    print("× 未找到离线语料库：" + DB_PATH)
+    print("  本脚本需要 units 表所在的 sqlite 库；该库不随 Git 分发。")
+    print("  请从项目离线数据包放入 sqlite/regulations.sqlite3 后重跑。")
+    return False
+
+
 def main():
+    if not _require_db():
+        return 1
     dry_run = "--dry-run" in sys.argv
     limit = None
     if "--limit" in sys.argv:
