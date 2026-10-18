@@ -38,6 +38,11 @@ data/cache/
 data/export/
 data/_cache_*.json
 *.sqlite
+*.sqlite3
+*.sqlite3-*
+*.bak-*
+*.part[0-9]*
+data/content_staging/
 *.db
 
 # ===== 编辑器与系统 =====

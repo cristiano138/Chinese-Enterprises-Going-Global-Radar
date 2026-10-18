@@ -1,0 +1,11 @@
+integrity_check: [('ok',)]
+foreign_key_check: []
+quick_check: ('ok',)
+fts rows: 1635
+fts title mismatch: 65
+fts body mismatch: 0
+docs without fts: 0
+fts search RF: 195
+remaining Ð (all): 3
+remaining Ð in skipped doc rows (expected 4): 3
+elapsed 486.8s

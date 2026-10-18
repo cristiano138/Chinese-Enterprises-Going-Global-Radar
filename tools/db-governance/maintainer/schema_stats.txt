@@ -1,0 +1,308 @@
+=== laws jurisdiction ===
+('EU', 29)
+('US', 57)
+
+=== laws in_force ===
+(None, 57)
+('0', 4)
+('1', 25)
+
+=== laws association_review ===
+('待复核：官方主题为手机和平板电脑生态设计，与底表儿童玩具类目存在差异', 1)
+('待复核：官方主题为樱桃地理标志登记，与底表纺织服装类目存在差异', 1)
+('未作适用性判断', 84)
+
+=== laws title_number/part/celex samples ===
+('EU:32025R2509', None, None, '32025R2509', '{"CELEX号": "32025R2509", "ELI标识": "http://data.europa.eu/eli/reg/2025/2509/oj", ')
+('EU:32009L0048', None, None, '32009L0048', '{"CELEX号": "32009L0048", "ELI标识": "http://data.europa.eu/eli/dir/2009/48/oj", "备')
+('EU:32023R0988', None, None, '32023R0988', '{"CELEX号": "32023R0988", "ELI标识": "http://data.europa.eu/eli/reg/2023/988/oj", "')
+
+=== documents jurisdiction/kind ===
+('EU', 'eu_amendment', 604)
+('EU', 'eu_consolidated', 26)
+('EU', 'eu_corrigendum', 173)
+('EU', 'eu_original', 29)
+('US', 'us_annual', 57)
+('US', 'us_ecfr', 114)
+('US', 'us_fr', 791)
+
+=== documents language ===
+('en', 1794)
+
+=== documents legal_status ===
+('authoritative_unofficial_compilation', 114)
+('official_editorial_consolidation_no_legal_effect', 26)
+('official_publication_source', 1654)
+
+=== documents metadata_status ===
+('downloaded', 1794)
+
+=== documents transfer_status ===
+('downloaded', 1635)
+('unavailable', 159)
+
+=== documents parse_status ===
+('extracted_unreviewed', 1258)
+('not_available', 159)
+('pdf_text_extracted_layout_unverified', 377)
+
+=== law_documents role ===
+('annual_reference', 57)
+('bulk_fallback', 57)
+('cited_source_reference', 35)
+('eu_amendment', 612)
+('eu_consolidated', 26)
+('eu_corrigendum', 173)
+('primary', 86)
+('rule_publication', 887)
+
+=== artifacts purpose ===
+('original_file', 1345)
+('work_metadata', 1138)
+('fr_search_metadata', 887)
+('official_pdf', 851)
+('english_manifestation_metadata', 833)
+('fr_document_metadata', 796)
+('machine_xml', 472)
+('source_title_xml', 114)
+('bulk_directory_metadata', 114)
+('official_metadata', 57)
+('source_graphics', 56)
+('consolidation_index', 29)
+('amendment_corrigendum_index', 29)
+('referenced_graphics_bundle', 18)
+
+=== artifacts format ===
+('sparql-json', 2029)
+('json', 1797)
+('pdf', 873)
+('xhtml', 668)
+('xml', 586)
+('pdfa1a', 347)
+('pdfa2a', 302)
+('zip', 74)
+('mods-xml', 57)
+('html', 3)
+('pdfa1b', 2)
+('fmx4-zip', 1)
+
+=== artifacts format_status ===
+('source_metadata', 2200)
+('informational_api_metadata', 1683)
+('official_publication_rendition', 1300)
+('official_federal_register_rendition', 794)
+('informational_xml_rendition', 472)
+('authoritative_unofficial_compilation', 114)
+('official_annual_cfr_rendition', 57)
+('machine_readable_rendition', 56)
+('editorial_consolidation', 45)
+('matched_reference_filenames', 18)
+
+=== units unit_type ===
+('article', 4425)
+('pdf_page', 3214)
+('section', 2326)
+('n', 1290)
+('annex', 1012)
+('text_block', 892)
+('rule', 472)
+('subpart', 202)
+('part_amendment', 198)
+('auth', 130)
+('source', 120)
+('preamble', 60)
+('appendix', 30)
+
+=== events event_type ===
+('resource_legal_date_entry-into-force', 974)
+('work_date_document', 832)
+('work_date_creation_legacy', 832)
+('document_date_not_publication', 832)
+('publication', 791)
+('effective', 716)
+('resource_legal_date_end-of-validity', 703)
+('date_creation_legacy', 583)
+('work_date_creation', 268)
+('directive_date_transposition', 186)
+('official-journal-act_date_publication', 146)
+('resource_legal_date_deadline', 112)
+('source_volume_amended_on', 57)
+('snapshot_acquired_on', 57)
+('ecfr_snapshot_as_of', 57)
+('act_consolidated_date', 26)
+('resource_legal_date_signature', 24)
+('decision_date_transposition', 2)
+
+=== relations predicate ===
+('affects_cfr_part', 1603)
+('http://publications.europa.eu/ontology/cdm#resource_legal_amends_resource_legal', 1093)
+('http://publications.europa.eu/ontology/cdm#resource_legal_implicitly_repeals_resource_legal', 276)
+('http://publications.europa.eu/ontology/cdm#resource_legal_corrects_resource_legal', 175)
+('http://publications.europa.eu/ontology/cdm#act_consolidated_consolidates_resource_legal', 120)
+('http://publications.europa.eu/ontology/cdm#resource_legal_repeals_resource_legal', 107)
+('seed_identifier', 29)
+('http://publications.europa.eu/ontology/cdm#act_consolidated_based_on_resource_legal', 26)
+('consolidates', 26)
+('consolidation_availability', 3)
+
+=== tasks phase ===
+('us_fr', 887)
+('eu_related', 785)
+('core', 86)
+('us_fr_index', 57)
+('us_annual', 57)
+('us_citation_source', 47)
+
+=== tasks state ===
+('done', 1737)
+('unavailable', 156)
+('failed', 26)
+
+=== attempts outcome ===
+('downloaded', 3254)
+('failed', 51)
+
+=== responses media_type ===
+('application/pdf', 1524)
+('application/xhtml+xml', 668)
+('text/xml', 475)
+('application/sparql-results+json', 347)
+('application/json', 123)
+('application/xml', 60)
+('text/html', 53)
+('application/zip', 4)
+
+=== blobs encoding ===
+('identity', 272)
+('zlib', 2925)
+
+=== document_metadata section ===
+('work_metadata', 832)
+('english_manifestation_metadata', 832)
+('fr_document_metadata', 791)
+('fr_search_metadata', 773)
+('title_source_metadata', 114)
+('graphics_reference_check', 18)
+
+=== source_citations match_status ===
+('ambiguous', 16)
+('archived', 924)
+('unresolved', 1169)
+
+=== law_documents sample ===
+('EU:32025R2509', 'EU-DOC:32025R2509', 'primary')
+('EU:32025R2509', 'EU-DOC:02025R2509-20251212', 'eu_consolidated')
+('EU:32009L0048', 'EU-DOC:32009L0048', 'primary')
+
+=== events sample ===
+('EU-DOC:32025R2509', 'official-journal-act_date_publication', '2025-12-12', 'http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1 http://publications.europa.eu/ontology/cdm#official-journal-act_date_publication', '待人工确认')
+('EU-DOC:32025R2509', 'resource_legal_date_deadline', '2031-02-01', 'http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1 http://publications.europa.eu/ontology/cdm#resource_legal_date_deadline', '待人工确认')
+('EU-DOC:32025R2509', 'resource_legal_date_deadline', '2033-11-01', 'http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1 http://publications.europa.eu/ontology/cdm#resource_legal_date_deadline', '待人工确认')
+
+=== relations sample ===
+('http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1', 'seed_identifier', 'EU:32025R2509', 'EU-DOC:32025R2509')
+('EU-DOC:02025R2509-20251212', 'consolidates', 'EU-DOC:32025R2509', 'EU-DOC:32025R2509')
+('http://publications.europa.eu/resource/cellar/1f583058-0558-11f1-825d-01aa75ed71a1', 'http://publications.europa.eu/ontology/cdm#resource_legal_corrects_resource_legal', 'http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1', 'EU-DOC:32025R2509')
+('http://publications.europa.eu/resource/cellar/51b3e461-951d-11f1-9262-01aa75ed71a1', 'http://publications.europa.eu/ontology/cdm#resource_legal_corrects_resource_legal', 'http://publications.europa.eu/resource/cellar/f2294563-d703-11f0-8da2-01aa75ed71a1', 'EU-DOC:32025R2509')
+('http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1', 'seed_identifier', 'EU:32009L0048', 'EU-DOC:32009L0048')
+('EU-DOC:02009L0048-20260829', 'consolidates', 'EU-DOC:32009L0048', 'EU-DOC:32009L0048')
+('http://publications.europa.eu/resource/cellar/0883e6b0-f840-11ec-b94a-01aa75ed71a1', 'http://publications.europa.eu/ontology/cdm#resource_legal_corrects_resource_legal', 'http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1', 'EU-DOC:32009L0048')
+('http://publications.europa.eu/resource/cellar/1989e046-c4d0-11eb-a925-01aa75ed71a1', 'http://publications.europa.eu/ontology/cdm#resource_legal_amends_resource_legal', 'http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1', 'EU-DOC:32009L0048')
+
+=== source_citations sample ===
+('US-eCFR:16:1250:2026-10-14', 'US:16:1250', 'Part 1250', 1, 82, 8993, 'Source: 82 FR 8993, Feb. 2, 2017, unless otherwise noted.', 'US-FR:2017-02147', 'archived')
+('US-eCFR:16:1250:2026-10-14', 'US:16:1250', '1250.1', 2, 90, 57855, '[90 FR 57855, Dec. 12, 2025]', 'US-FR:2025-22643', 'archived')
+('US-eCFR:16:1250:2026-10-14', 'US:16:1250', '1250.2', 3, 89, 3351, '[89 FR 3351, Jan. 18, 2024, as amended at 90 FR 57855, Dec. 12, 2025]', 'US-FR:2024-00741', 'archived')
+
+=== document_metadata sample ===
+('EU-DOC:01994L0011-20130701', 'work_metadata', '[{"o": {"type": "literal", "value": "cdm:CDM_3.2.3  tdm:1523  xslt:3945 saxon:9.0.0.1J JVM:1.6.0_29 metaconvJar:5.6.0 builddate:04/12/2015 14:32:31"}, "p": {"type": "uri", "value": "http://publication', '[215]')
+('EU-DOC:01994L0011-20130701', 'english_manifestation_metadata', '[{"expr": {"type": "uri", "value": "http://publications.europa.eu/resource/cellar/0ae3165b-7438-471d-8f7a-cbfe31e50519.0006"}, "format": {"datatype": "http://www.w3.org/2001/XMLSchema#string", "type":', '[216]')
+('EU-DOC:02001L0095-20100101', 'work_metadata', '[{"o": {"type": "literal", "value": "cdm:CDM_3.2.3  tdm:1523  xslt:3945 saxon:9.0.0.1J JVM:1.6.0_29 metaconvJar:5.11.1 builddate:18/01/2016 10:13:28"}, "p": {"type": "uri", "value": "http://publicatio', '[380]')
+
+=== tasks sample ===
+('EU:32025R2509:core', 'core', 'EU:32025R2509', '{}', 'done', None, '2026-10-16T16:19:47+00:00')
+('EU:32009L0048:core', 'core', 'EU:32009L0048', '{}', 'done', None, '2026-10-16T16:19:55+00:00')
+('EU:32023R0988:core', 'core', 'EU:32023R0988', '{}', 'done', None, '2026-10-16T16:21:53+00:00')
+('EU:32014L0053:core', 'core', 'EU:32014L0053', '{}', 'done', None, '2026-10-16T16:22:25+00:00')
+('EU:32011L0065:core', 'core', 'EU:32011L0065', '{}', 'done', None, '2026-10-16T16:22:49+00:00')
+
+=== attempts sample ===
+(3305, '2026-10-16T17:45:16+00:00', 'http://publications.europa.eu/resource/cellar/bec878b7-5a75-11e4-a0cb-01aa75ed71a1.0006.01/DOC_1', 200, 'downloaded', None)
+(3304, '2026-10-16T17:45:05+00:00', 'https://www.govinfo.gov/link/fr/59/9076?link-type=pdf', None, 'failed', 'curl: (28) Operation timed out after 75008 milliseconds with 75516483 out of 372290972 bytes received\r\n')
+(3303, '2026-10-16T17:43:46+00:00', 'https://www.govinfo.gov/link/fr/59/9076?link-type=pdf', None, 'failed', 'curl: (28) Operation timed out after 75277 milliseconds with 68048698 out of 372290972 bytes received\r\n')
+(3302, '2026-10-16T17:42:31+00:00', 'https://www.govinfo.gov/link/fr/59/5948?link-type=pdf', None, 'failed', 'curl: (28) Operation timed out after 75249 milliseconds with 75203686 out of 357549929 bytes received\r\n')
+(3301, '2026-10-16T17:41:53+00:00', 'http://publications.europa.eu/resource/cellar/ffe4504a-5eac-11ea-b735-01aa75ed71a1.0006.03/DOC_1', 200, 'downloaded', None)
+
+=== settings keys ===
+('created_at', '2026-10-16T16:14:31+00:00')
+('cutoff', '2026-10-17')
+('ecfr_api_snapshot', '2026-10-14')
+('ecfr_api_snapshot_complete', 'true')
+('fr_index:US:16:1101', '2')
+('fr_index:US:16:1105', '0')
+('fr_index:US:16:1107', '3')
+('fr_index:US:16:1109', '4')
+('fr_index:US:16:1110', '3')
+('fr_index:US:16:1112', '36')
+('fr_index:US:16:1120', '5')
+('fr_index:US:16:1200', '1')
+('fr_index:US:16:1213', '1')
+('fr_index:US:16:1220', '7')
+('fr_index:US:16:1224', '3')
+('fr_index:US:16:1230', '2')
+('fr_index:US:16:1241', '4')
+('fr_index:US:16:1243', '1')
+('fr_index:US:16:1250', '6')
+('fr_index:US:16:1251', '3')
+('fr_index:US:16:1252', '1')
+('fr_index:US:16:1303', '2')
+('fr_index:US:16:1307', '4')
+('fr_index:US:16:1500', '43')
+('fr_index:US:16:1501', '0')
+('fr_index:US:16:1505', '0')
+('fr_index:US:16:1610', '6')
+('fr_index:US:16:1611', '1')
+('fr_index:US:16:1615', '9')
+('fr_index:US:16:1616', '9')
+('fr_index:US:16:1630', '3')
+('fr_index:US:16:1631', '3')
+('fr_index:US:16:1632', '4')
+('fr_index:US:16:300', '5')
+('fr_index:US:16:301', '6')
+('fr_index:US:16:303', '16')
+('fr_index:US:16:423', '5')
+('fr_index:US:16:500', '2')
+('fr_index:US:16:501', '0')
+('fr_index:US:16:502', '1')
+('fr_index:US:16:503', '0')
+('fr_index:US:21:170', '13')
+('fr_index:US:21:171', '7')
+('fr_index:US:21:172', '91')
+('fr_index:US:21:173', '52')
+('fr_index:US:21:174', '2')
+('fr_index:US:21:175', '41')
+('fr_index:US:21:176', '37')
+('fr_index:US:21:177', '62')
+('fr_index:US:21:178', '118')
+('fr_index:US:21:179', '35')
+('fr_index:US:21:180', '7')
+('fr_index:US:21:181', '2')
+('fr_index:US:21:186', '7')
+('fr_index:US:21:700', '10')
+('fr_index:US:21:701', '4')
+('fr_index:US:21:710', '0')
+('fr_index:US:21:720', '4')
+('fr_index:US:21:740', '2')
+('fr_index:US:47:15', '179')
+('fr_index:US:47:18', '13')
+('historical_issue_scope_decision', '用户确认：先交付现有数据库，保留历史出处缺口；不扩大历史整期文件下载。')
+('integrity_result', 'PASS')
+('last_verified_at', '2026-10-16T17:51:35+00:00')
+('seed_commit', '4d156b7778b98df27e27fd25c0ab7037e450cdda (cached seed matches 76c7db0 byte-for-b')
+('seed_field_order', '["类目", "机构", "监管机构", "法规中文名", "官方标题（英文）", "官方编号", "CELEX号", "ELI标识", "官方链接", "来源')
+('seed_raw_blob_sha256', '0006a980bb752ac2bbc4211fd65770c3047f7dd116dc137e35a09a8a6f12d086')
+('seed_sha256', '0006a980bb752ac2bbc4211fd65770c3047f7dd116dc137e35a09a8a6f12d086')
+('us_title_16_snapshot_acquired_on', '2026-10-17')
+('us_title_21_graphics_error', "HTTPSConnectionPool(host='www.govinfo.gov', port=443): Max retries exceeded with")
+('us_title_21_snapshot_acquired_on', '2026-10-17')
+('us_title_47_snapshot_acquired_on', '2026-10-17')

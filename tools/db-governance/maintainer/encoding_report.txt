@@ -1,0 +1,26 @@
+DB: sqlite/regulations.sqlite3
+tables: 14
+
+=== 汇总（仅列出有异常的表/列）===
+documents.full_text: 非空=1635 repl=0 moji=13 ctrl=2 qmark=0
+units.body: 非空=14371 repl=0 moji=14 ctrl=3 qmark=0
+units.source_fragment: 非空=10008 repl=0 moji=14 ctrl=0 qmark=1
+
+=== 示例（最多2条/类）===
+--- documents.full_text [moji] n=13
+    "Consolidated TEXT: 32006R1907 — EN — 22.06.2026\n\n   \n\n      \n02006R1907 — EN — 22.06.2026 — 069.001\n\n      \n\nThis text is meant purely as a documentation tool and has no legal effect. The Union's inst"
+    'L_2011272EN.01000101.xml\n\n   \n\n         \n\n         \n\n         \n\n               \t\n\n18.10.2011\xa0\xa0\xa0\n\n               \n\n                  \nEN\n\n               \n\n                  \nOfficial Journal of the Eur'
+--- documents.full_text [ctrl] n=2
+    "'166 \\n21 CFR Ch. I (4–1–25 Edition)  § 174.6 \\nregulated food-packaging material  \\nwere found on appropriate test to im -\\npart odor or taste to a specific food  \\nproduct such as to render it unfit with '"
+    "'35 \\nFood and Drug Administration, HHS  Pt. 172 \\nclasses of food in or on which such ad -\\nditive may be used, the maximum  \\nquantity that may be used or per -\\nmitted to remain in or on such food,  \\nthe'"
+--- units.body [moji] n=14
+    'ANNEX XVII \n \n ▼M5 \n \n RESTRICTIONS ON THE MANUFACTURE, PLACING ON THE MARKET AND USE OF CERTAIN DANGEROUS SUBSTANCES, MIXTURES AND ARTICLES \n \n \n \n \n \n \n \n For substances which have been incorporated'
+    'ANNEX III \n \n Names referred to in Article 8(1) \n \n —\xa0\xa0\xa0 in Bulgarian : ‘необработена вълна’ \n —\xa0\xa0\xa0 in Spanish : ‘lana virgen’ or ‘lana de esquilado’ \n —\xa0\xa0\xa0 in Czech : ‘střižní vlna’ \n —\xa0\xa0\xa0 in Danish '
+--- units.body [ctrl] n=3
+    "'196 \\n21 CFR Ch. I (4–1–25 Edition)  § 175.300 \\ngallon and intended for one-time use,  \\nnot to exceed 1.8 milligrams per square  \\ninch nor to exceed that amount as mil -\\nligrams per square inch that wo'"
+    "'197 \\nFood and Drug Administration, HHS  § 175.300 \\nTABLE 2ÐT EST PROCEDURES FOR DETERMINING AMOUNT OF EXTRACTIVES FROM RESINOUS OR \\nPOLYMERIC COATINGS, USING SOLVENTS SIMULATING TYPES OF FOODS AND BEV'"
+--- units.source_fragment [moji] n=14
+    '<html:div xmlns:html="http://www.w3.org/1999/xhtml" id="anx_XVII">\n            <html:p>\n               <html:br />\n            </html:p>\n            <html:hr class="separator-annex" />\n            <ht'
+    '<html:div xmlns:html="http://www.w3.org/1999/xhtml" class="eli-container" id="anx_III">\n            <html:p class="oj-doc-ti" id="d1e32-16-1">ANNEX III</html:p>\n            <html:p id="d1e38-16-1" cla'
+--- units.source_fragment [qm] n=1
+    '<RULE>\n            <PREAMB>\n                <AGENCY TYPE="N">FEDERAL COMMUNICATIONS COMMISSION</AGENCY>\n                <CFR>47 CFR Parts 2 and 15</CFR>\n                <DEPDOC>[ET Docket No. 03-122; '

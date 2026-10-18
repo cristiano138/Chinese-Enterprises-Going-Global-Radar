@@ -64,7 +64,11 @@ GO_RADAR_SCRIPTS = HERE
 # sqlite/ 跟 Chinese-Enterprises-Going-Global-Radar/ 是兄弟目录，都在「出海合规」下。
 PROJECT = os.path.dirname(GO_RADAR_ROOT)
 SQLITE_DIR = os.path.join(PROJECT, "sqlite")
-DB_PATH = os.path.join(SQLITE_DIR, "regulations.sqlite3")
+if GO_RADAR_ROOT not in sys.path:
+    sys.path.insert(0, GO_RADAR_ROOT)
+from core import law_store
+DB_PATH = str(law_store.db_path())
+SQLITE_DIR = os.path.dirname(DB_PATH)
 LOG_PATH = os.path.join(SQLITE_DIR, "metadata_check_log.jsonl")
 LATEST_PATH = os.path.join(SQLITE_DIR, "metadata_check_latest.json")
 
@@ -97,7 +101,7 @@ _fetch_us = _load_module(
 
 
 # ── 校验/防护层（已知脏数据模式：占位日期、格式错误的编号） ──────────────
-CELEX_RE = re.compile(r"^\d[0-9]{4}[RLD]\d{4}(?:R\(\d+\))?$")
+CELEX_RE = re.compile(r"^[036][0-9]{4}[RLDCEHFQ]\d{4}(?:R\(\d+\))?(?:-\d{8})?$")
 # FR 文档号格式（实测核实，不是猜测）：
 #   用库内全部 791 条真实 us_fr source_identifier + laws.latest_fr_document_number
 #   做过全量回归测试，覆盖以下全部历史格式，0 条漏判：
@@ -164,6 +168,7 @@ def sanitize_in_force(value):
 FIELD_SANITIZERS = {
     "last_modification_date": sanitize_date,
     "fr_effective_on": sanitize_date,
+    "latest_amendment_date": sanitize_date,
     "in_force": sanitize_in_force,
     "latest_amendment_celex": sanitize_celex,
     "latest_corrigendum_celex": sanitize_celex,
@@ -173,9 +178,15 @@ FIELD_SANITIZERS = {
 
 def sanitize(field, value):
     """返回 (clean_value, reject_reason)。clean_value is REJECTED 表示拒绝写入。"""
+    if not isinstance(value, str):
+        return REJECTED, f"官方字段类型异常：{type(value).__name__}"
+    if field == 'part_status':
+        return (value, None) if value in {'present', 'reserved', 'removed', 'not_found'} else (REJECTED, '未知 Part 状态')
+    if field == 'official_title':
+        return (value.strip(), None) if 0 < len(value.strip()) <= 2000 else (REJECTED, '标题为空或过长')
     fn = FIELD_SANITIZERS.get(field)
     if fn is None:
-        return value, None
+        return REJECTED, '字段不在允许写入清单'
     return fn(value)
 
 
@@ -331,6 +342,33 @@ def query_us_official(title_number, part_number):
     这里仍然采集，但不作为权威生效日，只做辅助展示）。
     """
     out = {}
+    title_number, part_number = int(title_number), str(part_number)
+    if not 1 <= title_number <= 50 or not re.fullmatch(r'\d+[a-z]?', part_number):
+        raise ValueError('CFR 编号无效')
+    data = _fetch_us.api_get('titles.json')
+    if not isinstance(data, dict) or not isinstance(data.get('titles'), list):
+        raise ValueError('eCFR titles 响应类型异常')
+    title_meta = next((t for t in data['titles'] if isinstance(t, dict) and str(t.get('number')) == str(title_number)), None)
+    if not title_meta:
+        raise ValueError('eCFR Title 不存在')
+    date = title_meta.get('latest_issue_date') or (data.get('meta') or {}).get('date')
+    if not isinstance(date, str) or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', date):
+        raise ValueError('eCFR 快照日期异常')
+    tree = _fetch_us.api_get(f'structure/{date}/title-{title_number}.json')
+    if not isinstance(tree, dict) or tree.get('type') != 'title' or str(tree.get('identifier')) != str(title_number):
+        raise ValueError('eCFR structure 响应类型异常，未判定 Part 移除')
+    parts = []
+    _fetch_us.flatten(tree, [], parts)
+    part = next((p['node'] for p in parts if str(p['node'].get('identifier')) == part_number), None)
+    if part:
+        label = part.get('label') or part.get('label_description')
+        if not isinstance(label, str):
+            raise ValueError('eCFR Part 标题类型异常')
+        out['official_title'] = label.strip()
+        out['part_status'] = 'removed' if '[Removed]' in label else ('reserved' if '[Reserved]' in label else 'present')
+    else:
+        # 完整结构中未找到只表示本次未收录，不推断法律废止。
+        out['part_status'] = 'not_found'
 
     latest_amend, _ver_count, _recent, _earliest = _fetch_us.get_versions(
         title_number, part_number
@@ -355,6 +393,9 @@ NEW_LAW_COLUMNS = [
     ("fr_effective_on", "TEXT"),
     ("updated_at", "TEXT"),
     ("effective_status_detail", "TEXT"),
+    ("official_title", "TEXT"),
+    ("part_status", "TEXT"),
+    ("latest_amendment_date", "TEXT"),
 ]
 
 
@@ -383,10 +424,9 @@ US_FIELDS = (
     "latest_fr_document_number",
     "fr_effective_on",
 )
-# latest_amendment_date 是 eCFR 侧的辅助参考字段（非权威生效日，见
-# query_us_official 的说明），laws 表没有这一列，不参与比对/写库，
-# 只在日志的 official_raw 里留痕供人工参考。
-US_AUX_FIELDS = ("latest_amendment_date",)
+# 修订编入日期独立存储和比对，始终不替代 FR 法律生效日期。
+US_AUX_FIELDS = ()
+US_FIELDS += ('official_title', 'part_status', 'latest_amendment_date')
 
 
 def load_laws(con):
@@ -398,6 +438,7 @@ def load_laws(con):
         "id", "jurisdiction", "celex", "title_number", "part_number",
         "last_modification_date", "in_force", "latest_amendment_celex",
         "latest_corrigendum_celex", "latest_fr_document_number",
+        "official_title", "part_status", "latest_amendment_date",
     ]
     # fr_effective_on 可能是刚才 --dry-run 模式下"打算加但还没真加"的新列，
     # 这里按实际存在情况取，不存在就不选它（下游用 law.get() 拿默认 None）。
@@ -436,8 +477,11 @@ def apply_changes(con, law, official, dry_run, log_records):
     """
     cur = con.cursor()
     changed_n = 0
+    existing_columns = {r[1] for r in cur.execute('PRAGMA table_info(laws)')}
+    allowed = EU_FIELDS if law.get('jurisdiction') == 'EU' else US_FIELDS
     for field, new_raw in official.items():
-        if field in US_AUX_FIELDS:
+        if field not in allowed or (field not in existing_columns and not dry_run):
+            log_records.append({'law_id': law['id'], 'field': field, 'action': 'rejected_invalid_value', 'reason': '不允许的字段或缺少迁移'})
             continue
         old_value = law.get(field)
         clean, reject_reason = sanitize(field, new_raw)
@@ -570,6 +614,13 @@ def compute_effective_status_detail(con, law):
             return "现行有效(过渡期内)"
         return "现行有效(完全生效)" if in_force == "1" else "待确认"
     else:
+        part_status = law.get('part_status')
+        if part_status == 'removed':
+            return '官方结构标为移除（法律效力待复核）'
+        if part_status == 'reserved':
+            return '官方结构标为保留（无当前正文）'
+        if part_status != 'present':
+            return '待确认（未取得当前 Part 结构证据）'
         effective_dates = dates_for("effective")
         if any(d > today for d in effective_dates):
             return "现行有效(过渡期内)"
@@ -620,8 +671,9 @@ def main():
     if "--limit" in sys.argv:
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
-    con = sqlite3.connect(DB_PATH)
-    con.text_factory = str
+    con = law_store.connect(DB_PATH, writable=not dry_run)
+    if not dry_run:
+        print('写前备份：' + law_store.backup(con, DB_PATH))
 
     print("=" * 66)
     print("  法规时效性结构化字段核验" + ("（演练模式，不写库）" if dry_run else ""))
@@ -657,7 +709,12 @@ def main():
         rejected_count += after_rejected - before_rejected
         changed_count += n_changed
 
-        detail = compute_effective_status_detail(con, law)
+        refreshed = dict(law)
+        for field, value in official.items():
+            clean, _ = sanitize(field, value)
+            if clean is not REJECTED:
+                refreshed[field] = clean
+        detail = compute_effective_status_detail(con, refreshed)
         if not dry_run:
             con.execute(
                 "UPDATE laws SET effective_status_detail=? WHERE id=?",

@@ -1,0 +1,434 @@
+affected docs with PDF: 325
+dry_run: False
+
+changed docs: 325
+replacements (incl. units): {'±->±': 165, 'resolved': 14945, '±->–': 13348, '±->-': 375, 'fallback_letter_token': 255, 'unresolved': 441, 'Ð->—': 1498, 'left_unchanged': 30, 'fallback_numeric_range': 78, 'fallback_emdash': 36, 'fallback_identifier': 42}
+
+per-doc: doc	total_resolved	total_unresolved	units_changed	note
+US-CFR:2025:21:3:172	90	2	12	
+US-CFR:2025:21:3:173	64	0	8	
+US-CFR:2025:21:3:175	299	0	20	
+US-CFR:2025:21:3:176	302	7	30	
+US-CFR:2025:21:3:177	297	7	34	
+US-CFR:2025:21:3:178	543	8	50	
+US-FR:00-6116	39	0	3	
+US-FR:00-691	14	0	1	
+US-FR:95-10897	45	0	2	
+US-FR:95-11012	48	0	4	
+US-FR:95-11060	19	0	1	
+US-FR:95-12704	35	0	3	
+US-FR:95-13114	37	2	2	
+US-FR:95-14464	24	0	2	
+US-FR:95-15349	32	2	2	
+US-FR:95-15922	31	0	2	
+US-FR:95-15924	25	0	2	
+US-FR:95-16092	45	0	2	
+US-FR:95-17435	54	0	8	
+US-FR:95-19092	24	0	2	
+US-FR:95-19093	28	0	2	
+US-FR:95-19094	37	0	3	
+US-FR:95-19152	18	0	1	
+US-FR:95-19424	38	0	3	
+US-FR:95-19627	18	0	2	
+US-FR:95-19702	43	0	2	
+US-FR:95-20606	34	0	2	
+US-FR:95-21377	33	0	2	
+US-FR:95-21378	30	0	2	
+US-FR:95-21380	32	0	2	
+US-FR:95-22568	56	2	1	
+US-FR:95-22637	50	0	3	
+US-FR:95-23244	54	0	4	
+US-FR:95-23248	47	0	3	
+US-FR:95-23598	56	1	3	
+US-FR:95-23599	37	0	2	
+US-FR:95-23776	42	0	2	
+US-FR:95-25321	34	0	2	
+US-FR:95-25924	25	2	2	
+US-FR:95-25973	33	0	3	
+US-FR:95-26221	44	0	3	
+US-FR:95-26268	27	0	2	
+US-FR:95-26358	70	0	2	
+US-FR:95-26359	47	0	3	
+US-FR:95-28216	43	0	2	
+US-FR:95-28545	28	0	2	
+US-FR:95-29219	18	0	1	
+US-FR:95-29476	28	1	3	
+US-FR:95-29478	42	1	2	
+US-FR:95-3450	20	0	5	
+US-FR:95-3804	52	2	3	
+US-FR:95-4484	56	1	9	
+US-FR:95-5275	61	0	4	
+US-FR:95-5382	93	0	4	
+US-FR:95-5672	22	1	2	
+US-FR:95-7650	30	0	2	
+US-FR:95-8772	54	10	4	
+US-FR:95-8773	28	0	2	
+US-FR:95-9089	21	0	2	
+US-FR:96-10961	23	0	4	
+US-FR:96-10978	70	2	11	
+US-FR:96-1143	42	0	3	
+US-FR:96-1144	45	0	4	
+US-FR:96-120	24	0	2	
+US-FR:96-12757	24	1	1	
+US-FR:96-12761	32	0	2	
+US-FR:96-12762	47	1	4	
+US-FR:96-13046	21	0	1	
+US-FR:96-13303	35	0	4	
+US-FR:96-13537	30	1	2	
+US-FR:96-13829	72	0	8	
+US-FR:96-13982	37	0	3	
+US-FR:96-13983	57	0	4	
+US-FR:96-14138	126	1	13	
+US-FR:96-14319	39	0	5	
+US-FR:96-14648	23	0	1	
+US-FR:96-14697	53	0	3	
+US-FR:96-15210	17	0	1	
+US-FR:96-15726	36	1	3	
+US-FR:96-1584	119	2	34	
+US-FR:96-16522	23	0	2	
+US-FR:96-16662	44	1	2	
+US-FR:96-16769	44	0	2	
+US-FR:96-18069	20	0	1	
+US-FR:96-18070	33	0	2	
+US-FR:96-18072	48	2	3	
+US-FR:96-20082	109	3	10	
+US-FR:96-20821	28	0	1	
+US-FR:96-20852	47	0	3	
+US-FR:96-20853	49	0	3	
+US-FR:96-20858	25	0	2	
+US-FR:96-20906	28	0	1	
+US-FR:96-21229	41	0	3	
+US-FR:96-2168	18	0	1	
+US-FR:96-22286	32	0	3	
+US-FR:96-22287	22	0	3	
+US-FR:96-22482	52	0	2	
+US-FR:96-22483	31	0	2	
+US-FR:96-22484	27	0	3	
+US-FR:96-22695	62	1	3	
+US-FR:96-22697	37	3	11	
+US-FR:96-22713	17	0	1	
+US-FR:96-228	30	0	2	
+US-FR:96-23549	37	1	2	
+US-FR:96-25122	34	0	2	
+US-FR:96-25258	30	0	2	
+US-FR:96-26516	90	8	3	
+US-FR:96-26824	42	0	3	
+US-FR:96-2747	55	0	3	
+US-FR:96-27818	91	0	3	
+US-FR:96-28290	25	8	1	
+US-FR:96-29393	25	0	2	
+US-FR:96-29874	18	0	2	
+US-FR:96-30510	49	0	3	
+US-FR:96-30662	15	0	1	
+US-FR:96-31361	39	0	3	
+US-FR:96-31808	40	0	2	
+US-FR:96-31809	31	0	2	
+US-FR:96-31860	40	0	2	
+US-FR:96-32126	42	0	2	
+US-FR:96-32259	21	0	3	
+US-FR:96-33099	23	4	2	
+US-FR:96-4068	36	0	2	
+US-FR:96-421	23	5	2	
+US-FR:96-422	20	1	2	
+US-FR:96-4716	29	0	2	
+US-FR:96-5012	53	1	4	
+US-FR:96-5812	50	0	2	
+US-FR:96-6734	32	0	2	
+US-FR:96-6741	24	4	2	
+US-FR:96-6857	96	0	13	
+US-FR:96-7689	121	0	4	
+US-FR:96-7883	66	21	4	
+US-FR:96-7884	45	89	5	
+US-FR:96-7919	29	36	2	
+US-FR:96-814	34	0	3	
+US-FR:96-8148	36	0	3	
+US-FR:96-9274	31	0	3	
+US-FR:96-942	35	0	2	
+US-FR:96-9489	78	2	4	
+US-FR:96-972	24	0	2	
+US-FR:96-9783	29	0	2	
+US-FR:96-9995	18	0	1	
+US-FR:97-1021	74	0	4	
+US-FR:97-10252	24	0	2	
+US-FR:97-10909	50	2	2	
+US-FR:97-11584	72	3	6	
+US-FR:97-12156	36	2	3	
+US-FR:97-12461	50	0	4	
+US-FR:97-13607	21	2	2	
+US-FR:97-13869	38	1	4	
+US-FR:97-14105	30	0	2	
+US-FR:97-14602	30	0	2	
+US-FR:97-14752	30	0	2	
+US-FR:97-15011	28	0	2	
+US-FR:97-16052	20	0	1	
+US-FR:97-16399	42	0	3	
+US-FR:97-16793	25	2	1	
+US-FR:97-16794	40	2	2	
+US-FR:97-16795	37	0	3	
+US-FR:97-16961	69	0	2	
+US-FR:97-17976	37	0	3	
+US-FR:97-19250	28	0	2	
+US-FR:97-19428	54	4	3	
+US-FR:97-19566	147	1	22	
+US-FR:97-19567	30	0	2	
+US-FR:97-19568	32	2	3	
+US-FR:97-2007	205	6	9	
+US-FR:97-20390	26	0	2	
+US-FR:97-20398	34	0	4	
+US-FR:97-20498	27	2	2	
+US-FR:97-21180	57	1	7	
+US-FR:97-21292	26	1	2	
+US-FR:97-22550	70	3	5	
+US-FR:97-23498	46	1	3	
+US-FR:97-24121	28	2	1	
+US-FR:97-27527	23	0	2	
+US-FR:97-28761	80	0	4	
+US-FR:97-29048	139	0	3	
+US-FR:97-29306	32	0	2	
+US-FR:97-3048	55	8	8	
+US-FR:97-31739	27	1	5	
+US-FR:97-31740	77	20	6	
+US-FR:97-3661	49	1	3	
+US-FR:97-4082	28	0	2	
+US-FR:97-5077	39	4	3	
+US-FR:97-5558	21	0	2	
+US-FR:97-946	50	0	3	
+US-FR:98-10742	73	4	4	
+US-FR:98-10969	46	0	3	
+US-FR:98-13469	44	0	2	
+US-FR:98-14104	34	0	2	
+US-FR:98-14105	29	0	3	
+US-FR:98-14296	54	2	3	
+US-FR:98-1539	95	0	3	
+US-FR:98-17144	40	0	2	
+US-FR:98-17412	37	0	2	
+US-FR:98-17541	27	2	4	
+US-FR:98-17543	17	0	2	
+US-FR:98-17544	32	1	2	
+US-FR:98-17545	24	0	2	
+US-FR:98-17670	104	7	17	
+US-FR:98-17700	50	1	10	
+US-FR:98-17701	27	1	3	
+US-FR:98-18406	80	2	3	
+US-FR:98-19174	32	0	3	
+US-FR:98-19314	25	0	2	
+US-FR:98-20361	157	0	6	
+US-FR:98-20429	146	4	7	
+US-FR:98-21387	35	0	2	
+US-FR:98-21998	24	0	2	
+US-FR:98-22090	28	0	2	
+US-FR:98-22091	25	0	2	
+US-FR:98-23029	25	0	2	
+US-FR:98-23398	21	0	1	
+US-FR:98-25795	23	0	2	
+US-FR:98-27992	26	0	2	
+US-FR:98-27993	68	0	3	
+US-FR:98-28060	34	0	2	
+US-FR:98-28409	25	0	1	
+US-FR:98-28410	52	0	4	
+US-FR:98-28780	25	0	2	
+US-FR:98-29333	51	0	2	
+US-FR:98-29562	29	0	2	
+US-FR:98-29615	25	0	2	
+US-FR:98-29616	31	0	3	
+US-FR:98-30296	28	2	3	
+US-FR:98-31845	28	1	2	
+US-FR:98-31855	34	1	2	
+US-FR:98-32907	59	1	3	
+US-FR:98-33454	35	0	2	
+US-FR:98-3356	23	2	1	
+US-FR:98-3357	60	2	3	
+US-FR:98-33865	20	0	2	
+US-FR:98-33866	17	0	2	
+US-FR:98-33914	70	0	3	
+US-FR:98-34407	37	0	5	
+US-FR:98-34734	39	0	2	
+US-FR:98-3495	91	4	15	
+US-FR:98-3497	24	0	2	
+US-FR:98-4310	32	0	2	
+US-FR:98-4372	37	2	2	
+US-FR:98-4530	28	0	2	
+US-FR:98-5073	37	0	1	
+US-FR:98-8750	88	0	13	
+US-FR:99-10118	36	0	4	
+US-FR:99-1032	40	2	3	
+US-FR:99-1138	77	1	10	
+US-FR:99-1139	18	0	2	
+US-FR:99-11503	63	0	5	
+US-FR:99-11737	50	0	2	
+US-FR:99-11899	74	0	3	
+US-FR:99-12177	23	0	2	
+US-FR:99-12391	20	1	1	
+US-FR:99-12394	42	0	3	
+US-FR:99-12396	33	1	2	
+US-FR:99-12531	52	0	3	
+US-FR:99-12853	103	7	15	
+US-FR:99-12961	33	2	2	
+US-FR:99-12962	33	2	2	
+US-FR:99-13093	26	0	2	
+US-FR:99-13670	29	1	4	
+US-FR:99-13858	38	0	2	
+US-FR:99-14147	48	1	3	
+US-FR:99-14518	20	0	1	
+US-FR:99-16320	73	4	7	
+US-FR:99-17516	32	1	3	
+US-FR:99-18300	37	0	3	
+US-FR:99-20366	27	0	1	
+US-FR:99-20888	20	0	2	
+US-FR:99-20889	34	0	2	
+US-FR:99-20890	28	1	2	
+US-FR:99-21079	25	0	2	
+US-FR:99-21080	31	0	2	
+US-FR:99-21727	31	0	2	
+US-FR:99-21728	22	0	2	
+US-FR:99-21849	63	4	2	
+US-FR:99-21850	35	2	3	
+US-FR:99-21851	25	0	2	
+US-FR:99-21963	28	0	2	
+US-FR:99-2230	32	0	2	
+US-FR:99-22474	47	1	3	
+US-FR:99-22476	31	0	2	
+US-FR:99-22679	49	0	2	
+US-FR:99-22996	25	0	2	
+US-FR:99-23000	37	0	2	
+US-FR:99-23001	24	0	2	
+US-FR:99-23231	23	0	3	
+US-FR:99-23969	41	0	2	
+US-FR:99-2408	72	0	9	
+US-FR:99-25790	34	2	2	
+US-FR:99-26885	35	0	2	
+US-FR:99-28112	39	1	2	
+US-FR:99-28113	37	1	2	
+US-FR:99-28850	52	1	3	
+US-FR:99-29226	19	0	1	
+US-FR:99-29915	42	0	3	
+US-FR:99-30523	29	0	2	
+US-FR:99-30569	33	0	2	
+US-FR:99-31228	60	1	4	
+US-FR:99-31700	50	0	2	
+US-FR:99-32001	38	0	2	
+US-FR:99-32427	35	2	3	
+US-FR:99-32676	125	1	23	
+US-FR:99-33094	59	0	3	
+US-FR:99-33095	42	0	2	
+US-FR:99-33394	38	0	2	
+US-FR:99-33397	38	0	2	
+US-FR:99-33398	35	0	2	
+US-FR:99-3559	41	2	1	
+US-FR:99-5520	19	0	2	
+US-FR:99-55504	38	7	1	
+US-FR:99-55505	38	7	1	
+US-FR:99-563	37	0	4	
+US-FR:99-6296	97	20	24	
+US-FR:99-6667	61	0	3	
+US-FR:99-7515	26	0	3	
+US-FR:99-902	44	0	2	
+US-FR:99-9520	27	1	1	
+US-FR:C9-1138	19	0	1	
+US-FR:X95-70113	23	0	1	
+US-FR:X96-10626	16	0	1	
+US-FR:X97-10805	13	2	1	
+US-FR:X97-20924	18	2	1	
+US-FR:X98-10915	57	2	2	
+
+unresolved samples (first 100 of 441):
+('±', 'fallback_letter_token', 'l  \ncontent of 0.5 percent as determined by ASTM method D721±56T, ``Ten -\ntative Method of Test for Oil Content of Petrol')
+('±', 'fallback_letter_token', 'dronaphthalene at 88  \n°C as determined by ASTM method D2008±80, ``Standard Test Method for  \nUltraviolet Absorbance and ')
+('±', 'left_unchanged', '70 °C (158 °F) minimum, as determined by ASTM  \nMethod D 611±82, ``Standard Test Methods for Aniline Point  \nand Mixed An')
+('±', 'fallback_letter_token', 'ng point 88 °C to 93 °C, as de -\ntermined by ASTM method D36±76, ``Standard Test Method  \nfor Softening Point of Bitumen ')
+('±', 'fallback_letter_token', '0.15 deciliter per gram as determined by ASTM method  \nD1243±79, ``Standard Test Method for -Dilute Solution Vis -\ncosity')
+('±', 'fallback_letter_token', 'index not to exceed  \n350 as determined by ASTM method D1238±82, ``Standard  \nTest Method for Flow Rates of Thermoplastic')
+('±', 'fallback_letter_token', 'ne point 120  \n°C minimum, as determined by ASTM method D611±82,  \n``Standard Test Methods for Aniline Point and Mixed An')
+('±', 'fallback_letter_token', 'molecular weight of 835 as determined by ASTM method  \nD2503±82, ``Standard Test Method for Molecular Weight  \n(Relative ')
+('±', 'fallback_letter_token', 'D127±60, and  \nan acid value of 10 maximum. ASTM Method D127±60  \n``Standard Method of Test for Melting Point of Petrolat')
+('±', 'fallback_letter_token', "ethod titled  \n``Analysis of Cycopac Resin for Re -\nsidual b±(2±Hydroxyethylmercapto) \npropionitrile,'' which is incorpor")
+('±', 'fallback_letter_token', "od titled  \n``Analysis of Cycopac Resin for Re -\nsidual b±(2±Hydroxyethylmercapto) \npropionitrile,'' which is incorporate")
+('±', 'fallback_letter_token', 'r layer in a multilayer construction  \nby ASTM method D±1434±82, ``Standard Method for Determining Gas Permeability Chara')
+('±', 'fallback_letter_token', 'g point of  \n212°±228 °F., as determined by ASTM method D127±60  \n(``Standard Method of Test for Melting Point of Petrola')
+('±', 'left_unchanged', 'an Society for Testing and Mate -\nrials (ASTM) method D 1646±81, ``Standard Test Method for  \nRubberÐViscosity and Vulcan')
+('±', 'left_unchanged', 'oint of 107 °C (225 °F), \nas determined by ASTM Method D 611±82, ``Standard Test  \nMethods for Aniline Point and Mixed An')
+('±', 'left_unchanged', 'e, measured at 160 °C, as determined by  \nASTM Method D 3236±88, ``Standard Test Method for Ap -\nparent Viscosity of Hot ')
+('±', 'fallback_letter_token', '25 °C of 1.5550±1.5650, as determined by  \nASTM method D1218±82, ``Standard Test Meth -\nod for Refractive Index and Refra')
+('±', 'fallback_letter_token', 'ing point of  \n59°±62 °C as determined by ASTM method  \nE324±79, ``Standard Test Method for Relative  \nInitial and Final ')
+('±', 'fallback_letter_token', 'ng point  \nof 48 °±52 °C as determined by ASTM method  \nE324±79, ``Standard Test Method for Relative  \nInitial and Final ')
+('±', 'fallback_numeric_range', 'erage molecular weight 11,000±  \n18,000; hydroxyl number 6.2±10.2; ´cloud point above 100  \n°C. for 10 pct solution .\nFor')
+('±', 'fallback_letter_token', 'olt Universal seconds, as deter -\nmined by ASTM methods D445±82 (``Standard  \nTest Method for Kinematic Viscosity of Tran')
+('±', 'fallback_letter_token', "ds (and the Calculation  \nof Dynamic Viscosity)'') and D2161±82 (``Stand -\nard Method for Conversion of Kinematic Vis -\nc")
+('±', 'fallback_letter_token', ' number  \nof 3 or less, as determined by ASTM method  \nD1492±78 (``Standard Test Method for Bromine  \nIndex of Aromatic H')
+('±', 'fallback_letter_token', " (SUS  \nat 37±8 °C (100 °F) as determined by ASTM method D88±  \n81, ``Standard Test Method for Saybolt Viscosity,'' which")
+('±', 'fallback_numeric_range', "ragraph (a), column\ntwo of the table the first entry ``16.42±\n423'' is revised to read ``16.42±16.423''.\nFederal Communic")
+('±', 'fallback_numeric_range', "le the first entry ``16.42±\n423'' is revised to read ``16.42±16.423''.\nFederal Communications Commission.\nWilliam F. Cato")
+('±', 'fallback_numeric_range', "by the American\nOil Chemists' Society (A.O.C.S.) method\nCd 9±57, ``Oxirane Oxygen,'' reapproved\n1989, which is incorporat")
+('±', 'fallback_numeric_range', "m iodine value is 3.0,\nas determined by A.O.C.S. method Cd\n1±25, ``Iodine Value of Fats and Oils\nWijs Method,'' revised 1")
+('±', 'fallback_numeric_range', '01 Notification, except for the\nfollowing words in section 8±301(1),\n``Notification is also required for any\ntank used ex')
+('±', 'fallback_numeric_range', "ements for permanent closure in\naccordance with subsection 8±605(2).''\nSection 8±602 Reporting.\nSection 8±603 Release Inv")
+('±', 'fallback_numeric_range', "roved as a generic copy\nof Fort Dodge Laboratories' NADA 045±\n290 for Vetalar\uf6da /Ketaset\uf6da (ketamine\nhydrochloride injectio")
+('±', 'fallback_numeric_range', "ycol'' under the heading ``Limitations''\nby removing ``1,200±2,500'' and adding\nin its place ``1,200±3,000''.\nDated: Octo")
+('±', 'fallback_numeric_range', "\nby removing ``1,200±2,500'' and adding\nin its place ``1,200±3,000''.\nDated: October 4, 1995.\nFred R. Shank,\nDirector, Ce")
+('Ð', 'fallback_emdash', "is amended\nby removing the entry for ``Japan wax.''\nPART 186ÐINDIRECT FOOD\nSUBSTANCES AFFIRMED AS\nGENERALLY RECOGNIZED AS")
+('Ð', 'fallback_emdash', "is amended\nby removing the entry for ``Japan wax.''\nPART 186ÐINDIRECT FOOD\nSUBSTANCES AFFIRMED AS\nGENERALLY RECOGNIZED AS")
+('±', 'fallback_letter_token', "llowing\nstatement is made: ``Comments to\nDocket Number 94±NM±216±AD.'' The\npostcard will be date stamped and\nreturned to ")
+('±', 'fallback_letter_token', "ing\nstatement is made: ``Comments to\nDocket Number 94±NM±216±AD.'' The\npostcard will be date stamped and\nreturned to the ")
+('Ð', 'fallback_emdash', 'ed by the electrical toy\nregulation states in part ``CAUTIONÐ\nELECTRIC TOY: Not recommended for\nchildren under /emlowln/e')
+('±', 'fallback_identifier', " & E Center, ``Space\nFood Prototype, Production Guide No. 60±\nC,'' April 13, 1993.\n2. Memorandum from M. DiNovi,\nChemistr")
+('±', 'fallback_letter_token', "up is\nin the range C10±C18 with not less than\n50 percent C14±C16)'' from § 176.170; (2)\nthe listing ``petroleum sulfonate")
+('±', 'fallback_letter_token', "up in the range of C10±C18 with\nnot less than 50 percent C14±C16)'' and\n``sodium sec-alkyl mono- and\ndisulfonates (alkyl ")
+('±', 'fallback_letter_token', "up in the range of\nC10±C18 with not less than 50 percent\nC14±C16)'' from § 178.3130; and (4) the\nlistings for ``n-alkylsu")
+('±', 'fallback_letter_token', "up is in the range C10±C18 with not\nless than 50 percent C14±C16)'' and\n``sodium sec-alkyl mono- and\ndisulfonates (alkyl ")
+('±', 'fallback_letter_token', "up in the range of\nC10±C18 with not less than 50 percent\nC14±C16)'' from § 178.3400.\nFDA received no comments on its\nprop")
+('±', 'fallback_letter_token', "up is in the range C10±C18 with not\nless than 50 percent C14±C16)'' and by\nalphabetically adding a new entry under\nthe he")
+('±', 'fallback_letter_token', "up in the range of C10±C18 with\nnot less than 50 percent C14±C16)'' and\n``Sodium sec-alkyl mono- and\ndisulfonates (alkyl ")
+('±', 'fallback_letter_token', "up in the range of\nC10±C18 with not less than 50 percent\nC14±C16)'' and by alphabetically adding\na new entry under the he")
+('±', 'fallback_letter_token', " is in the range C 10±C18 with not less than 50 percent C 14±C16)'' and ``Sodium sec-alkyl mono- and disulfonates\n(alkyl ")
+('±', 'fallback_letter_token', " in the range of C 10±C18 with not less than 50 percent C 14±C16)'' and by alphabetically adding a new\nentry under the he")
+('±', 'fallback_letter_token', "ule for Labeling of\nRetail Containers of Charcoal (REF: CH96±\n1±3),'' dated February 9, 1996.\n4. Memorandum from Mary F. ")
+('±', 'left_unchanged', " for Labeling of\nRetail Containers of Charcoal (REF: CH96±\n1±3),'' dated February 9, 1996.\n4. Memorandum from Mary F. Tor")
+('±', 'fallback_numeric_range', "rochemical Potentials (re\nchlorite and chlorate), sections 8±16.''\nDated: May 14, 1996.\nWilliam K. Hubbard,\nAssociate Com")
+('±', 'fallback_numeric_range', "rochemical Potentials (re\nchlorite and chlorate), sections 8±16.''\nDated: May 14, 1996.\nWilliam K. Hubbard,\nAssociate Com")
+('±', 'fallback_identifier', "ONAL, 481\nNorth Frederick, suite 500,\nGaithersburg, MD 20877±2417''.\n\n27005Federal Register / Vol. 61, No. 105 / Thursday")
+('Ð', 'fallback_emdash', "n declines to adopt\nAPI's suggestion that ``serviceability''Ð\nwhich would require that access to\nthose elements essential")
+('±', 'fallback_numeric_range', "53 is\napproved as a generic copy of The\nUpjohn Co.'s NADA 11±035. The\nANADA is approved as of May 8, 1996,\nand the regula")
+('±', 'fallback_numeric_range', "king Group by the\npetitioner from an analysis of USDA's\n1990±1991 Continuing Survey of Food\nIntake that the average intak")
+('±', 'fallback_letter_token', "ality, Major Cause\nof Morbidity and Spontaneous Tumors in\nCD±1 Mice,'' Toxicology and Pathology,\n16(3):340±349, 1988.\n38.")
+('±', 'fallback_numeric_range', "48,''\nare added at the end of the first line after\n``8543.40±8543.89,''.\nCorrections to the Final Regulations\n4. On page ")
+('±', 'fallback_identifier', "\nentry for ``Ammonium zirconium citrate\n(CAS Reg. No. 149564±62±5)'' to read as\nfollows:\n§ 176.170 Components of paper an")
+('±', 'fallback_identifier', "try for ``Ammonium zirconium citrate\n(CAS Reg. No. 149564±62±5)'' to read as\nfollows:\n§ 176.170 Components of paper and\np")
+('±', 'fallback_letter_token', 'andards\nInstitute (ANSI). See Section 4.1 of\nANSI/IEEE C95.1±1992, ``Safety Levels\nwith Respect to Human Exposure to\nRadi')
+('±', 'fallback_letter_token', ' and equipment\ncomply with IEEE C95.1±1991 (ANSI/\nIEEE C95.1±1992), ``Safety Levels With\nRespect to Human Exposure to Rad')
+('±', 'fallback_letter_token', "o 300 GHz.'' Measurement\nmethods are specified in IEEE C95.3±\n1991, ``Recommended Practice for the\nMeasurement of Potenti")
+('±', 'fallback_letter_token', 'he\nPetitions Control Branch (HFF±334), entitled\n``FAP 4B3786±ICI Americas, Inc. Copolymer\ncoating for polyethylene phthal')
+('±', 'left_unchanged', 'imately six months old, as set\nforth in ASTM standard D 4910±89,\n``Standard Tables of Body\nMeasurements for Infants, Ages')
+('Ð', 'fallback_emdash', "d Table of Body\nMeasurements for Pre-School Children\nSizes 2Ð6X/7.''(12) Maximum\ndimensions specified by the proposed\name")
+('±', 'left_unchanged', 'roximately nine months old\nset forth in ASTM standard D 4910±95\n``Standard Tables of Body\nMeasurements for Infants, Sizes')
+('±', 'fallback_numeric_range', "A is approved as a generic\ncopy of Schering Plough's NADA 46±\n821 Gentocin Otic Solution (gentamicin\nsulfate with betamet")
+('±', 'fallback_letter_token', " Commander,\nCold Regions Test Activity, Fort Greely, AK.''\nR±2202C Big Delta, AK [Amended]\nBy removing the present using ")
+('±', 'fallback_letter_token', " Commander,\nCold Regions Test Activity, Fort Greely, AK.''\nR±2203A Eagle River, AK [Amended]\nBy removing the present usin")
+('±', 'fallback_letter_token', "Using agency. U.S. Army, Commander,\nFort Richardson, AK.''\nR±2203B Eagle River, AK [Amended]\nBy removing the present usin")
+('±', 'fallback_letter_token', "Using agency, U.S. Army, Commander,\nFort Richardson, AK.''\nR±2203C Eagle River, AK [Amended]\nBy removing the present usin")
+('±', 'fallback_letter_token', "Using agency, U.S. Army, Commander,\nFort Richardson, AK.''\nR±2205 Yukon, AK [Amended]\nBy removing the present name and\nus")
+('±', 'fallback_letter_token', "nt name and\nusing agency and substituting the\nfollowing:\n``R±2205 Stuart Creek, AK.''\n``Using agency. U.S. Army, Commande")
+('±', 'fallback_letter_token', "Using agency. U.S. Army, Commander,\nFort Richardson, AK.''\nR±2211 Blair Lakes, AK [Amended]\nBy removing the present using")
+('±', 'fallback_letter_token', "ars\nand by adding in its place the phrase\n``and Nylon PA±6±3±T resins'' to read\nas follows:\n§ 177.1500 Nylon resins.\n* * ")
+('±', 'fallback_identifier', "toacetate was\nincorrectly published as ``(CAS Reg. No.\n57583±35±43)'' instead of ``(CAS Reg.\nNo. 57583±35±4)''. According")
+('±', 'fallback_identifier', "cetate was\nincorrectly published as ``(CAS Reg. No.\n57583±35±43)'' instead of ``(CAS Reg.\nNo. 57583±35±4)''. Accordingly,")
+('±', 'fallback_identifier', "CAS Reg. No.\n57583±35±43)'' instead of ``(CAS Reg.\nNo. 57583±35±4)''. Accordingly, the\nagency is amending 21 CFR 178.2010")
+('±', 'fallback_identifier', " Reg. No.\n57583±35±43)'' instead of ``(CAS Reg.\nNo. 57583±35±4)''. Accordingly, the\nagency is amending 21 CFR 178.2010 to")
+('±', 'fallback_identifier', "\nisooctylmercaptoacetates'' by removing\n``CAS Reg. No. 57583±35±43'' and\nadding in its place ``CAS Reg. No.\n57583±35±4''.")
+('±', 'fallback_identifier', "ooctylmercaptoacetates'' by removing\n``CAS Reg. No. 57583±35±43'' and\nadding in its place ``CAS Reg. No.\n57583±35±4''.\nDa")
+('±', 'fallback_identifier', ". 57583±35±43'' and\nadding in its place ``CAS Reg. No.\n57583±35±4''.\nDated: October 16, 1996.\nFred R. Shank,\nDirector, Ce")
+('±', 'fallback_identifier', "7583±35±43'' and\nadding in its place ``CAS Reg. No.\n57583±35±4''.\nDated: October 16, 1996.\nFred R. Shank,\nDirector, Cente")
+('±', 'fallback_identifier', "diol, 2,4,6-tri-tert-\nbutylphenyl ester (CAS Reg. No.\n161717±32±4'' by adding the phrase ``,\nwhich may contain not more t")
+('±', 'fallback_identifier', "l, 2,4,6-tri-tert-\nbutylphenyl ester (CAS Reg. No.\n161717±32±4'' by adding the phrase ``,\nwhich may contain not more than")
+('±', 'fallback_identifier', "1\npercent by weight of\ntriisopropanolamine (CAS Reg. No. 122±\n20±3)'' before the period.\nDated: December 19, 1996.\nFred R")
+('±', 'fallback_identifier', "rcent by weight of\ntriisopropanolamine (CAS Reg. No. 122±\n20±3)'' before the period.\nDated: December 19, 1996.\nFred R. Sh")
+('±', 'fallback_numeric_range', "Standard for the Flammability of\nChildren's Sleepwear (DOC 3±71).'' 16\nCFR 1615.31(d). Complying sleepwear\nin sizes 0 thr")
+('±', 'fallback_numeric_range', "ed with the\nstatement: ``Flame-resistant, U.S.\nStandard FF 5±74.'' 16 CFR 1616.6(b).\nIn 1975, the Commission issued\nregul")
+('±', 'fallback_numeric_range', "led with the\nstatement ``Flame-resistant. U.S.\nStandard FF 5±74.'' 16 CFR\n1616.31(b)(8). This is the same\nstatement requi")
+('±', 'fallback_numeric_range', " Standard for the Flammability of\nChildren's Sleepwear (FF 5±74).''\nNoncomplying sleepwear in those sizes\nwas required to")
+('±', 'fallback_numeric_range', "\nStandard for the Flammability of\nChildren's Sleepwear (FF 5±74).'' Id.\nB. Revocation\nSince May 1, 1975, all sleepwear in")
+('±', 'fallback_numeric_range', "Standard for the Flammability of\nChildren's Sleepwear (DOC 3±71).'' 16\nCFR 1615.31(d). Complying sleepwear\nin sizes 0 thr")
+('±', 'left_unchanged', "t Intakes by Individuals in the\nUnited States, 1 Day,'' 1989±91. U.S.\nDepartment of Agriculture, p. 7.\n28. Park, Y.M., I.")
+('±', 'fallback_letter_token', "nd\ncolumn, in the first paragraph, in the\ntenth line, ``1,25±(OH)D'' is corrected to\nread ``1,25±(OH)2D''.\n13. On page 31")
+('±', 'fallback_letter_token', "n the\ntenth line, ``1,25±(OH)D'' is corrected to\nread ``1,25±(OH)2D''.\n13. On page 3136, in the second\ncolumn, in the sec")
+('±', 'fallback_numeric_range', " first column,\nin Ref. 102, in the the fifth line, ``pp.\n783±799).'' is corrected to read ``pp.\n783±799,''; and in the th")
+('±', 'fallback_numeric_range', "fifth line, ``pp.\n783±799).'' is corrected to read ``pp.\n783±799,''; and in the third column, in\n§ 172.867, in paragraph ")

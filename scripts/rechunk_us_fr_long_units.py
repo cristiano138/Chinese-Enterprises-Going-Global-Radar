@@ -56,7 +56,10 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
 PROJECT = os.path.dirname(GO_RADAR_ROOT)
-DB_PATH = os.path.join(PROJECT, "sqlite", "regulations.sqlite3")
+sys.path.insert(0, GO_RADAR_ROOT)
+from core import law_store
+from core.law_content import split_text
+DB_PATH = str(law_store.db_path())
 
 LONG_THRESHOLD = 100000  # 只处理超过这个长度的 us_fr 整篇块
 
@@ -127,6 +130,8 @@ def rechunk_one(con, document_id, original_heading, original_locator, body, dry_
         return 0, "无 PART 标记（可能是非修订类文件，整篇保留）"
 
     cur = con.cursor()
+    if cur.execute("SELECT 1 FROM units WHERE document_id=? AND unit_type='text_block' AND locator LIKE ? LIMIT 1", (document_id, f'{original_locator}#rechunk-%')).fetchone():
+        return 0, '已存在本版细切片（幂等跳过）'
     # 新增行的 ordinal 从比当前文档最大 ordinal 更大的位置开始，避免跟
     # 已有整篇 rule 行（ordinal=0）冲突
     cur.execute(
@@ -164,6 +169,11 @@ def rechunk_one(con, document_id, original_heading, original_locator, body, dry_
         )
         next_ordinal += 1
 
+    # 保留原整篇/PART，同时追加有界条款续片，避免超过调用预算。
+    fine_units = split_text(body, original_locator)
+    new_rows = [(document_id, next_ordinal + i, f'{original_locator}#rechunk-{i}',
+                 'text_block', item['heading'], item['body'], None)
+                for i, item in enumerate(fine_units)]
     if not dry_run:
         cur.executemany(
             """INSERT INTO units
@@ -192,8 +202,9 @@ def main():
     if "--limit" in sys.argv:
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
-    con = sqlite3.connect(DB_PATH)
-    con.text_factory = str
+    con = law_store.connect(DB_PATH, writable=not dry_run)
+    if not dry_run:
+        print('写前备份：' + law_store.backup(con, DB_PATH))
 
     rows = load_long_units(con, limit)
 

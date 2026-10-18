@@ -1,0 +1,43 @@
+各位：
+
+数据库里的英文正文乱码已修复。请按下面步骤修改你自己手里的 regulations.sqlite3。整个过程约 3—5 分钟，脚本会自动备份，不会动原始文件字节和表结构。
+
+【操作步骤】
+1. 关闭所有正在打开数据库的软件（DB Browser、DBeaver、Navicat、VS Code 的 SQLite 插件等），暂停 OneDrive／网盘同步。
+2. 确认数据库所在磁盘至少有 3 GB 可用空间。
+3. 把「治理补丁包_成员版_20261018.zip」解压到一个新文件夹。
+4. 打开 PowerShell 或命令提示符，进入该文件夹，运行：
+
+   python apply_db_governance.py --db "你的数据库路径\regulations.sqlite3"
+
+   如果 python 命令不可用，改用：
+
+   py -3 apply_db_governance.py --db "你的数据库路径\regulations.sqlite3"
+
+5. 等待 3—5 分钟。看到最后一行「结果：成功」即完成。
+   脚本会自动生成备份：regulations.sqlite3.bak-governance-<时间戳>，请保留到确认数据无误。
+
+【本次修复内容】
+- 只修改 documents.full_text、units.body、documents_fts；
+- 325 篇文档、15,249 处字符修正；
+- 不修改 blobs 中的原始 PDF／XML 字节，不修改表结构、法规标题、编号、日期等其他字段。
+
+【预期结果】
+- applied: 325
+- mismatch: 0
+- units_updated: 1179
+- fts_body_mismatch: 0
+- 结果：成功
+
+【如果出现 mismatch】
+说明你的数据库不是 2026-10-17 交付版，或正文被手动改过。脚本会自动跳过这些文档，不会强改。请把完整输出发给维护人，不要自己手工替换。
+
+【已知保留项】
+EU-DOC:31994L0011 的希腊文在 EUR-Lex 提供的原始 HTML 中就已损坏，补丁有意保留，仍显示 2 个 Ð。这是源文件问题，不是本次修复遗漏。
+
+【校验值】
+治理补丁包_成员版_20261018.zip
+SHA256: b22255352c36a09ac5581e48f2ef6ba3eea771f96e3e419d694edcedb9ce6e1b
+大小: 88,712 字节
+
+详细步骤、常见问题和回滚方法见压缩包内的《数据库乱码治理_成员操作手册.md》。

@@ -17,8 +17,12 @@ SCRIPTS = [
     # 跨模块输出契约（免责声明/元数据/ELI 链接/键集/空选择）
     # —— 单模块自测照不到这一层，曾经因此出现「新页签漏了免责声明」。
     "scripts/selftest_ui_contract.py",
-    # 模型调用可靠性（缓存键隔离/容错/过期与容量/并发准入/超时降级）
+    # 保留两条开发线的回归测试。
     "scripts/selftest_llm_reliability.py",
+    "scripts/selftest_voice.py",
+    "scripts/selftest_asr_safety.py",
+    "scripts/selftest_voice_confirmation.py",
+    "scripts/selftest_law_store.py",
 ]
 
 
@@ -43,6 +47,8 @@ def main() -> int:
     print("M7: PASS")
     print("输出契约: PASS")
     print("LLM 可靠性: PASS")
+    print("语音输入: PASS")
+    print("语音边界: PASS")
     print("失败数：0")
     return 0
 

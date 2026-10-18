@@ -37,7 +37,9 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
 PROJECT = os.path.dirname(GO_RADAR_ROOT)
-DB_PATH = os.path.join(PROJECT, "sqlite", "regulations.sqlite3")
+sys.path.insert(0, GO_RADAR_ROOT)
+from core import law_store
+DB_PATH = str(law_store.db_path())
 
 TARGET_KINDS = ("eu_original", "eu_amendment", "eu_consolidated", "eu_corrigendum")
 TARGET_UNIT_TYPES = ("article", "annex")
@@ -83,8 +85,9 @@ def main():
     if "--limit" in sys.argv:
         limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
-    con = sqlite3.connect(DB_PATH)
-    con.text_factory = str
+    con = law_store.connect(DB_PATH, writable=not dry_run)
+    if not dry_run:
+        print('写前备份：' + law_store.backup(con, DB_PATH))
     cur = con.cursor()
 
     placeholders_kind = ",".join("?" for _ in TARGET_KINDS)

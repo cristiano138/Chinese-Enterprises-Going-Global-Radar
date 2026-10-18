@@ -1,0 +1,7 @@
+治理补丁包_成员版_20261018.zip
+size: 88712 bytes
+sha256: b22255352c36a09ac5581e48f2ef6ba3eea771f96e3e419d694edcedb9ce6e1b
+contains:
+  apply_db_governance.py
+  governance_patch.json.gz
+  数据库乱码治理_成员操作手册.md

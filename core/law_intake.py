@@ -48,7 +48,9 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
 PROJECT = os.path.dirname(GO_RADAR_ROOT)
 SQLITE_DIR = os.path.join(PROJECT, "sqlite")
-DB_PATH = os.path.join(SQLITE_DIR, "regulations.sqlite3")
+from core import law_store
+DB_PATH = str(law_store.db_path())
+SQLITE_DIR = os.path.dirname(DB_PATH)
 INTAKE_LOG_PATH = os.path.join(SQLITE_DIR, "law_intake_log.jsonl")
 
 BJT = timezone(timedelta(hours=8))
@@ -91,8 +93,8 @@ def _missing_db_result():
 def _connect():
     if not db_ready():
         raise FileNotFoundError(_missing_db_result()["reason"])
-    con = sqlite3.connect(DB_PATH)
-    con.text_factory = str
+    con = law_store.connect(DB_PATH, writable=True)
+    law_store.backup(con, DB_PATH)
     return con
 
 
@@ -104,8 +106,15 @@ def _law_exists(con, law_id):
 
 def _write_log(record):
     os.makedirs(SQLITE_DIR, exist_ok=True)
-    with open(INTAKE_LOG_PATH, "a", encoding="utf-8") as f:
-        f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    con = law_store.connect(DB_PATH, writable=True)
+    try:
+        # 通过同库写锁串行追加日志，避免 Windows 多进程追加覆盖。
+        con.execute('BEGIN IMMEDIATE')
+        with open(INTAKE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        con.commit()
+    finally:
+        con.close()
 
 
 def _seed_json_and_hash(payload):
@@ -312,7 +321,7 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
             }
 
         official = _freshness.query_us_official(title_number, part_number)
-        if not official:
+        if official.get('part_status') != 'present':
             _write_log(
                 {
                     "ts": ts,
@@ -336,8 +345,7 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
         seed_payload = {
             "CELEX号": "",
             "ELI标识": "",
-            "官方标题（英文）": "",  # eCFR structure API 需要额外一次 title-level 查询才能取
-            # part 的标签文本；骨架级建档不强求，留空交人工/后续补齐
+            "官方标题（英文）": official.get('official_title', ''),
             "官方编号": citation,
             "官方链接": url,
             "是否官方来源": "官方",
@@ -372,12 +380,7 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
                     part_number,
                     seed_json,
                     seed_sha256,
-                    None,  # official_title 留空：citation（如"16 CFR Part 1215"）
-                    # 只是引用编号，不是法规标题文本，填进这一列会让人误以为
-                    # 标题已抓到——真实标题需要额外查 eCFR title-level 结构
-                    # 才能拿到人类可读的 Part label，骨架级建档不做这一步。
-                    # citation 本身没有丢失，完整保留在 seed_json 的
-                    # "官方编号"字段里。
+                    official.get('official_title'),
                     official.get("latest_fr_document_number"),
                     official.get("fr_effective_on"),
                     ts,
