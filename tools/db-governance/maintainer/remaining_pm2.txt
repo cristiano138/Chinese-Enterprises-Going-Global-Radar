@@ -1,0 +1,694 @@
+US-CFR:2025:21:3:172: ... shall conform to the  
+following specifications: 
+Purity: 97 percent ±2 percent on an anhy -
+drous basis. 
+Arsenic: Not more than 1 part per...
+US-CFR:2025:21:3:172: ...rtz cells,  
+optical path length in the range of 5,000 cen -
+timeters ±0.005 centimeter; also for checking  
+spectrophotometer performance on...
+US-CFR:2025:21:3:172: ...erformance only, optical 
+path length in the range 1,000 centimeter  
+±0.005 centimeter. With distilled water in the  
+cells, determine any a...
+US-CFR:2025:21:3:172: ... the following  
+performance requirements: 
+Absorbance repeatability, ±0.01 at 0.4 absorb -
+ance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb...
+US-CFR:2025:21:3:172: ...ce repeatability, ±0.01 at 0.4 absorb -
+ance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 millimicron...
+US-CFR:2025:21:3:172: ...ce accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 millimicron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Ultraviolet ...
+US-CFR:2025:21:3:172: ...e. 
+Wavelength repeatability, ±0.2 millimicron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Ultraviolet lamp. Long wavelength (3400–  
+3800A°). ...
+US-CFR:2025:21:3:172: ...te to 1 milliliter on a steam bath. Nitrogen 
+is admitted through a 8 ±1-milliliter outer-di-
+ameter tube, drawn out into a 2±1-centimeter 
+l...
+US-CFR:2025:21:3:172: ...ed through a 8 ±1-milliliter outer-di-
+ameter tube, drawn out into a 2±1-centimeter 
+long and 1 ±0.5-millimeter inner-diameter  
+capillary ti...
+US-CFR:2025:21:3:172: ...er outer-di-
+ameter tube, drawn out into a 2±1-centimeter 
+long and 1 ±0.5-millimeter inner-diameter  
+capillary tip. This is positioned so t...
+US-CFR:2025:21:3:172: ...iable material: Maximum 0.8 per -
+cent. 
+Refractive index (butyro): 60±1 at 48 °C. 
+(b) It is used or intended for use as a  
+crystallization...
+US-CFR:2025:21:3:172: ...eters in  
+length (packing section), inside diameter 19  
+millimeters ±1 millimeter, equipped with a  
+wad of clean Pyrex brand filtering woo...
+US-CFR:2025:21:3:172: ...oppered cells, optical path  
+length in the range of 1.000 centimeter ±0.005 
+centimeter. With distilled water in the cells,  
+determine any ...
+US-CFR:2025:21:3:172: ... the following performance  
+requirements: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb...
+US-CFR:2025:21:3:172: ...ce repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+mic...
+US-CFR:2025:21:3:172: ...ce accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Nitrogen ...
+US-CFR:2025:21:3:172: ...
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Nitrogen cylinder. Water-pumped or equiva -
+lent pur...
+US-CFR:2025:21:3:172: ...e  
+the liquid and onto the sides of the column.  
+Weigh out 40 grams ±0.1 gram of the hydro-
+carbon solvent sample into a 250-milliliter  
+b...
+US-CFR:2025:21:3:172: ... 180 millimeters in  
+length, inside diameter to be 15.7 millimeters 
+±0.1 millimeter, equipped with a coarse, frit -
+ted-glass disc, a tetra...
+US-CFR:2025:21:3:172: ...rtz cells,  
+optical path length in the range of 5.000 cen -
+timeters ±0.005 centimeter; also for checking  
+spectrophotometer performance on...
+US-CFR:2025:21:3:172: ...erformance only, optical 
+path length in the range 1.000 centimeter  
+±0.005 centimeter. With distilled water in the  
+cells, determine any a...
+US-CFR:2025:21:3:172: ... the following performance  
+requirements: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+
+124 
+21 CFR Ch. I (4–1–25 Edition)  § 172...
+US-CFR:2025:21:3:172: ...de_of_federal_regulations/ibr_locations.html. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+mic...
+US-CFR:2025:21:3:172: ...ce accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Nitrogen ...
+US-CFR:2025:21:3:172: ...
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Nitrogen cylinder. Water-pumped or equiva -
+lent pur...
+US-CFR:2025:21:3:172: ... 1 cen -
+timeter to 2 centimeters thick. Dry for 24  
+hours at 160 °C ±1 °C. Pulverize the magnesia  
+with mortar and pestle. Sieve the pulve...
+US-CFR:2025:21:3:172: ... centi -
+meter to 2 centimeters thick. Reheat the  
+mixture at 160 °C ±1 °C for 2 hours, and store  
+in a tightly closed flask. 
+Sodium sulfa...
+US-CFR:2025:21:3:172: ...il the wax is completely melted and  
+homogeneous. Weigh four 25–gram ±0.2 gram 
+portions of the melted wax in separate 100–  
+milliliter bea...
+US-CFR:2025:21:3:173: ...the following performance require -
+ments: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Wavelength repeatability, ±0.2 nanometer. ...
+US-CFR:2025:21:3:173: ...repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Wavelength repeatability, ±0.2 nanometer. 
+Wavelength accuracy, ±1.0 nanometer. 
+The spectrophoto...
+US-CFR:2025:21:3:173: ...nce. 
+Wavelength repeatability, ±0.2 nanometer. 
+Wavelength accuracy, ±1.0 nanometer. 
+The spectrophotometer is equipped with  
+matched 1 cen...
+US-CFR:2025:21:3:173: ...ide ............................................................. 0.05±0.005 
+n-Dodecyl dimethyl ethylbenzyl ammonium  
+chloride ...............
+US-CFR:2025:21:3:173: ...
+chloride ....................................................... 0.68±0.068 
+n-Hexadecyl dimethyl benzyl ammonium  
+chloride ..................
+US-CFR:2025:21:3:173: ...
+chloride ....................................................... 0.30±0.030 
+n-Octadecyl dimethyl benzyl ammonium  
+chloride ..................
+US-CFR:2025:21:3:173: ...
+chloride ....................................................... 0.05±0.005 
+n-Tetradecyl dimethyl benzyl ammonium  
+chloride .................
+US-CFR:2025:21:3:173: ...
+chloride ....................................................... 0.60±0.060 
+n-Tetradecyl dimethyl ethylbenzyl ammo -
+nium chloride ...........
+US-CFR:2025:21:3:173: ...mo -
+nium chloride .............................................. 0.32±0.032 
+Limitations. Byproduct molasses, ba -
+gasse, and pulp containin...
+US-CFR:2025:21:3:175: ...de di -
+mensions (minimum), 19″ × 19″ × 19″, constant 
+temperature to ±2 °F (water bath may be  
+substituted). 
+Incubator, inside dimensions ...
+US-CFR:2025:21:3:175: ...bator, inside dimensions (minimum)  
+19″ × 19″ × 19″ for use at 100 °F±2 °F explosion 
+proof (water bath may be substituted). 
+Constant-tempe...
+US-CFR:2025:21:3:175: ...ath may be substituted). 
+Constant-temperature room or chamber 70  
+°F±2 °F minimum inside dimensions 19 ″ × 19″ 
+× 19″. 
+Hot plate, nonspark...
+US-CFR:2025:21:3:176: ...chloride) so that the finished resin  
+has a nitrogen content of 8.66 ±0.4 percent on a dry weight  
+basis and a minimum viscosity in a 40 pe...
+US-CFR:2025:21:3:176: ... chloride so that the finished resin  
+has a nitrogen content of 8.66 ±0.4 percent on a dry basis  
+and a minimum viscosity in a 15 weight-pe...
+US-CFR:2025:21:3:176: ...fol -
+lowing ‘‘sandwich’’ method:  
+(i) Apparatus. (a) Thermostated ( ±1.0 
+°F) water bath, variable between 70 °F 
+and 120 °F water bath cov...
+US-CFR:2025:21:3:176: .... The reaction product has a number  
+average molecular weight of 278 ±14 as determined by a  
+suitable method.
+For use as an insolubilizer f...
+US-CFR:2025:21:3:177: ...25-inch thick. The total exposed sur -
+face should be 5 square inches ±0.5- 
+square inch. The samples, after prepa -
+ration, shall be washed ...
+US-CFR:2025:21:3:177: ...alue of which differs from the average of  
+those values by more then ±10 percent. 
+2Average of four separate values, no single  
+value of wh...
+US-CFR:2025:21:3:177: ...alue of which differs from the average of  
+those values by more than ±50 percent. 
+3See footnote 2 to paragraph (d)(2)(i) of  
+this section....
+US-CFR:2025:21:3:177: ... 
+identified in paragraph (a) of this sec -
+tion has a density of 1.33±0.02 grams per 
+cubic centimeter measured by ASTM  
+Method D 1505–85 (...
+US-CFR:2025:21:3:177: ...ied in  
+paragraph (a) of this section has a soft -
+ening point of 63 ±5 °C as measured by  
+ASTM Method D 1525–87, ‘‘Standard  
+Test Method ...
+US-CFR:2025:21:3:177: ...thalic acid such that com -
+position in terms of ingredients is  
+43.1±0.2 weight percent hexamethyl-  
+enediamine, 35.3 ±1.2 weight percent ...
+US-CFR:2025:21:3:177: ...gredients is  
+43.1±0.2 weight percent hexamethyl-  
+enediamine, 35.3 ±1.2 weight percent  
+adipic acid, and 21.6 ±1.2 weight percent  
+terep...
+US-CFR:2025:21:3:177: ...ethyl-  
+enediamine, 35.3 ±1.2 weight percent  
+adipic acid, and 21.6 ±1.2 weight percent  
+terephthalic acid. 
+(8) Nylon 612 resins are manu...
+US-CFR:2025:21:3:177: ...4–37–  
+5) such that the composition in terms  
+of ingredients is 34.4±1.5 weight percent 
+omega-laurolactam, 26.8±0.4 weight per -
+cent isop...
+US-CFR:2025:21:3:177: ...s  
+of ingredients is 34.4±1.5 weight percent 
+omega-laurolactam, 26.8±0.4 weight per -
+cent isophthalic acid, and 38.8 ±0.5 
+weight percent ...
+US-CFR:2025:21:3:177: ...ga-laurolactam, 26.8±0.4 weight per -
+cent isophthalic acid, and 38.8 ±0.5 
+weight percent bis(4-amino-3-  
+methylcyclohexyl)-methane. 
+(12) ...
+US-CFR:2025:21:3:177: ...l 
+Ethyl 
+ace-
+tate 
+Ben-
+zene 
+1. Nylon 66 resins .............. 1.14±.015 475–495 Dissolves in 
+1 h.
+.................................. 1.5...
+US-CFR:2025:21:3:177: .................. 1.5 1.5 0.2 0.2 
+2. Nylon 610 resins ............ 1.09±.015 405–425 Insoluble 
+after 1 h.
+.................................. ...
+US-CFR:2025:21:3:177: ..................... 1.0 2.0 1.0 1.0 
+3.1 Nylon 66/610 resins ..... 1.10±.015 375–395 Dissolves in 
+1 h.
+.................................. 1.5...
+US-CFR:2025:21:3:177: ...actam mon-
+omer content not to ex -
+ceed 0.7 percent by  
+weight.
+1.13±.015 440–460 ......do ......... .................................. 2.0...
+US-CFR:2025:21:3:177: ...ified in § 177.1395 of 
+this chapter (CAS Reg.  
+No. 24993–04–2).
+1.14±.015 380–425 ......do ......... .................................. 0.8...
+US-CFR:2025:21:3:177: ...tended for 1-  
+time use or repeated use  
+in contact with food .
+1.04±.015 355–375 Insoluble 
+after 1 h.
+.................................. ...
+US-CFR:2025:21:3:177: ............... .30 .35 .25 .3 
+5.2 Nylon 11 resins for use  
+only: 
+1.04±.015 355–375 ......do ......... .................................. .35...
+US-CFR:2025:21:3:177: ...  
+§ 175.300 of this chap-
+ter.
+6.1 Nylon 6 resins .............. 1.15±.015 392–446 Dissolves in 
+1 h.
+.................................. 1.0...
+US-CFR:2025:21:3:177: ... films  
+having an average thick -
+ness not to exceed 0.001  
+in.
+1.15±.015 392–446 ......do ......... .................................. 1.5...
+US-CFR:2025:21:3:177: ... films  
+having an average thick -
+ness not to exceed 0.001  
+in.
+1.16±.015 482–518 Insoluble 
+after 1 h.
+.................................. ...
+US-CFR:2025:21:3:177: ...n con -
+tact with food at tempera -
+tures not to exceed 212  
+°F.
+1.06±.015 406–420 ......do ......... .................................. .50...
+US-CFR:2025:21:3:177: .............. .50 1.50 .50 .50 
+9. Nylon 12 resins for use  
+only:.
+1.01±.015 335–355 ......do ......... .................................. 1.0...
+US-CFR:2025:21:3:177: ..., E, F,  
+G, and H in table 2 of  
+§ 176.170(C) of this 
+chapter.
+1.21±0.02 437–491 Dissolves in 
+1h.
+.................................. 2.0 ...
+US-CFR:2025:21:3:177: ... 
+use E, F, and G in table  
+2 of § 176.170(c) of this 
+chapter).
+1.21±0.02 437–491 do ............... .................................. 2.0...
+US-CFR:2025:21:3:177: ... is  
+analyzed by any appro -
+priate, properly validated 
+method.
+1.22±0.02 455–470 Dissolves in 
+1 h.
+1.0 1.5 0.2 0.2 
+11. Nylon 12T resins ...
+US-CFR:2025:21:3:177: ... of food except  
+those containing more 
+than 8 percent alcohol .
+1.06±0.015 N/A Insoluble 
+after 1 
+hour.
+.....................................
+US-CFR:2025:21:3:177: ...-
+coholic beverages con-
+taining more than 8 per -
+cent alcohol.
+1.207±0.1 N/A Insoluble 
+after 1 
+hour.
+.................................. 0...
+US-CFR:2025:21:3:177: ...F, G, and H listed in  
+table 2 of § 176.170(c) of 
+this chapter.
+1.06±0.015 260–285 Dissolves in 
+1 hour.
+Greater than 140 ..... 2.0 ..........
+US-CFR:2025:21:3:177: ...ight. For use only as  
+specified in § 177.1395 of 
+this chapter.
+1.10±0.15 380–400 Dissolves in 
+1 h.
+Greater than 160 ..... 0.8 1.0 0.5 0.5...
+US-CFR:2025:21:3:177: ...ght. For use only as  
+specified in § 177.1390 of 
+this chapter.
+1.13 ±0.15 400–420 Dissolves in 
+1 h.
+............................. 1.0 1.5 ...
+US-CFR:2025:21:3:177: ...r  
+use only as specified in  
+21 CFR 177.1395 of this  
+chapter.
+1.09±0.02 270–277 .................... >140 using the meth -
+od described i...
+US-CFR:2025:21:3:177: ...E, F, and G listed  
+in table 2 of § 176.170(c) 
+of this chapter.
+1.18±0.015 551–592 Dissolves in 
+1 h.
+.................................. 0....
+US-CFR:2025:21:3:177: ...his chap-
+ter with a hot-fill tempera -
+ture limitation of 40 °C.
+1.12±0.03 NA Insoluble 
+after 1 h.
+>110 ......................... 0.007 0.6...
+US-CFR:2025:21:3:177: ...ple first in air and then in freshly  
+boiled distilled water at 23 °C±2 °C. 
+(2) Melting point. The melting point  
+shall be determined as f...
+US-CFR:2025:21:3:177: ...eve, and a Teflon coated stir bar.  
+Water bath maintained at 49.5 °C ±0.5 
+°C containing a submersible magnetic  
+stirrer motor with power s...
+US-CFR:2025:21:3:177: ...raction apparatus.  
+(g) Vacuum oven. Capable of main -
+taining 80 °C ±5 °C and a minimum of  
+635 millimeters of mercury pressure. 
+(h) Reag...
+US-CFR:2025:21:3:177: ...ction vessel and clamp the assembly 
+into a water bath set at 49.5 °C ±0.5 °C. 
+Start the water flowing through the  
+jacket of the reflux co...
+US-CFR:2025:21:3:177: ...n-hexane to preheat for 1  
+hour to bring the temperature to 49.5  
+°C±0.5 °C. Temperature is a critical fac -
+tor in this analysis and it mu...
+US-CFR:2025:21:3:177: ...transfer. Place the beaker in the vacu -
+um oven for 2 hours at 80 °C ±5 °C. After 
+2 hours, remove and place in a desic -
+cator to cool to r...
+US-CFR:2025:21:3:177: ...he above proce -
+dure for successive samples. 
+Option 2. Transfer 2.5 ±0.05 grams of  
+the prepared 1-inch film sections into a  
+tared sampl...
+US-CFR:2025:21:3:177: ...dry air. Place  
+the basket in the vacuum oven for 2  
+hours at 80 °C ±5 °C. After 2 hours, re -
+move and place in a desiccator to cool  
+to ...
+US-CFR:2025:21:3:177: ...-inch long. 
+(6) Constant temperature water bath  
+maintained at 25 °C±0.5 °C. 
+(7) Aluminum dishes, 18 millimeters × 
+60 millimeters, dispos...
+US-CFR:2025:21:3:177: ...irring. Then place the  
+bottle in a water bath maintained at 25  
+°C ±0.5 °C, and allow to stand 1 hour  
+without stirring. Next, remove the...
+US-CFR:2025:21:3:177: ...rmit immer-
+sion of the extraction kettle and set to  
+maintain 25 °C ±0.1 °C. 
+(3) Evaporating apparatus. Gas cover  
+consisting of a flat P...
+US-CFR:2025:21:3:177: ...an 10 4 parts per mil -
+lion oxygen. 
+(c) Procedure. Transfer 5 grams ±0.001 
+gram of sample to the resin kettle, add  
+1,000 milliliters (84...
+US-CFR:2025:21:3:177: ... the ket -
+tle to a constant temperature bath set  
+to maintain 25 °C ±0.1 °C, and allow to  
+equilibrate for a least 1 hour (may be  
+left o...
+US-CFR:2025:21:3:177: ...ured elastomers have a major decom -
+position peak occurring at 490 ° ± 15 °C 
+(914 °F). Less than 1.5 percent of the  
+elastomers will volat...
+US-CFR:2025:21:3:177: ...ecifications. The glass transition 
+temperature of the polymer is 360 ±5 °C 
+as determined by the use of differential 
+scanning calorimetry. ...
+US-CFR:2025:21:3:178: ...s: a  
+maximum acid value of 5 mg KOH/g and total amine value  
+of 86 ±6 mg KOH/g as determined by a method entitled  
+``Total Amine Value,''...
+US-CFR:2025:21:3:178: ... 180 millimeters in  
+length, inside diameter to be 15.7 millimeters 
+±0.1 millimeter, equipped with a coarse, frit -
+ted-glass disc, a tetra...
+US-CFR:2025:21:3:178: ...artz cells,  
+optical path length in the range of 5,000 cen -
+timeter ±0.005 centimeter; also for checking  
+spectrophotometer performance on...
+US-CFR:2025:21:3:178: ...erformance only, optical 
+path length in the range 1,000 centimeter  
+±0.005 centimeter. With distilled water in the  
+cells, determine any a...
+US-CFR:2025:21:3:178: ... the following performance  
+requirements: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy 1 ±0.05 at 0.4 absorb ...
+US-CFR:2025:21:3:178: ...nce repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength accuracy, ±1.0 millimicron. 
+Ni...
+US-CFR:2025:21:3:178: ...sorbance accuracy 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength accuracy, ±1.0 millimicron. 
+Nitrogen cylinder. Water-pumped or equiva -
+lent pur...
+US-CFR:2025:21:3:178: ... 1 cen -
+timeter to 2 centimeters thick. Dry for 24  
+hours at 160 °C ±1 °C. Pulverize the magnesia  
+with mortar and pestle. Sieve the pulve...
+US-CFR:2025:21:3:178: ... centi -
+meter to 2 centimeters thick. Reheat the  
+mixture at 160 °C ±1 °C for 2 hours, and store  
+in a tightly closed flask. 
+Sodium sulfa...
+US-CFR:2025:21:3:178: ...el of about 0.4, absorbance measurements  
+shall be repeatable within ±0.01 and accurate 
+within ±0.05. Wavelength measurements shall 
+be rep...
+US-CFR:2025:21:3:178: ... measurements  
+shall be repeatable within ±0.01 and accurate 
+within ±0.05. Wavelength measurements shall 
+be repeatable with ±0.2 m µ and a...
+US-CFR:2025:21:3:178: ...rate 
+within ±0.05. Wavelength measurements shall 
+be repeatable with ±0.2 m µ and accurate  
+within ±1.0 m µ. Instrument operating condi -
+t...
+US-CFR:2025:21:3:178: ...measurements shall 
+be repeatable with ±0.2 m µ and accurate  
+within ±1.0 m µ. Instrument operating condi -
+tions are selected to realize th...
+US-CFR:2025:21:3:178: ...merce, 1949.) 
+G. Two fused quartz cells having  
+pathlengths of 1.00 ±0.005 centimeter or bet -
+ter. 
+II. Purity of reagents and materials. ...
+US-CFR:2025:21:3:178: ... the aluminum oxide, perform  
+the following test: 
+a. Weigh 50 grams ±1 gram of the activated  
+aluminum oxide and pack into the  
+chromatog...
+US-CFR:2025:21:3:178: ...t the procedure without a sample. 
+B. Sample. 1. Weigh out 20.0 grams ±0.1 
+gram of the mineral oil into a beaker and  
+transfer to a 250-mil...
+US-CFR:2025:21:3:178: ...he beaker from the steam bath  
+and allow to cool. 
+4. Weigh 50 grams ±1 gram of activated alu-
+minum oxide and pack into the  
+chromatograph...
+US-CFR:2025:21:3:178: ...,200 millimeters in  
+length, inside diameter to be 16.5 millimeters 
+±0.5 millimeter, equipped with a coarse, frit -
+ted-glass disc, a tetra...
+US-CFR:2025:21:3:178: ...d quartz cells,  
+optical pathlength in the range 1.000 centi -
+meter ±0.005 centimeter. With distilled water  
+in the cells, determine any a...
+US-CFR:2025:21:3:178: ...the following perform -
+ance requirements: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb...
+US-CFR:2025:21:3:178: ...ce repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+mic...
+US-CFR:2025:21:3:178: ...ce accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Recording...
+US-CFR:2025:21:3:178: ...
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Recording time, 50 seconds. 
+Time constant, 0.6 seco...
+US-CFR:2025:21:3:178: ...l mixture  
+meets the following specifications: Molecular weight, 207 ±4; 
+hydroxyl number, 266–276.
+For use at a level not to exceed 8 pct b...
+US-CFR:2025:21:3:178: ...weight of the fin -
+ished lubricant formulation. 
+Molecular weight 194±5; hydroxyl number, 283–296 .
+Tallow, sulfonated.
+Triethanolamine.
+(3)...
+US-CFR:2025:21:3:178: ...rtz cells,  
+optical path length in the range of 5,000 cen -
+timeters ±0.005 centimeter; also for checking  
+spectrophotometer performance on...
+US-CFR:2025:21:3:178: ...erformance only, optical 
+path length in the range 1.000 centimeter  
+±0.005 centimeter. With distilled water in the  
+cells, determine any a...
+US-CFR:2025:21:3:178: ... the following performance  
+requirements: 
+Absorbance repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb...
+US-CFR:2025:21:3:178: ...ce repeatability, ±0.01 at 0.4 ab -
+sorbance. 
+Absorbance accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+mic...
+US-CFR:2025:21:3:178: ...ce accuracy, 1 ±0.05 at 0.4 absorb -
+ance. 
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Soxhlet a...
+US-CFR:2025:21:3:178: ...
+Wavelength repeatability, ±0.2 milli -
+micron. 
+Wavelength accuracy, ±1.0 millimicron. 
+Soxhlet apparatus. 60-millimeter diameter  
+body tub...
+US-FR:95-5382: ...entional radiators
+operating in accordance with this
+section shall be ±10 ppm over 10
+milliseconds or the interval between
+channel access mon...
+US-FR:96-10978: ...posed Rule for Labeling of
+Retail Containers of Charcoal (REF: CH96-
+1±3),'' dated February 9, 1996.
+4. Memorandum from Mary F. Toro of the
+O...
+US-FR:96-1584: ...e 12-week DR study where bone ash
+but not bone calcium was less (60.6 ±
+2.0 vs. 61.1 ± 1.0 percent) in the 4.4
+percent olestra dose group tha...
+US-FR:96-1584: ...udy where bone ash
+but not bone calcium was less (60.6 ±
+2.0 vs. 61.1 ± 1.0 percent) in the 4.4
+percent olestra dose group than in the
+contro...
+US-FR:96-16769: ...e E, F, and G
+listed in table 2 of § 176.170(c) of
+this chapter.
+1.18 ±
+0.015
+551–592 Dissolves
+in 1 hour
+.................. 0.3 0.2 0.2 0.3
+...
+US-FR:96-26516: ...f this
+chapter with a hot-fill tempera-
+ture limitation of 40 °C.
+1.12±0.03 NA Insoluble after 1 h. > 110 0.007 0.64 0.003 0
+
+53854 Federal R...
+US-FR:96-7689: ...4
+FIXED FIXED FIXED FIXED FIXED Radio frequency
+devices (15)
+61.25 GHz±250
+MHz: Industrial,
+scientific and
+medical fre-
+quency
+INTER-SAT-
+ELL...
+US-FR:97-10909: ...
+Animal Health, Ciba-Geigy Corp., P.O.
+Box 18300, Greensboro, NC 27419±
+8300'' and by alphabetically adding a
+new entry for ``Novartis Animal...
+US-FR:97-2007: ...ency of an intentional
+radiator operating under this section
+shall be ±10 ppm over 10 milliseconds.
+The frequency stability shall be
+maintain...
+US-FR:97-21292: ...ediamine Dihydrochloride Two-
+Year Feeding Study in the Rat; Report 46±
+27,'' Mellon Institute-Union Carbide Corp.,
+Export, PA.
+5. Memorandum...
+US-FR:97-28761: ...k detector function indicates field
+strength per 120 kHz of bandwidth ±20
+kHz. Accordingly, the total signal level
+over the band of operation...
+US-FR:99-1032: ...e no entries in this list,
+omit this section.]
+Form 13F File Number 28± /emlowln/emlowln/emlowln/emlowln/emlowln/emlowln/emlowln/emlowln
+Name...
+US-FR:99-1032: ...mlowln/emlowln/emlowln/emlowln/emlowln/emlowln
+Form 13F File Number 28± /emlowln/emlowln/emlowln/emlowln/emlowln/emlowln/emlowln/emlowln
+Name...
+US-FR:99-12853: ...l within the
+standard deviation range of the expected
+SPF (i.e., 4.47 ± 1.279) and the 95-
+percent confidence interval for the mean
+SPF must ...
+US-FR:99-21963: ... weight. For use
+only as specified in
+§ 177.1390 of this
+chapter.
+1.13± 0.15 400–420 Dissolves in 1 h. 1.0 1.5 0.5 0.5
+* * * * * * * * *
+* * ...
+US-FR:99-2230: ...vent is analyzed by
+any appropriate, properly vali-
+dated method.
+1.22±0.02 455–470 Disolves in
+1 h.
+1.0 1.5 0.2 0.2
+* * * * * * *
+* * * * *
+...

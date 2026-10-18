@@ -1,0 +1,44 @@
+Ð in documents: [('EU-DOC:31994L0011', 2)]
+Ð in units: [('EU-DOC:31994L0011', 68, 1), ('EU-DOC:31994L0011', 80, 1)]
+Ð in fts: 1
+docs with ± remaining: 139
+--- US-CFR:2025:21:3:177 1.33±0.02 ---
+ne oxyethylene  
+isophthalate/terephthalate copolymer  
+identified in paragraph (a) of this sec -
+tion has a density of 1.33±0.02 grams per 
+cubic centimeter measured by ASTM  
+Method D 1505–85 (Reapproved 1990),  
+
+278 
+21 CFR Ch. I (4–1–25 Edition)  § 177.1350 
+‘‘Standard Test Method for Density o
+--- US-CFR:2025:21:3:178 1.33 ---
+NOT FOUND
+--- US-FR:97-2007 U-NII ---
+5–5.825 GHz for use by a new
+category of unlicensed equipment,
+called Unlicensed National Information
+Infrastructure (``U-NII'') devices. These
+devices will provide short-range, high
+speed wireless digital communications
+on an unlicensed basis. We anticipate
+that U–NII devices will support the
+creat
+--- US-FR:97-2007 5.15 ---
+ By this action, the
+Commission amends its radio frequency
+devices rules to make available 300
+megahertz of spectrum at 5.15–5.35 GHz
+and 5.725–5.825 GHz for use by a new
+category of unlicensed equipment,
+called Unlicensed National Information
+Infrastructure (``U-NII'') devices. These
+devices will p
+fts rows: 1635
+fts body mismatch: 0
+docs without fts: 0
+units substring: 0/67 exact
+non-substring samples: [('EU-DOC:32025R2509', 0, 'Article\xa01 \n \n Subject matter \n \n This Regulation lays down r'), ('EU-DOC:32025R2509', 1, 'Article\xa02 \n \n Scope \n \n \n 1.\xa0\xa0\xa0This Regulation applies to pr'), ('EU-DOC:32025R2509', 2, 'Article\xa03 \n \n Definitions \n \n For the purposes of this Regul'), ('EU-DOC:32025R2509', 3, 'Article\xa04 \n \n Free movement \n \n \n 1.\xa0\xa0\xa0Member States shall n'), ('EU-DOC:32025R2509', 4, 'Article\xa05 \n \n Essential safety requirements \n \n \n 1.\xa0\xa0\xa0Toys ')]
+quick_check: ('ok',)
+foreign_key_check: []

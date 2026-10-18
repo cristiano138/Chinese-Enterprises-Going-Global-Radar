@@ -1,0 +1,10 @@
+22.86-0.64 rows: []
+22.86±0.64 rows: ['US-eCFR:16:1630:2026-10-17', 'US-eCFR:16:1631:2026-10-17', 'US-eCFR:16:1630:2026-10-14', 'US-eCFR:16:1631:2026-10-14']
+US-FR:96-10978 CH96: '0785 (August 10, 1995).\n14. Comments on proposed rule, Nos.\nCH96–1–1 through CH96–1–7.\n15. Briefing package, consisting of a\nbriefing memorandum from Sharon Whi'
+US-FR:97-10909 27419: 'al Health, Ciba-Geigy Corp.,\nP.O. Box 18300, Greensboro, NC 27419–\n8300, has informed FDA that it has\ntransferred ownership of, and all rights\nand interests in,'
+US-FR:97-21292 Report 46: "diamine Dihydrochloride Two-\nYear Feeding Study in the Rat; Report 46–27,'' Mellon Institute-Union Carbide Corp.,\nExport, PA.\n5. Memorandum of conference concer"
+fts rows: 1635
+fts body mismatch: 0
+quick_check: ('ok',)
+fk_check: []
+remaining ± in affected docs: 137; strong-context: 0

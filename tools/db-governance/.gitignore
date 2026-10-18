@@ -1,0 +1,10 @@
+# 数据库本体与备份体积大，不入库（另行分发）
+*.sqlite3
+*.sqlite3-*
+*.bak-governance-*
+*.wal
+*.shm
+
+# Python 缓存
+__pycache__/
+*.pyc
