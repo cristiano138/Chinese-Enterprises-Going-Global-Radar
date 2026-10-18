@@ -1,0 +1,38 @@
+{
+  "original_file": "regulations.sqlite3",
+  "original_bytes": 2233716736,
+  "original_sha256": "bfb145a5c8ccf6a65809ddc237bdf0e463efc4e03e1b6e52dee64c0f9150012b",
+  "part_order": "ascending numerical suffix, binary concatenation",
+  "parts": [
+    {
+      "file": "regulations.sqlite3.part001",
+      "zip": "regulations_full_001.zip",
+      "bytes": 471859200,
+      "sha256": "e6c864c117734e590c4d66569bcf56dc72bdd2b2b26231ebff0426da69029123"
+    },
+    {
+      "file": "regulations.sqlite3.part002",
+      "zip": "regulations_full_002.zip",
+      "bytes": 471859200,
+      "sha256": "05ffdb0451fe25421311306ee50f3ddcdb9195053ee6e6419922a8fa194b00d8"
+    },
+    {
+      "file": "regulations.sqlite3.part003",
+      "zip": "regulations_full_003.zip",
+      "bytes": 471859200,
+      "sha256": "ab4c692a2a9ab5a6c16264a0e577dbf95b78a1e7fca3e7de8a9334f0c04747a7"
+    },
+    {
+      "file": "regulations.sqlite3.part004",
+      "zip": "regulations_full_004.zip",
+      "bytes": 471859200,
+      "sha256": "90652b00f6301456d7dd1946f271dfe2ed261d06dc6ee2e0f0a7666bbf64d115"
+    },
+    {
+      "file": "regulations.sqlite3.part005",
+      "zip": "regulations_full_005.zip",
+      "bytes": 346279936,
+      "sha256": "9fb6d77f303e7bd059c141b4ee9c476d53e8ee6bbc41889d8dbed78fbcbe811c"
+    }
+  ]
+}
