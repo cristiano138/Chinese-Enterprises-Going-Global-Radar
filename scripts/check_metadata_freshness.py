@@ -23,21 +23,23 @@
     updated_at                 任一字段被本工具自动改写时，刷新为当次核验时间
     effective_status_detail   派生状态（见 compute_effective_status_detail）
 
-输出：
-    sqlite/metadata_check_log.jsonl    追加，只记变化/被拒绝的字段
-    sqlite/metadata_check_latest.json  覆盖，当次运行汇总 + 过渡期预警
+输出（2026-10-19 起统一放在 data/，与链接级输出同一目录，前端只读）：
+    data/metadata_check_log.jsonl    追加，只记变化/被拒绝的字段
+    data/metadata_check_latest.json  覆盖，当次运行汇总 + 过渡期预警
 
 用法：
     python scripts/check_metadata_freshness.py --dry-run --limit 5   # 冒烟
     python scripts/check_metadata_freshness.py --dry-run              # 全量演练
     python scripts/check_metadata_freshness.py                        # 正式写库
+    python scripts/check_metadata_freshness.py --only EU --limit 2    # 单市场排查
+    python scripts/check_metadata_freshness.py --proxy direct         # 强制直连
 
-定时（跟 check_freshness.py 一致，每天一次）：
-    Windows: schtasks /create /tn "ComplianceRadar-MetadataFreshness" ^
-             /tr "python <仓库>\\scripts\\check_metadata_freshness.py" /sc daily /st 09:30
-    Linux:   30 9 * * * cd <仓库> && python scripts/check_metadata_freshness.py
+定时（主方案见 scripts/run_freshness_checks.py）：
+    北京时间每天 19:00、22:00。
 """
 
+import argparse
+import glob
 import importlib.util
 import json
 import os
@@ -45,6 +47,7 @@ import re
 import sqlite3
 import sys
 import time
+from contextlib import closing
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -63,21 +66,23 @@ GO_RADAR_SCRIPTS = HERE
 
 # sqlite/ 跟 Chinese-Enterprises-Going-Global-Radar/ 是兄弟目录，都在「出海合规」下。
 PROJECT = os.path.dirname(GO_RADAR_ROOT)
-SQLITE_DIR = os.path.join(PROJECT, "sqlite")
 if GO_RADAR_ROOT not in sys.path:
     sys.path.insert(0, GO_RADAR_ROOT)
-from core import law_store
+from core import law_store  # noqa: E402
+from core import net  # noqa: E402
 DB_PATH = str(law_store.db_path())
-SQLITE_DIR = os.path.dirname(DB_PATH)
-LOG_PATH = os.path.join(SQLITE_DIR, "metadata_check_log.jsonl")
-LATEST_PATH = os.path.join(SQLITE_DIR, "metadata_check_latest.json")
+DATA_DIR = os.path.join(GO_RADAR_ROOT, "data")
+LOG_PATH = os.path.join(DATA_DIR, "metadata_check_log.jsonl")
+LATEST_PATH = os.path.join(DATA_DIR, "metadata_check_latest.json")
 
 BJT = timezone(timedelta(hours=8))
 WARN_WINDOW_DAYS = 90  # 过渡期/生效日预警窗口，可调
 REQUEST_INTERVAL = 1.0
 
 FR_API = "https://www.federalregister.gov/api/v1/documents"
-_UA = "compliance-radar-metadata-freshness/1.0 (academic research)"
+# 与链接级监控保持一致的浏览器兼容 UA；纯脚本 UA 更容易被官方 WAF 403。
+_UA = ("Mozilla/5.0 (compatible; ComplianceRadar-Freshness/1.0; "
+       "+https://github.com/cristiano138/Chinese-Enterprises-Going-Global-Radar)")
 
 
 def now_str():
@@ -98,6 +103,9 @@ _fetch_eu = _load_module(
 _fetch_us = _load_module(
     "fetch_us", os.path.join(GO_RADAR_SCRIPTS, "fetch_us.py")
 )
+# 复用模块的默认 UA 是脚本标识；统一换成浏览器兼容 UA，降低 WAF 误杀。
+_fetch_us.HEADERS["User-Agent"] = _UA
+_fetch_eu.HEADERS["User-Agent"] = _UA
 
 
 # ── 校验/防护层（已知脏数据模式：占位日期、格式错误的编号） ──────────────
@@ -228,6 +236,38 @@ def _query_related_celex(uri, predicate):
     return idents[-1]
 
 
+def _query_related_celex_both(uri):
+    """一次 SPARQL 同时取“最新修订”和“最新勘误”。
+
+    两条反向查询合并后，每条 EU 法规少一次往返（实测 SPARQL 单次约
+    7–15 秒，29 条 EU 法规累计可省 4–7 分钟）。
+    """
+    q = f'''
+    PREFIX cdm: <{_fetch_eu.CDM}>
+    SELECT ?celex ?p WHERE {{
+      ?s ?p <{uri}> .
+      ?s cdm:resource_legal_id_celex ?celex .
+      FILTER(?p IN (cdm:resource_legal_amends_resource_legal,
+                    cdm:resource_legal_corrects_resource_legal))
+    }} LIMIT 100
+    '''
+    rows = _fetch_eu.sparql(q)
+    grouped = {}
+    for row in rows:
+        predicate = (row.get("p", {}).get("value") or "").rsplit("#", 1)[-1]
+        predicate = predicate.rsplit("/", 1)[-1]
+        grouped.setdefault(predicate, []).append(
+            row.get("celex", {}).get("value") or "")
+    result = {}
+    for predicate in ("resource_legal_amends_resource_legal",
+                      "resource_legal_corrects_resource_legal"):
+        values = [v for v in grouped.get(predicate, []) if v]
+        values.sort(key=_celex_seq)
+        result[predicate] = values[-1] if values else None
+    return (result["resource_legal_amends_resource_legal"],
+            result["resource_legal_corrects_resource_legal"])
+
+
 def query_eu_official(celex):
     """问 Cellar SPARQL 要当前真值：lastModificationDate / in_force /
     最新 amendment、corrigendum（按 CELEX (NN) 序号取最大）。
@@ -251,12 +291,9 @@ def query_eu_official(celex):
         out["in_force"] = in_force
 
     time.sleep(REQUEST_INTERVAL)
-    latest_amend = _query_related_celex(uri, "resource_legal_amends_resource_legal")
+    latest_amend, latest_corr = _query_related_celex_both(uri)
     if latest_amend:
         out["latest_amendment_celex"] = latest_amend
-
-    time.sleep(REQUEST_INTERVAL)
-    latest_corr = _query_related_celex(uri, "resource_legal_corrects_resource_legal")
     if latest_corr:
         out["latest_corrigendum_celex"] = latest_corr
 
@@ -425,7 +462,6 @@ US_FIELDS = (
     "fr_effective_on",
 )
 # 修订编入日期独立存储和比对，始终不替代 FR 法律生效日期。
-US_AUX_FIELDS = ()
 US_FIELDS += ('official_title', 'part_status', 'latest_amendment_date')
 
 
@@ -471,9 +507,9 @@ def check_one_law(law):
 def apply_changes(con, law, official, dry_run, log_records):
     """逐字段比对、校验、写回、记日志。返回本条变化数。
 
-    official 里 US_AUX_FIELDS（如 latest_amendment_date）只是辅助参考，
-    laws 表没有对应列，跳过比对/写库，不记变化日志（避免噪音——它只是
-    "这次查到的值"，没有旧值可比，天然每次都"不同"）。
+    `latest_amendment_date` 是 eCFR 的“编入汇编时间”，只做辅助展示，
+    始终不替代 FR 的 `fr_effective_on`（法律生效日）。
+    official 里不在该市场允许字段清单内的键一律跳过。
     """
     cur = con.cursor()
     changed_n = 0
@@ -633,7 +669,7 @@ def write_log(records, dry_run):
         return
     if dry_run:
         return
-    os.makedirs(SQLITE_DIR, exist_ok=True)
+    os.makedirs(DATA_DIR, exist_ok=True)
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         for rec in records:
             f.write(json.dumps(rec, ensure_ascii=False) + "\n")
@@ -642,9 +678,51 @@ def write_log(records, dry_run):
 def write_latest(summary, dry_run):
     if dry_run:
         return
-    os.makedirs(SQLITE_DIR, exist_ok=True)
-    with open(LATEST_PATH, "w", encoding="utf-8") as f:
+    os.makedirs(DATA_DIR, exist_ok=True)
+    tmp = LATEST_PATH + ".tmp-" + str(os.getpid())
+    with open(tmp, "w", encoding="utf-8") as f:
         json.dump(summary, f, ensure_ascii=False, indent=1)
+    os.replace(tmp, LATEST_PATH)
+
+
+def _backup_database(con, policy, keep_daily=2):
+    """正式写库前备份。
+
+    正式库约 2.23GB，定时任务每天跑两次，不能每次复制一份：
+      always —— 手动运行默认，沿用 law_store.backup 的时间戳备份；
+      daily  —— 定时任务用，每天最多一份 *-freshness 备份，并只保留最近 N 份；
+      none   —— 不备份（仅建议在事务性演练/磁盘不足时显式使用）。
+    """
+    if policy == "none":
+        print("写前备份：已跳过（--backup none）")
+        return ""
+    if policy != "daily":
+        path = law_store.backup(con, DB_PATH)
+        print("写前备份：" + path)
+        return path
+
+    target = DB_PATH + ".bak-" + datetime.now(BJT).strftime("%Y%m%d") + "-freshness"
+    if os.path.isfile(target) and os.path.getsize(target) == os.path.getsize(DB_PATH):
+        print("写前备份：复用今日备份 " + target)
+        return target
+    if os.path.isfile(target):
+        # 上次进程中断留下的半份备份，大小不符，删掉重做。
+        try:
+            os.remove(target)
+        except OSError:
+            pass
+    with closing(sqlite3.connect(target)) as dst:
+        con.backup(dst)
+    print("写前备份：" + target)
+    existing = sorted(glob.glob(DB_PATH + ".bak-*-freshness"),
+                      key=os.path.getmtime, reverse=True)
+    for old in existing[max(int(keep_daily), 1):]:
+        try:
+            os.remove(old)
+            print("  清理旧备份：" + old)
+        except OSError:
+            pass
+    return target
 
 
 # ── 主流程 ────────────────────────────────────────────────────────────
@@ -663,27 +741,48 @@ def _require_db():
     return False
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(description="法规时效性结构化字段核验")
+    parser.add_argument("--dry-run", action="store_true",
+                        help="演练模式：不写库、不写日志文件")
+    parser.add_argument("--limit", type=int, default=None,
+                        help="只核验前 N 条（排序后再截断）")
+    parser.add_argument("--only", choices=["EU", "US"], default=None,
+                        help="只核验一个市场")
+    parser.add_argument("--proxy", default="auto",
+                        help="auto（默认）/ direct / 指定代理 URL")
+    parser.add_argument("--backup", choices=["always", "daily", "none"],
+                        default="always",
+                        help="always（手动默认）/ daily（定时任务，每天最多一份）/ none")
+    return parser.parse_args(argv)
+
+
+def main(argv=None):
+    args = parse_args(argv)
+    dry_run = args.dry_run
+    proxy_decision = net.configure_proxy(args.proxy)
+
     if not _require_db():
         return 1
-    dry_run = "--dry-run" in sys.argv
-    limit = None
-    if "--limit" in sys.argv:
-        limit = int(sys.argv[sys.argv.index("--limit") + 1])
 
     con = law_store.connect(DB_PATH, writable=not dry_run)
     if not dry_run:
-        print('写前备份：' + law_store.backup(con, DB_PATH))
+        _backup_database(con, args.backup)
 
+    started = datetime.now(BJT)
+    run_id = started.strftime("%Y%m%dT%H%M%S%z") + "-p" + str(os.getpid())
     print("=" * 66)
     print("  法规时效性结构化字段核验" + ("（演练模式，不写库）" if dry_run else ""))
+    print(f"  run_id={run_id}")
     print("=" * 66)
 
     ensure_columns(con, dry_run)
 
     laws = load_laws(con)
-    if limit:
-        laws = laws[:limit]
+    if args.only:
+        laws = [law for law in laws if law.get("jurisdiction") == args.only]
+    if args.limit:
+        laws = laws[:args.limit]
 
     log_records = []
     changed_count = 0
@@ -730,9 +829,22 @@ def main():
 
     upcoming = compute_upcoming_deadlines(con)
 
+    for rec in log_records:
+        rec.setdefault("run_id", run_id)
     write_log(log_records, dry_run)
+
+    finished = datetime.now(BJT)
     summary = {
-        "checked_at": now_str(),
+        "schema_version": 2,
+        "run_id": run_id,
+        "checked_at": finished.strftime("%Y-%m-%d %H:%M:%S"),
+        "checked_at_utc": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "timezone": "Asia/Shanghai",
+        "duration_seconds": round((finished - started).total_seconds(), 1),
+        "proxy": proxy_decision,
+        "only": args.only,
+        "limit": args.limit,
+        "dry_run": dry_run,
         "total_laws": len(laws),
         "changed_count": changed_count,
         "rejected_count": rejected_count,

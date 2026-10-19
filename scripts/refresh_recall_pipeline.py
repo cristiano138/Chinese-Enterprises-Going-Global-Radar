@@ -22,8 +22,8 @@
     python scripts/refresh_recall_pipeline.py --law-id EU:32026R9999 --rebuild
 
     # 从时效性报告/日志提取变化的 law_id
-    python scripts/refresh_recall_pipeline.py --changed-file data/freshness_latest.json --rebuild
-    python scripts/refresh_recall_pipeline.py --changed-file data/freshness_log.jsonl --rebuild
+    python scripts/refresh_recall_pipeline.py --changed-file data/metadata_check_latest.json --rebuild
+    （链接级 data/freshness_latest.json 不含 law_id，不能作为变更信号来源）
 
     # 从新法规建档日志提取
     python scripts/refresh_recall_pipeline.py --from-intake-log --rebuild

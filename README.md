@@ -162,7 +162,17 @@
 >
 > **响应提速**：保留模型解析12s超时与内存缓存；2026-10-19新入口取消启动查询及模型预热，明确条件使用本地规则。实际响应取决于输入与服务状态，自检见 `scripts/selftest_m15.py`。
 >
-> **时效性监控（10-16，最小可行版）**：`scripts/check_freshness.py` 定期核验 86 条官方链接（状态 / Last-Modified / 内容哈希），日志追加 `data/freshness_log.jsonl`，最新态落在 `data/freshness_latest.json` 并显示在每个结果页页脚。口径三分：可访问 / 链接异常（4xx-5xx，待复核）/ 本机网络未连通（不判死链）。全文落库与定时推送为后续路线，详见 [`docs/时效性监控.md`](docs/时效性监控.md)；比赛说明材料见 [`docs/比赛说明材料七要素.md`](docs/比赛说明材料七要素.md)。
+> **时效性监控（10-19 更新）**：两层检查，北京时间每天 19:00、22:00 自动运行。
+> 链接级 `scripts/check_freshness.py` 核验 86 行法规去重后的 115 个官方链接
+> （57 eCFR + 29 EUR-Lex + 29 ELI），区分「取得内容 / 官方空响应 / 官方限流 /
+> 链接异常 / 本机网络未连通」，eCFR 走官方 versioner API 避免页面限流；
+> 字段级 `scripts/check_metadata_freshness.py` 比对官方修订日期、生效日期与
+> 最新文档号。最新态写入 `data/freshness_latest.json` 与
+> `data/metadata_check_latest.json`，日志可回放。定时入口
+> `scripts/run_freshness_checks.py`；Windows 注册脚本
+> `scripts/install_freshness_schedule.ps1`，GitHub Actions 备选。
+> 详见 [`docs/时效性监控.md`](docs/时效性监控.md) 与
+> [`docs/时效性检查-实施计划-20261019.md`](docs/时效性检查-实施计划-20261019.md)。
 
 > **语音输入（10-18）**：M1.5 的输入方式之一，**不是新的一条判定链路**。
 > - **只做「声音 → 文字」** —— 转写文本回填到输入框，用户看得见、改得动，确认后才出判定；转写按钮不会自动查询，点击“发送”时才使用输入框当前文字。
