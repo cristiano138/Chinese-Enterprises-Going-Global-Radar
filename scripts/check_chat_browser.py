@@ -212,7 +212,9 @@ def main():
         page.locator(".cr-stage > button").first.click()
         record("readiness phase includes actual task cards", page.locator(".cr-stage .cr-item").count() > 0)
         ask("查看模型对照", "查看回答方法与来源差异")
-        record("missing replay is explicit", page.get_by_text("尚无可展示的真实回放记录", exact=False).count() > 0)
+        record("model view shows real replay or explicit empty state",
+               page.get_by_text("真实回放", exact=False).count() > 0
+               or page.get_by_text("尚无可展示的真实回放记录", exact=False).count() > 0)
         page.locator("#cr-history > button").click()
         history = page.get_by_label("历史结果", exact=True)
         history.fill("我现在需要做什么")

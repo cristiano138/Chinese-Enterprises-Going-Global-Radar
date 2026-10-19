@@ -1,0 +1,21 @@
+{
+  "url": "https://studio-zhanxy2551-complianceradar-v2.api-inference.modelscope.net",
+  "version": "2026.10.19-chat1.6",
+  "checks": {
+    "toy_regulations": true,
+    "german_journey": true,
+    "todo": true,
+    "comparison": true,
+    "clause_32009L0048": true,
+    "clause_32023R0988": true
+  },
+  "text_passed": true,
+  "errors": {},
+  "asr": {
+    "attempted": true,
+    "text": "歡迎大家來體驗打磨院推出的語音識別模型",
+    "notice": "**预编辑 · 未提交**　转写 · 3.34s · 19 字\n\n文字已进入输入框，可直接改字；尚未发起任何查询。请核对产品、市场和数字，确认后点「发送」，或点「撤销识别」回到原文。",
+    "recognized": true,
+    "confirm_before_send": true
+  }
+}

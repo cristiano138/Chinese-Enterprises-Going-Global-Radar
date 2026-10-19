@@ -1,0 +1,25 @@
+{
+  "bytes": 2233716736,
+  "sha256": "680bcf84931fb48097065ae431aebda2b258b9e3ad794a227b0cbe98bcd58b32",
+  "seconds": 2.3,
+  "tables": 29,
+  "counts": {
+    "laws": 86,
+    "documents": 1794,
+    "law_documents": 1933,
+    "units": 14371,
+    "recall_nodes": 4055,
+    "recall_law_docs": 86,
+    "recall_nodes_fts": 4055
+  },
+  "recall_meta": {
+    "tree_version": "rt1-89490eb48991e90a",
+    "chunker_version": "v1",
+    "max_chars": "6000",
+    "built_at": "2026-10-19 20:10:07",
+    "source_db": "E:\\workbuddy\\2026-10-14-01-02-52\\compliance-radar\\sqlite\\reg",
+    "partial": "0",
+    "node_count": "4055",
+    "leaf_count": "3631"
+  }
+}

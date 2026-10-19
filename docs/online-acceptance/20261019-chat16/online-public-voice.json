@@ -1,0 +1,14 @@
+{
+  "version": "2026.10.19-chat1.6",
+  "anonymous": true,
+  "sample": "public synthetic Chinese WAV",
+  "upload_http": 200,
+  "text": "歡迎大家來體驗打磨院推出的語音識別模型",
+  "notice": "预编辑 · 未提交　转写 · 0.73s · 19 字\n\n文字已进入输入框，可直接改字；尚未发起任何查询。请核对产品、市场和数字，确认后点「发送」，或点「撤销识别」回到原文。",
+  "recognized": true,
+  "confirm_before_send": true,
+  "did_not_submit_business_query": true,
+  "undo_restores_original": true,
+  "undo_keeps_user_edit": true,
+  "actual_studio_portal": true
+}
