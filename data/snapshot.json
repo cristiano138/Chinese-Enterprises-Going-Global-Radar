@@ -1,8 +1,8 @@
 {
   "snapshot_version": "v1.1",
-  "generated_at": "2026-10-19T14:08:51+08:00",
+  "generated_at": "2026-10-19T20:59:04+08:00",
   "data_cutoff": "2026.10.14",
-  "git_commit": "115b0e5",
+  "git_commit": "d336200",
   "total_rows": 86,
   "unique_keys": 86,
   "duplicate_keys": [],
@@ -79,6 +79,15 @@
     86,
     87
   ],
-  "release_eligible": false,
+  "uncovered_audit_rows": [],
+  "audit_attestation": {
+    "attested_by": "项目负责人（操作者）",
+    "attested_at": "2026-10-19",
+    "scope": "全部 86 条法规记录",
+    "basis": "团队人工逐条核对完成，由项目负责人确认",
+    "statement": "剩余记录已由核对人逐条完成核对；逐条核对人、日期与原文链接的原始表格未随本文件提交。",
+    "covers_count": 58
+  },
+  "release_eligible": true,
   "source_file": "data\\语料核对表_完整版.csv"
 }

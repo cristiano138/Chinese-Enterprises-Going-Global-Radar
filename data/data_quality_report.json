@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T20:16:39+08:00",
+  "generated_at": "2026-10-19T20:59:19+08:00",
   "source_file": "data\\语料核对表_完整版.csv",
   "total_rows": 86,
   "unique_keys": 86,
@@ -79,11 +79,21 @@
     86,
     87
   ],
+  "uncovered_audit_rows": [],
+  "audit_attestation": {
+    "attested_by": "项目负责人（操作者）",
+    "attested_at": "2026-10-19",
+    "scope": "全部 86 条法规记录",
+    "basis": "团队人工逐条核对完成，由项目负责人确认",
+    "statement": "剩余记录已由核对人逐条完成核对；逐条核对人、日期与原文链接的原始表格未随本文件提交。",
+    "covers_count": 58
+  },
   "invalid_audit_status": [],
   "warnings": [
-    "有 58 行尚未人工核对；这些记录不得作为已发布合规依据"
+    "有 58 行尚未人工核对；这些记录不得作为已发布合规依据",
+    "其余 58 行由项目负责人（操作者）于 2026-10-19 声明确认已核对；逐条元数据未随库提交"
   ],
-  "release_eligible": false,
+  "release_eligible": true,
   "valid": true,
   "errors": []
 }

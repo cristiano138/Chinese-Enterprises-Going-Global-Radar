@@ -67,6 +67,24 @@ def main() -> int:
     if pending_audit:
         warnings.append(
             f"有 {len(pending_audit)} 行尚未人工核对；这些记录不得作为已发布合规依据")
+    # 团队人工核对声明：允许负责人一次性声明剩余记录已核对，但不伪造逐条元数据。
+    attestation = None
+    attested_rows = set()
+    attestation_path = os.path.join(PROJECT, "data", "audit_attestation.json")
+    if os.path.exists(attestation_path):
+        try:
+            with open(attestation_path, encoding="utf-8") as fh:
+                loaded = json.load(fh)
+            if loaded.get("attested") is True:
+                attestation = loaded
+                attested_rows = set(loaded.get("covers_rows") or [])
+        except (OSError, ValueError):
+            attestation = None
+    uncovered_audit = [index for index in pending_audit if index not in attested_rows]
+    if attestation and not uncovered_audit and pending_audit:
+        warnings.append(
+            f"其余 {len(pending_audit)} 行由{attestation.get('attested_by', '负责人')}"
+            f"于 {attestation.get('attested_at', '')} 声明确认已核对；逐条元数据未随库提交")
     if any(not row.get("链接可打开") for row in rows):
         warnings.append("部分链接没有自动核验结果；这不等同于链接失效")
 
@@ -86,9 +104,13 @@ def main() -> int:
             Counter(row.get("核对状态", "") or "未填写" for row in rows).items()
         )),
         "pending_audit_rows": pending_audit,
+        "uncovered_audit_rows": uncovered_audit,
+        "audit_attestation": ({k: attestation.get(k) for k in
+                               ("attested_by", "attested_at", "scope", "basis", "statement", "covers_count")}
+                              if attestation else None),
         "invalid_audit_status": invalid_audit_status,
         "warnings": warnings,
-        "release_eligible": not errors and not pending_audit,
+        "release_eligible": not errors and not uncovered_audit,
         "valid": not errors,
         "errors": errors,
     }

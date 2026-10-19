@@ -71,6 +71,21 @@ CORPUS_ROWS_TOTAL = int(_RELEASE.get("total_rows", 86))
 CORPUS_ROWS_BY_MARKET = _RELEASE.get("markets", {"欧盟": 29, "美国": 57})
 CORPUS_ROWS_BY_AUDIT_STATUS = _RELEASE.get("audit_status_distribution", {})
 
+# 团队人工核对声明（data/audit_attestation.json → snapshot）。
+AUDIT_ATTESTATION = _RELEASE.get("audit_attestation")
+RELEASE_ELIGIBLE = bool(_RELEASE.get("release_eligible"))
+
+
+def audit_note():
+    """给界面用的一句话：机器逐条记录 + 团队声明。不夸大成"逐条证据齐全"。"""
+    recorded = CORPUS_ROWS_BY_AUDIT_STATUS.get("已核对", 0)
+    pending = CORPUS_ROWS_BY_AUDIT_STATUS.get("待核对", 0)
+    if AUDIT_ATTESTATION and not (_RELEASE.get("uncovered_audit_rows") or []):
+        return (f"逐条记录 {recorded} 条已核对、{pending} 条由"
+                f"{AUDIT_ATTESTATION.get('attested_by', '负责人')}于 "
+                f"{AUDIT_ATTESTATION.get('attested_at', '')} 声明确认已完成核对")
+    return f"逐条记录 {recorded} 条已核对、{pending} 条待核对"
+
 # 官方来源（PRD 附录 C3 允许集合）
 DATA_SOURCES = (
     "EUR-Lex SPARQL（publications.europa.eu/webapi/rdf/sparql）",

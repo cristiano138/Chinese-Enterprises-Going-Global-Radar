@@ -45,6 +45,8 @@ def main() -> int:
         "status_distribution": quality["status_distribution"],
         "audit_status_distribution": quality.get("audit_status_distribution", {}),
         "pending_audit_rows": quality.get("pending_audit_rows", []),
+        "uncovered_audit_rows": quality.get("uncovered_audit_rows", []),
+        "audit_attestation": quality.get("audit_attestation"),
         "release_eligible": quality.get("release_eligible", False),
         "source_file": os.path.relpath(SOURCE, PROJECT),
     }

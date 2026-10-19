@@ -858,7 +858,8 @@ def _normalize(action, context, raw):
             region_items = [_item(row, dict(context, market=region["市场"]),
                                   group=region["市场"], index=i) for i, row in enumerate(rows)]
             items.append({"id": _digest([action, region["市场"]]), "title": region["市场"],
-                          "summary": f"本地目录 {len(rows)} 条；待核对 {region.get('待核对', 0)} 条。",
+                          "summary": (f"本地目录 {len(rows)} 条；待核对 {region.get('待核对', 0)} 条。"
+                                      "（" + snapshot.audit_note() + "）"),
                           "kind": "region", "status": "condition_pending", "sources": [],
                           "details": dict(copy.deepcopy(region), items=region_items), "gaps": [],
                           "can_complete": False})
