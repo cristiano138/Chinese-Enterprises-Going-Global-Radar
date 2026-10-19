@@ -40,8 +40,9 @@ REQUIRED_FILES = {
 }
 # Missing a transitive import must fail packaging, not first fail on the host.
 REQUIRED_FILES.update("core/" + name for name in (
-    "__init__.py", "actions.py", "asr.py", "copy_zh.py", "corpus.py", "dates.py",
-    "law_content.py", "law_intake.py", "law_store.py", "llm.py", "snapshot.py", "verify.py",
+    "__init__.py", "actions.py", "asr.py", "asr_engine.py", "asr_server.py",
+    "copy_zh.py", "corpus.py", "dates.py", "law_content.py", "law_intake.py",
+    "law_store.py", "llm.py", "snapshot.py", "verify.py",
     "model_assets.py", "database_assets.py",
 ))
 REQUIRED_FILES.update("modules/" + name for name in (

@@ -87,9 +87,11 @@ assert app_main.asr.available()["enabled"]
         self.assertTrue(transcribers, "New UI must register transcription callbacks.")
         self.assertGreaterEqual(len(senders), 2, "Both send button and typed submit must use the same service.")
         for transcribe in transcribers:
-            self.assertEqual(len(transcribe.inputs), 2)
-            self.assertEqual(len(transcribe.outputs), 2)
+            # 语音只写输入框 + 预编辑快照，绝不绕过「发送」这一步。
+            self.assertEqual(len(transcribe.inputs), 3)   # 音频 / 输入框 / 预编辑快照
+            self.assertEqual(len(transcribe.outputs), 3)  # 输入框 / 状态说明 / 预编辑快照
             self.assertIs(transcribe.inputs[1], transcribe.outputs[0])
+            self.assertIs(transcribe.inputs[2], transcribe.outputs[2])
             self.assertEqual(transcribe.outputs[1].get_block_name(), "markdown")
             self.assertEqual(transcribe.inputs[0].sources, ["microphone", "upload"])
             self.assertEqual(transcribe.inputs[0].format, "wav")
@@ -98,6 +100,17 @@ assert app_main.asr.available()["enabled"]
                 self.assertIs(transcribe.outputs[0], send.inputs[0])
                 self.assertNotIn(transcribe.inputs[0], send.inputs)
                 self.assertEqual(send.inputs[1].get_block_name(), "state")
+
+        undo = [item for item in functions if item.fn == ui_chat.undo_voice]
+        self.assertTrue(undo, "Pre-edit state must be reversible.")
+        for item in undo:
+            self.assertEqual(len(item.inputs), 2)
+            self.assertEqual(len(item.outputs), 3)
+            # 撤销读预编辑快照、写回同一个输入框，同样不触发查询。
+            self.assertEqual(item.inputs[0].get_block_name(), "state")
+            self.assertIs(item.outputs[0], item.inputs[1])
+            for send in senders:
+                self.assertIs(item.outputs[0], send.inputs[0])
 
     def test_unavailable_backend_explains_disabled_upload(self):
         states = [
@@ -135,8 +148,9 @@ assert app_main.asr.available()["enabled"]
         meta = {"ok": True, "backend": "cloud", "cached": False}
         with patch.object(ui_chat.asr, "transcribe", return_value=("毛绒玩具出口德国", meta)), \
                 patch.object(conversation, "respond") as respond:
-            text, status = ui_chat.transcribe("audio.wav", "原文字")
+            text, status, snapshot = ui_chat.transcribe("audio.wav", "原文字")
         self.assertEqual(text, "毛绒玩具出口德国")
+        self.assertEqual(snapshot["before"], "原文字")
         self.assertIn("核对", status)
         self.assertIn("尚未", status)
         respond.assert_not_called()
@@ -151,8 +165,9 @@ assert app_main.asr.available()["enabled"]
         original = "  原文字\n保留末尾空格  "
         with patch.object(ui_chat.asr, "transcribe", side_effect=RuntimeError("secret-token")), \
                 patch.object(conversation, "respond") as respond:
-            text, status = ui_chat.transcribe("audio.wav", original)
+            text, status, snapshot = ui_chat.transcribe("audio.wav", original)
         self.assertEqual(text, original)
+        self.assertEqual(snapshot, {}, "失败时不应留下预编辑快照")
         self.assertNotIn("secret-token", status)
         self.assertIn("原文字已保留", status)
         respond.assert_not_called()

@@ -43,6 +43,9 @@ class ASRSafetyTests(unittest.TestCase):
         self.cloud = self.patch("_transcribe_cloud", mock.Mock(return_value="测试文本"))
         self.local = self.patch("_transcribe_local", mock.Mock(return_value="本地文本"))
         self.patch("_local_importable", mock.Mock(return_value=True))
+        # 引擎是否准备好取决于本机是否下载过模型，测试里必须固定，
+        # 否则同一份代码在有/无模型的机器上会得到不同的后端选择。
+        self.patch("_engine_ready", mock.Mock(return_value=False))
         self.threads = []
         self.events = []
         original_thread = threading.Thread
@@ -437,7 +440,10 @@ class ASRSafetyTests(unittest.TestCase):
         self.assertEqual(model.transcribe.call_args.args[0].getvalue(), self.path.read_bytes())
 
     def test_timeout_retains_two_slots_until_actual_work_finishes(self):
-        self.patch("TRANSCRIBE_TIMEOUT", 0.05)
+        # 预算取 0.2s 而不是 0.05s：Windows 上新建缓存文件 + fsync 本身就可能
+        # 超过 50ms，会让「成功那次」也落在超时线上（本机实测 0.06s 被误判）。
+        # 结论仍是「超时后槽位被真实工作占住、迟到结果不落缓存」，语义不变。
+        self.patch("TRANSCRIBE_TIMEOUT", 0.2)
         self.patch("CACHE_ENABLED", True)
         release = self.event()
         entered = [self.event(), self.event()]

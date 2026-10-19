@@ -1073,8 +1073,8 @@ def _asr_status_line():
         return (f"语音入口：{_e(cfg.get('detail'))}　语言 {_e(cfg.get('lang'))}。"
                 "配置已识别，实际可用性以转写结果为准；请核对文字后再开始判定。")
     return (f"录音/上传转写暂不可用：{_e(cfg.get('detail'))}。"
-            "请管理员配置 ASR_API_BASE、ASR_API_KEY、ASR_MODEL 并启用云端 ASR，"
-            "或安装本地 faster-whisper 并准备 ASR_LOCAL_MODEL 对应模型；重启后生效。"
+            "本地引擎运行 scripts/prepare_asr_engine.py 准备（sherpa-onnx + SenseVoice，"
+            "无需安装 Python 库）；或配置 ASR_API_BASE、ASR_API_KEY、ASR_MODEL 走云端。"
             "录音和上传共用语音服务，可继续打字。")
 
 
@@ -1479,6 +1479,9 @@ if __name__ == "__main__":
     # 魔搭创空间通过 PORT 注入服务端口；本地运行也绑定全网卡，便于容器探活。
     host = "0.0.0.0"
     from ui_chat import CSS
+    # 语音引擎预热：只在会用本地引擎时后台准备（不阻塞启动、不抛异常）。
+    # 界面在 build_ui() 时读一次可用性，所以先起线程，让下载与建界面并行。
+    asr.prewarm()
     launch_kwargs = {"server_name": host, "server_port": port, "css": CSS,
                      "theme": gr.themes.Soft(), "footer_links": [],
                      "show_error": False, "max_file_size": "20mb"}

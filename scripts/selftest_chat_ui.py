@@ -82,12 +82,31 @@ class ChatUITests(unittest.TestCase):
     def test_voice_only_fills_the_textbox_and_failure_keeps_old_text(self):
         with patch.object(conversation, "respond", side_effect=AssertionError("automatic voice query")):
             with patch.object(ui_chat.asr, "transcribe", return_value=("儿童玩具卖到欧盟", {"ok": True})):
-                text, note = ui_chat.transcribe("test.wav", "原输入")
+                text, note, snapshot = ui_chat.transcribe("test.wav", "原输入")
                 self.assertEqual(text, "儿童玩具卖到欧盟")
                 self.assertIn("尚未", note)
+                # 预编辑快照必须能还原识别前的文字
+                self.assertEqual(snapshot["before"], "原输入")
+                self.assertEqual(snapshot["voice"], "儿童玩具卖到欧盟")
             with patch.object(ui_chat.asr, "transcribe", return_value=("", {"ok": False})):
-                text, note = ui_chat.transcribe("test.wav", "保留原输入")
+                text, note, snapshot = ui_chat.transcribe("test.wav", "保留原输入")
                 self.assertEqual(text, "保留原输入")
+                self.assertEqual(snapshot, {})
+
+    def test_voice_preedit_can_be_undone_only_before_editing(self):
+        snapshot = {"before": "原输入", "voice": "儿童玩具卖到欧盟"}
+        text, note, state = ui_chat.undo_voice(snapshot, "儿童玩具卖到欧盟")
+        self.assertEqual(text, "原输入")
+        self.assertIn("撤销", note)
+        self.assertEqual(state, {})
+        # 用户已经在预编辑区改过字：不许覆盖回去
+        text, note, state = ui_chat.undo_voice(snapshot, "儿童玩具卖到德国")
+        self.assertEqual(text, "儿童玩具卖到德国")
+        self.assertIn("已失效", note)
+        # 没有识别记录时保持原样
+        text, note, state = ui_chat.undo_voice({}, "手打的内容")
+        self.assertEqual(text, "手打的内容")
+        self.assertIn("没有可撤销", note)
 
     def test_export_uses_saved_result_and_rejects_changed_conditions(self):
         state, result = conversation.respond("儿童玩具卖到欧盟", action="map")
