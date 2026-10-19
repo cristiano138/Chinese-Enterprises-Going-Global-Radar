@@ -32,6 +32,8 @@ DATA_FILES = {
     "journey_sources.json", "freshness_latest.json", "freshness_runs.jsonl",
     "freshness_schedule.json", "metadata_check_latest.json",
     "data_quality_report.json", "law_store_manifest.json",
+    "audit_attestation.json", "platform_policy_status.json",
+    "recall_eval_report.json", "recall_tree_report.json",
     "数据总览.md", "指南核对报告.md", "欧盟待补清单.md",
     "链接检查报告.txt", "骨架体检报告.txt",
 }

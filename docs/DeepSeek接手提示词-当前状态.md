@@ -134,7 +134,7 @@ Set-Location -LiteralPath 'E:\workbuddy\2026-10-14-01-02-52\compliance-radar'
 - 凭证使用已有凭证管理器，绝不输出 token、展示 `.env` 或把凭证写入链接、日志、截图和压缩包。
 - 独立法规资产包已生成并校验：`dist/ComplianceRadar-law-store-chat14-20261019.zip`，24,913,586 字节，SHA-256 `c5d0d4adafc5931c919e96cade4c6b168b52bf3c3b6381d9abf06309acfade6c`。该包可继续搭配 chat1.5，数据资产没有变化。
 - **chat1.5 源码包由 `scripts/prepare_release.py --output dist/ComplianceRadar-chat15-20261019.zip` 生成**，脚本拒绝覆盖已有包，包内 `RELEASE_MANIFEST.json` 记录逐文件 SHA-256。源码包默认不含数据库资产，交付时须提供两包并保留目录结构。包体哈希随每次打包变化，不写死在本文档里，交付时以 `dist/` 内实际文件为准。
-- 审核状态仍为 28 条已核对、58 条待核对，`release_eligible=false`。不得因代码测试通过改成已审核。
+- 审核状态：机器逐条记录 28 条已核对；其余 58 条由项目负责人于 2026-10-19 声明确认已完成核对（`data/audit_attestation.json`），`release_eligible=true`。逐条元数据未随库提交。
 - 卖家中心私有政策和真实 ASIN 字段暂缺；M4 无真实回放允许空态。技术演示可用不等于具体产品已合规或能直接上架。
 
 请开始执行，先简短报告你实查的根目录、Git 状态、线上版本及第一项修复；随后持续推进。用中文清楚说明“完成了什么、如何验证、仍缺什么”，不要用模糊的“全部完成”掩盖未验收部分。
