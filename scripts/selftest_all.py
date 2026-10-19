@@ -18,6 +18,9 @@ SCRIPTS = [
     # —— 单模块自测照不到这一层，曾经因此出现「新页签漏了免责声明」。
     "scripts/selftest_ui_contract.py",
     # 保留两条开发线的回归测试。
+    "scripts/selftest_recall.py",
+    "scripts/selftest_recall_flow.py",
+    "scripts/selftest_material_pipeline.py",
     "scripts/selftest_llm_reliability.py",
     "scripts/selftest_voice.py",
     "scripts/selftest_asr_safety.py",
@@ -55,6 +58,9 @@ def main() -> int:
     print("M5/M6: PASS")
     print("M7: PASS")
     print("输出契约: PASS")
+    print("召回树: PASS")
+    print("召回流程: PASS")
+    print("材料落库: PASS")
     print("LLM 可靠性: PASS")
     print("语音输入: PASS")
     print("语音边界: PASS")
