@@ -471,7 +471,7 @@ def _intent(text):
         return "todo"
     if re.search(r"法规|法律|依据|准入|相关要求|哪些要求|什么要求|适用|标签|标识|警告语", text):
         return "map"
-    if re.search(r"全流程|全过程|从.*到|六个阶段|路线|开始做|怎么开始|从哪开始", text):
+    if re.search(r"全流程|全过程|从.*到|六个阶段|路线|开始做|怎么开始|如何开始|从哪(?:里)?开始", text):
         return "journey"
     return None
 

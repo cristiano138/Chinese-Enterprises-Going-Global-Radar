@@ -471,6 +471,16 @@ class ConversationTests(unittest.TestCase):
             self.assertIn("tasks", stage)
             self.assertIn("gaps", stage)
 
+    def test_beginner_start_question_switches_from_map_to_journey(self):
+        state, previous = self.start("儿童玩具卖到欧盟，先看相关法规")
+        self.assertEqual(previous["kind"], "map")
+        for phrase in ("从哪开始", "从哪里开始", "如何开始"):
+            with self.subTest(phrase=phrase):
+                _, result = service.respond("我想把毛绒玩具卖到德国亚马逊，" + phrase + "？", state)
+                self.assertEqual(result["kind"], "journey")
+                self.assertEqual(len(result["stages"]), 6)
+                self.assertEqual(result["context"]["country"], "德国")
+
     def test_non_german_journey_does_not_inherit_german_platform(self):
         state, _ = self.start()
         state, result = service.respond("改卖美国，查看全流程", state)
