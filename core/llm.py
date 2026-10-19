@@ -102,6 +102,12 @@ def is_ready():
     return READY
 
 
+def _thinking_capable():
+    """只有推理类模型才接受 thinking=enabled；普通对话模型必须关闭。"""
+    name = (MODEL or "").casefold()
+    return any(tag in name for tag in ("reasoner", "-r1", "thinking", "reasoning"))
+
+
 def config_summary():
     """给界面展示的非敏感配置摘要（**不泄露 Token**）。"""
     return {
@@ -270,7 +276,7 @@ def _release_slot():
 
 
 def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
-         thinking=True):
+         thinking=None):
     """调用模型。返回 (text, meta)。
 
     meta 说明调用是否成功、是否命中缓存，供上层如实标注。
@@ -282,13 +288,16 @@ def chat(prompt, max_tokens=4000, temperature=0.2, use_cache=True, timeout=None,
     一个上限，超时及时降级，不让用户干等。
     超时后被遗弃的线程仍在后台把这次请求跑完（无法强杀 HTTP），结果丢弃。
 
-    thinking（默认 True）：是否开启模型思考模式（思维链）。
-    M1.5 路由层只做槽位抽取，延迟敏感，调用时传 thinking=False 关闭。
+    thinking（默认 None）：是否开启模型思考模式（思维链）。
+    默认按模型名自动判断：推理类模型开启，deepseek-chat 这类对话模型关闭，
+    否则部分服务端会返回空内容或截断。M1.5 路由层显式传 thinking=False。
     """
     if not READY:
         return "", {"ok": False, "reason": "模型链路未配置（缺 Token/Base/Model）",
                     "cached": False}
 
+    if thinking is None:
+        thinking = _thinking_capable()
     # 未显式指定时套用总预算（默认 45s）。润色是可选增强，
     # 不能因为模型变慢就把确定性清单一起拖住。
     budget = DEFAULT_TIMEOUT if timeout is None else timeout

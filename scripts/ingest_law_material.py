@@ -71,7 +71,7 @@ if sys.platform == "win32":
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
-PROJECT = os.path.dirname(GO_RADAR_ROOT)
+PROJECT = GO_RADAR_ROOT  # 项目根目录就是 GO_RADAR_ROOT；上一级是 workbuddy 工作区
 SQLITE_DIR = os.path.join(PROJECT, "sqlite")
 DB_PATH = os.path.join(SQLITE_DIR, "regulations.sqlite3")
 BUILD_SCRIPT = os.path.join(HERE, "build_recall_tree.py")

@@ -32,7 +32,21 @@ import sqlite3
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
 ROOT = os.path.dirname(PROJECT)
-DB_PATH = os.path.join(ROOT, "sqlite", "regulations.sqlite3")
+
+
+def db_path():
+    """与 core/law_store.py 保持同一套解析顺序，避免两处读不同的库。"""
+    configured = os.getenv("COMPLIANCE_DB_PATH", "").strip()
+    if configured:
+        return configured
+    for candidate in (os.path.join(PROJECT, "sqlite", "regulations.sqlite3"),
+                      os.path.join(ROOT, "sqlite", "regulations.sqlite3")):
+        if os.path.exists(candidate):
+            return candidate
+    return os.path.join(PROJECT, "sqlite", "regulations.sqlite3")
+
+
+DB_PATH = db_path()
 
 _CON = None
 _CATALOG_CACHE = None
@@ -62,7 +76,8 @@ def _connect():
     global _CON
     if _CON is not None:
         return _CON
-    uri = "file:%s?mode=ro" % DB_PATH.replace("\\", "/")
+    target = DB_PATH if os.path.exists(DB_PATH) else db_path()
+    uri = "file:%s?mode=ro" % target.replace("\\", "/")
     con = sqlite3.connect(uri, uri=True, timeout=5)
     con.row_factory = sqlite3.Row
     try:

@@ -18,7 +18,7 @@ from modules import m2_timeline
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
 JS = (ROOT / "assets" / "chat.js").read_text(encoding="utf-8")
-BUILD_VERSION = "2026.10.19-chat1.5"
+BUILD_VERSION = "2026.10.19-chat1.6"
 CAPABILITIES = [
     ("map", "相关法规", "查看品类与市场对应的法规、来源及覆盖范围"),
     ("todo", "合规待办", "整理下一步、后续准备与待确认事项"),
@@ -456,27 +456,46 @@ def build_ui():
                    delete_cache=(3600, 3600)) as demo:
         session = gr.State(value=conversation.new_session, time_to_live=7200)
         active = gr.State(value=None)
-        gr.HTML('<div class="cr-intro" aria-hidden="true"><div class="cr-radar"><div class="cr-sweep"></div></div>'
+        gr.HTML('<div class="cr-intro" aria-hidden="true"><div class="cr-intro-card">'
+                '<div class="cr-intro-logo" aria-hidden="true">合</div>'
+                '<div class="cr-radar"><div class="cr-sweep"></div></div>'
                 '<div class="cr-intro-title">出海合规雷达</div><div class="cr-intro-caption">COMPLIANCE RADAR</div>'
+                '<div class="cr-intro-bar"><i></i></div></div>'
                 '<button class="cr-intro-skip" type="button">跳过开场</button></div>')
         with gr.Row(elem_id="cr-topbar"):
-            gr.HTML('<div class="cr-brand"><span class="cr-logo" aria-hidden="true"></span>'
-                    '<div><b>出海合规雷达</b><small>COMPLIANCE RADAR</small></div></div>')
+            gr.HTML('<div class="cr-appbar-user"><span class="cr-appbar-avatar" aria-hidden="true">合</span>'
+                    '<div><div class="cr-appbar-name">合规雷达 · 出海助手</div>'
+                    '<div class="cr-appbar-sub"><span class="cr-dot"></span>在线 · 法规库已接入 86 部</div></div></div>')
             reset = gr.Button("＋ 新建对话", scale=0, elem_id="cr-reset")
         with gr.Column(visible=True, elem_id="cr-welcome-wrap") as welcome:
-            gr.HTML('<div class="cr-welcome"><div class="cr-eyebrow">从一个问题，到清楚的下一步</div>'
-                    '<h1>出海的第一步，<br>从说清你的生意开始。</h1>'
-                    '<p>告诉我你准备卖什么、卖到哪里、在哪个平台销售。<br>'
-                    '一起梳理相关要求，按需要展开行动和依据。</p></div>')
+            gr.HTML('<div class="cr-hero"><div class="cr-hero-avatar" aria-hidden="true">合</div>'
+                    '<h1>我是合规雷达</h1>'
+                    '<p>告诉我你卖什么、卖到哪里。<br>我帮你查适用法规、看关键日期、列出下一步。</p></div>')
         chat = gr.Chatbot(value=[], show_label=False, height=200, visible=False, buttons=[],
                           feedback_options=None, elem_id="cr-chat", layout="bubble", autoscroll=False)
         context = gr.HTML("")
         result_filter = gr.Radio(["全部", "待确认", "法律法规", "平台规则", "操作建议"], value="全部",
                                  label="筛选当前结果", visible=False)
-        with gr.Row(visible=True, elem_id="cr-examples") as examples:
-            example_1 = gr.Button("毛绒玩具卖到德国亚马逊，\n从哪里开始？")
-            example_2 = gr.Button("儿童玩具卖到欧盟，\n先看相关法规")
-            example_3 = gr.Button("比较欧盟和美国，\n儿童玩具的法规目录")
+        with gr.Row(visible=True, elem_id="cr-examples", elem_classes=["cr-suggest"]) as examples:
+            example_1 = gr.Button("🍼 毛绒玩具卖到德国亚马逊，\n从哪里开始？")
+            example_2 = gr.Button("📚 儿童玩具卖到欧盟，\n先看相关法规")
+            example_3 = gr.Button("⚖️ 比较欧盟和美国，\n儿童玩具的法规目录")
+            example_4 = gr.Button("🗓️ 查看法规变化时间线，\n最近有什么新要求")
+            example_5 = gr.Button("🌍 多个市场汇总，\n一次看清主要差异")
+            example_6 = gr.Button("🚀 整理上线准备计划，\n按阶段给我任务")
+        gr.HTML('<div class="cr-hintline">点上面的卡片，或直接在下面输入。我不知道的会先问你，'
+                '不会替你猜产品条件。</div>')
+        with gr.Accordion("🧭 新手教程 · 4 步用好这个助手", open=False, elem_id="cr-tutorial"):
+            gr.HTML('<div class="cr-tour">'
+                    '<div class="cr-tour-step"><b><span class="cr-tour-no">1</span>说清生意</b>'
+                    '<span>一句自然语言就够："毛绒玩具卖到德国亚马逊"。不用先选菜单。</span></div>'
+                    '<div class="cr-tour-step"><b><span class="cr-tour-no">2</span>回答追问</b>'
+                    '<span>我一次只问一个条件（年龄、是否带电、FBA/自发货）；不确定就点"暂不确定"。</span></div>'
+                    '<div class="cr-tour-step"><b><span class="cr-tour-no">3</span>看行动与依据</b>'
+                    '<span>最多三条当前优先事项；展开六阶段看步骤，点"依据与官方原文"核对出处。</span></div>'
+                    '<div class="cr-tour-step"><b><span class="cr-tour-no">4</span>查正文 · 导出 · 存档</b>'
+                    '<span>在"资料覆盖、来源与条款检索"里输入法规编号查正文；结果可导出 CSV 或回看历史。</span></div>'
+                    '</div>')
         status = gr.Markdown("", elem_id="cr-status")
 
         @gr.render(inputs=[active, result_filter], show_progress="hidden",
@@ -676,7 +695,10 @@ def build_ui():
                     concurrency_id="conversation", concurrency_limit=1)
         for button, value in ((example_1, "我想把毛绒玩具卖到德国亚马逊，从哪里开始？"),
                               (example_2, "儿童玩具卖到欧盟，先看相关法规"),
-                              (example_3, "比较欧盟和美国的儿童玩具法规目录")):
+                              (example_3, "比较欧盟和美国的儿童玩具法规目录"),
+                              (example_4, "查看法规变化时间线"),
+                              (example_5, "多个市场汇总"),
+                              (example_6, "整理上线准备计划")):
             button.click(lambda s, q=value: submit_message(q, s), inputs=session, outputs=outputs,
                          show_progress="minimal", concurrency_id="conversation", concurrency_limit=1)
         for button, action in capability_buttons + [(journey_btn, "journey")]:
