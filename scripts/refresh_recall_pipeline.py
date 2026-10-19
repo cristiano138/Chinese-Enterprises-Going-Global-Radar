@@ -50,8 +50,13 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
 PROJECT = GO_RADAR_ROOT  # 项目根目录就是 GO_RADAR_ROOT；上一级是 workbuddy 工作区
-SQLITE_DIR = os.path.join(PROJECT, "sqlite")
-DB_PATH = os.path.join(SQLITE_DIR, "regulations.sqlite3")
+if GO_RADAR_ROOT not in sys.path:
+    sys.path.insert(0, GO_RADAR_ROOT)
+from core import law_store  # noqa: E402
+
+# 与 core.law_store 保持同一套查找规则：优先 <项目>/sqlite，其次 <工作区>/sqlite。
+DB_PATH = str(law_store.db_path())
+SQLITE_DIR = os.path.dirname(DB_PATH)
 BUILD_SCRIPT = os.path.join(HERE, "build_recall_tree.py")
 INTAKE_LOG = os.path.join(SQLITE_DIR, "law_intake_log.jsonl")
 TASK_DIR = os.path.join(GO_RADAR_ROOT, "data", "material_tasks")

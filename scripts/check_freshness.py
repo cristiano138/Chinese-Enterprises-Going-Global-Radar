@@ -5,10 +5,11 @@
 HTTP 状态 / Last-Modified / ETag / 前 128KB 内容哈希。不做全文解析入库。
 
 口径（2026-10-19 修正，必须诚实）：
-    ok / content_verified —— HTTP 2xx/3xx 且响应体非空；才算“已核验”。
+    ok / content_verified —— HTTP 2xx/3xx 且响应体非空（eCFR / EU 走官方
+                            API 取到结构化内容同样算）；才算“已核验”。
     http_ok              —— HTTP 2xx/3xx，但可能拿不到内容；单列，不冒充已核验。
-    empty_content        —— HTTP 成功但响应体为空（EUR-Lex 实测返回
-                            202 + 空体，反爬），不判死链，也不算已核验。
+    empty_content        —— HTTP 成功但响应体为空（EUR-Lex / data.europa.eu
+                            实测返回 202 + 空体，反爬），不判死链，也不算已核验。
     link_error           —— 连上了但 HTTP 4xx/5xx，链接本身可能失效，待人工复核。
     net_error            —— 本机网络层面没连上（代理未开 / SSL 握手超时 /
                             DNS 失败），只说明“本机 → 目标站”不通，不判死链。
@@ -69,7 +70,7 @@ EMPTY_HASH = hashlib.sha256(b"").hexdigest()[:16]
 # eCFR 实测在突发请求下返回 429/503；按主机限速并重试，避免把限流误判成死链。
 RETRY_STATUS = {429, 500, 502, 503, 504}
 MAX_HTTP_ATTEMPTS = 4
-HOST_MIN_INTERVAL = {"www.ecfr.gov": 0.6}
+HOST_MIN_INTERVAL = {"www.ecfr.gov": 0.6, "publications.europa.eu": 0.3}
 _HOST_LOCKS = {}
 _HOST_LOCKS_GUARD = threading.Lock()
 _HOST_LAST = {}
@@ -274,6 +275,124 @@ def _probe_ecfr_api(url, timeout=TIMEOUT):
     return last
 
 
+# ── 欧盟：EUR-Lex / data.europa.eu → Cellar 官方资源接口 ────────────────
+# 背景（2026-10-19 实测）：EUR-Lex 网页与 data.europa.eu ELI 跳转页对
+# 机器访问一律返回 202 + 空体（WAF），29 + 29 条链接全部拿不到内容。
+# 但同一条法规在欧盟出版局 Cellar 里有官方机读资源：
+#     https://publications.europa.eu/resource/celex/{CELEX}
+# 它返回 303 → RDF 对象（application/rdf+xml），带 ETag / Last-Modified，
+# 正是时效性核验需要的权威变更信号。口径与 eCFR API 一致：
+#     链接给用户点（浏览器能过 WAF），数据从官方接口取（机器不碰网页）。
+# 这条通路不是爬网页，是本项目文档里既定的「欧盟走官方数据接口」方案。
+CELLAR_API = "https://publications.europa.eu/resource/celex/{}"
+_CELEX_RE = re.compile(r"^3[0-9]{4}[RLD][0-9]{4}$", re.I)
+_ELI_PATH_RE = re.compile(r"^/eli/([a-z_]+)/([0-9]{4})/([0-9]+)", re.I)
+# ELI 法规类型前缀 → CELEX 类型字母；reg_impl / reg_del 等归入 reg。
+_ELI_TYPE = {"reg": "R", "dir": "L", "dec": "D"}
+_EU_HOSTS = {"eur-lex.europa.eu", "data.europa.eu", "www.data.europa.eu"}
+
+
+def _eli_celex(path):
+    """把 ELI 路径（/eli/dir/2014/53/oj）转成 CELEX（32014L0053）。"""
+    match = _ELI_PATH_RE.match(path or "")
+    if not match:
+        return ""
+    letter = _ELI_TYPE.get(match.group(1).lower().split("_", 1)[0])
+    if not letter:
+        return ""
+    number = int(match.group(3))
+    if number > 9999:  # CELEX 序号是 4 位，超出说明不是常规法规编号
+        return ""
+    return f"3{match.group(2)}{letter}{number:04d}"
+
+
+def _eu_celex(url):
+    """从 EUR-Lex / data.europa.eu ELI 链接解析 CELEX 号；非欧盟链接返回空串。
+
+    支持两种官方写法：
+        https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32014L0053
+        http://data.europa.eu/eli/dir/2014/53/oj
+        https://eur-lex.europa.eu/eli/dir/2014/53/oj/eng
+    """
+    try:
+        parsed = urllib.parse.urlsplit(url)
+    except ValueError:
+        return ""
+    if (parsed.hostname or "").lower() not in _EU_HOSTS:
+        return ""
+    uri = urllib.parse.parse_qs(parsed.query).get("uri", [""])[0].strip()
+    if uri.lower().startswith("celex:"):
+        celex = uri[6:].strip().upper()
+        return celex if _CELEX_RE.match(celex) else ""
+    return _eli_celex(parsed.path)
+
+
+def _eu_api_url(url):
+    """欧盟链接 → Cellar 官方资源接口；非欧盟链接返回空串。"""
+    celex = _eu_celex(url)
+    return CELLAR_API.format(celex) if celex else ""
+
+
+def _eu_fingerprint(headers, body):
+    """Cellar 对象的稳定指纹：优先用官方 ETag + Last-Modified。
+
+    这两个响应头就是出版局对“该对象当前版本”的权威标记，比序列化后的
+    RDF 字节更稳定（RDF 三元组顺序可能变化，但版本没变时 ETag 不变）。
+    """
+    headers = headers or {}
+    etag = (headers.get("ETag") or "").strip()
+    last_modified = (headers.get("Last-Modified") or "").strip()
+    if etag or last_modified:
+        text = etag + "\n" + last_modified
+        return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+    return hashlib.sha256(body).hexdigest()[:16] if body else ""
+
+
+def _probe_eu_api(url, timeout=TIMEOUT):
+    """网页被 WAF 拦截时，用 Cellar 官方资源接口取结构化内容指纹。"""
+    api_url = _eu_api_url(url)
+    if not api_url:
+        return {"ok": False, "error": "not an EU CELEX/ELI URL", "status": None,
+                "hash": "", "content_bytes": 0}
+    last = {"ok": False, "error": "", "status": None,
+            "hash": "", "content_bytes": 0}
+    for attempt in range(1, MAX_HTTP_ATTEMPTS + 1):
+        _throttle("publications.europa.eu")
+        try:
+            req = urllib.request.Request(
+                api_url, headers={"User-Agent": _UA,
+                                  "Accept": "application/rdf+xml"})
+            with _open(req, timeout) as resp:
+                status = resp.status
+                body = resp.read(MAX_READ)
+                last["status"] = status
+                if status in RETRY_STATUS and attempt < MAX_HTTP_ATTEMPTS:
+                    time.sleep(_retry_delay(attempt, resp.headers))
+                    continue
+                if not (200 <= status < 400):
+                    last["error"] = f"API HTTP {status}"
+                    return last
+                if not body:
+                    last["error"] = f"API HTTP {status} with empty body"
+                    return last
+                return {"ok": True, "error": "", "status": status,
+                        "hash": _eu_fingerprint(resp.headers, body),
+                        "content_bytes": len(body),
+                        "last_modified": resp.headers.get("Last-Modified", "") or "",
+                        "etag": resp.headers.get("ETag", "") or ""}
+        except urllib.error.HTTPError as e:
+            last["status"] = e.code
+            last["error"] = f"API HTTP {e.code}"
+            if e.code in RETRY_STATUS and attempt < MAX_HTTP_ATTEMPTS:
+                time.sleep(_retry_delay(attempt, e.headers))
+                continue
+            return last
+        except Exception as e:
+            last["error"] = f"API {type(e).__name__}: {str(e)[:100]}"
+            return last
+    return last
+
+
 def check_one(url, timeout=TIMEOUT):
     """核验单个链接。返回记录 dict；任何异常都落进记录，不抛出。
 
@@ -303,6 +422,29 @@ def check_one(url, timeout=TIMEOUT):
         "api_error": "",
     }
     t0 = time.time()
+
+    # EUR-Lex / data.europa.eu 网页对机器访问返回 202 + 空体（WAF）。
+    # 同一法规在 Cellar 有官方机读资源，优先用它，避免把反爬当成“空内容”。
+    if _eu_api_url(url):
+        probe = _probe_eu_api(url, timeout)
+        rec["api_status"] = probe.get("status")
+        rec["api_error"] = probe.get("error", "")
+        if probe.get("ok"):
+            rec.update({
+                "status": probe["status"],
+                "http_ok": True,
+                "kind": "ok",
+                "ok": True,
+                "content_verified": True,
+                "verified_via": "cellar_api",
+                "hash": probe["hash"],
+                "content_bytes": probe["content_bytes"],
+                "last_modified": probe.get("last_modified", ""),
+                "etag": probe.get("etag", ""),
+                "error": "verified via Cellar API",
+            })
+            rec["elapsed_ms"] = int((time.time() - t0) * 1000)
+            return rec
 
     # eCFR 人类页面在自动化访问下会被 429/503 限流；官方 versioner API
     # 是同一机构的权威结构化接口，优先用它保证每次都有稳定指纹。

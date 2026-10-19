@@ -239,6 +239,72 @@ class EcfrFallbackTests(unittest.TestCase):
         self.assertEqual(rec["api_status"], 429)
 
 
+class EuFallbackTests(unittest.TestCase):
+    def test_eli_and_celex_mapping(self):
+        self.assertEqual(
+            fresh._eu_celex("https://eur-lex.europa.eu/legal-content/EN/TXT/"
+                            "?uri=CELEX:32014L0053"),
+            "32014L0053")
+        self.assertEqual(
+            fresh._eu_celex("http://data.europa.eu/eli/dir/2014/53/oj"),
+            "32014L0053")
+        self.assertEqual(
+            fresh._eu_celex("http://data.europa.eu/eli/reg_impl/2023/1671/oj"),
+            "32023R1671")
+        self.assertEqual(
+            fresh._eu_celex("https://eur-lex.europa.eu/eli/reg/2025/2509/oj/eng"),
+            "32025R2509")
+        self.assertEqual(fresh._eu_celex("https://www.ecfr.gov/x"), "")
+        self.assertEqual(fresh._eu_celex("https://data.europa.eu/eli/treaty/x"),
+                         "")
+
+    def test_cellar_api_url(self):
+        self.assertEqual(
+            fresh._eu_api_url("http://data.europa.eu/eli/dir/2014/53/oj"),
+            "https://publications.europa.eu/resource/celex/32014L0053")
+        self.assertEqual(fresh._eu_api_url("https://example.test/x"), "")
+
+    def test_eu_uses_cellar_api_first(self):
+        body = b"<rdf:RDF>official</rdf:RDF>"
+        headers = {"ETag": '"ROb-20241231184514068"',
+                   "Last-Modified": "Tue, 31 Dec 2024 17:45:14 GMT"}
+        with patch.object(fresh, "_open",
+                          return_value=FakeResponse(200, body, headers)), \
+                patch.object(fresh, "_throttle", return_value=None):
+            rec = fresh.check_one(
+                "https://eur-lex.europa.eu/legal-content/EN/TXT/"
+                "?uri=CELEX:32014L0053")
+        self.assertEqual(rec["kind"], "ok")
+        self.assertTrue(rec["content_verified"])
+        self.assertEqual(rec["verified_via"], "cellar_api")
+        self.assertEqual(rec["status"], 200)
+        self.assertEqual(rec["etag"], headers["ETag"])
+        self.assertTrue(rec["hash"])
+
+    def test_eu_api_failure_keeps_honest_empty_content(self):
+        empty_api = FakeResponse(200, b"")
+        waf = FakeResponse(202, b"")
+        with patch.object(fresh, "_open", side_effect=[empty_api, waf]), \
+                patch.object(fresh, "_throttle", return_value=None):
+            rec = fresh.check_one("http://data.europa.eu/eli/dir/2014/53/oj")
+        self.assertEqual(rec["kind"], "empty_content")
+        self.assertFalse(rec["content_verified"])
+        self.assertIn("empty", rec["api_error"])
+
+    def test_eu_fingerprint_is_stable_and_version_sensitive(self):
+        old = fresh._eu_fingerprint(
+            {"ETag": '"a"', "Last-Modified": "Tue, 31 Dec 2024 17:45:14 GMT"},
+            b"one")
+        same = fresh._eu_fingerprint(
+            {"ETag": '"a"', "Last-Modified": "Tue, 31 Dec 2024 17:45:14 GMT"},
+            b"two")  # 版本头相同 → 序列化差异不算内容更新
+        newer = fresh._eu_fingerprint(
+            {"ETag": '"b"', "Last-Modified": "Wed, 01 Jan 2025 00:00:00 GMT"},
+            b"one")
+        self.assertEqual(old, same)
+        self.assertNotEqual(old, newer)
+
+
 class BackfillTests(unittest.TestCase):
     def test_parse_slot(self):
         self.assertEqual(fresh._parse_slot("2026-10-17 19:00"),
@@ -499,6 +565,23 @@ class ScheduleContractTests(unittest.TestCase):
         self.assertTrue(meta.LATEST_PATH.endswith(
             os.path.join("data", "metadata_check_latest.json")))
         self.assertNotIn(os.path.join("sqlite", "metadata_check"), meta.LATEST_PATH)
+
+
+class RunnerRedactionTests(unittest.TestCase):
+    def test_proxy_credentials_never_reach_logs(self):
+        cmd = runner._redact_command(
+            ["python", "check_freshness.py", "--proxy",
+             "http://user:secret@127.0.0.1:7897"])
+        self.assertNotIn("secret", " ".join(cmd))
+        self.assertEqual(cmd[3], "http://127.0.0.1:7897")
+        self.assertEqual(runner._redact_proxy("auto"), "auto")
+        self.assertEqual(runner._redact_proxy("direct"), "direct")
+        self.assertEqual(runner._redact_proxy("http://u:p@proxy.test:8080"),
+                         "http://proxy.test:8080")
+        joined = runner._redact_command(
+            ["python", "x.py", "--proxy=http://user:secret@proxy.test:8080"])
+        self.assertNotIn("secret", " ".join(joined))
+        self.assertEqual(joined[2], "--proxy=http://proxy.test:8080")
 
 
 class CliContractTests(unittest.TestCase):

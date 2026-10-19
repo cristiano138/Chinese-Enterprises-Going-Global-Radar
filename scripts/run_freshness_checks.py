@@ -41,6 +41,7 @@ if ROOT not in sys.path:
 
 from core import freshness  # noqa: E402
 from core import law_store  # noqa: E402
+from core import net  # noqa: E402
 
 DATA_DIR = os.path.join(ROOT, "data")
 RUN_LATEST_PATH = os.path.join(DATA_DIR, "freshness_run_latest.json")
@@ -86,6 +87,26 @@ def _reader(pipe, out_queue):
         out_queue.put(None)
 
 
+def _redact_command(command):
+    """代理 URL 脱敏后再打印/落盘：原始凭据只留在子进程 argv 里。
+
+    同时处理 ``--proxy URL`` 与 ``--proxy=URL`` 两种 argparse 写法。
+    """
+    display = list(command)
+    for index, part in enumerate(display):
+        if part == "--proxy" and index + 1 < len(display):
+            display[index + 1] = _redact_proxy(display[index + 1])
+        elif str(part).startswith("--proxy="):
+            display[index] = "--proxy=" + _redact_proxy(part.split("=", 1)[1])
+    return display
+
+
+def _redact_proxy(value):
+    """非 URL 模式（auto/direct）原样保留，URL 只留 scheme://host:port。"""
+    text = str(value or "")
+    return text if text in ("", "auto", "direct") else net.redact_proxy(text)
+
+
 def _run_step(name, command, timeout_seconds):
     """运行子脚本，实时转发输出；超时则终止，返回结构化结果。"""
     started = now_bjt()
@@ -93,7 +114,8 @@ def _run_step(name, command, timeout_seconds):
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
     env["PYTHONUNBUFFERED"] = "1"
-    print(f"\n[{name}] 开始：{' '.join(command)}", flush=True)
+    display = _redact_command(command)
+    print(f"\n[{name}] 开始：{' '.join(display)}", flush=True)
 
     try:
         proc = subprocess.Popen(
@@ -104,7 +126,7 @@ def _run_step(name, command, timeout_seconds):
     except OSError as exc:
         finished = now_bjt()
         return {
-            "name": name, "status": "failed", "command": command,
+            "name": name, "status": "failed", "command": display,
             "started_at": started.strftime("%Y-%m-%d %H:%M:%S"),
             "finished_at": finished.strftime("%Y-%m-%d %H:%M:%S"),
             "duration_seconds": 0.0, "returncode": None,
@@ -150,7 +172,7 @@ def _run_step(name, command, timeout_seconds):
     return {
         "name": name,
         "status": status,
-        "command": command,
+        "command": display,
         "started_at": started.strftime("%Y-%m-%d %H:%M:%S"),
         "finished_at": finished.strftime("%Y-%m-%d %H:%M:%S"),
         "duration_seconds": round((finished - started).total_seconds(), 1),
@@ -236,7 +258,7 @@ def main(argv=None):
         "timezone": "Asia/Shanghai",
         "duration_seconds": round((finished - started).total_seconds(), 1),
         "status": status,
-        "proxy_requested": args.proxy,
+        "proxy_requested": _redact_proxy(args.proxy),
         "dry_run": args.dry_run,
         "limit": args.limit,
         "schedule": schedule,

@@ -22,6 +22,7 @@ SCRIPTS = [
     "scripts/selftest_recall_flow.py",
     "scripts/selftest_material_pipeline.py",
     "scripts/selftest_freshness.py",
+    "scripts/selftest_discovery.py",
     "scripts/selftest_llm_reliability.py",
     "scripts/selftest_voice.py",
     "scripts/selftest_asr_safety.py",
@@ -63,6 +64,7 @@ def main() -> int:
     print("召回流程: PASS")
     print("材料落库: PASS")
     print("时效性检查: PASS")
+    print("新法规发现: PASS")
     print("LLM 可靠性: PASS")
     print("语音输入: PASS")
     print("语音边界: PASS")

@@ -5,7 +5,9 @@
     · 本机环境设置了 ``HTTP_PROXY/HTTPS_PROXY=127.0.0.1:7897``；
     · Clash 未启动时，urllib 会直接报 ``WinError 10061 目标计算机积极拒绝``；
     · 关闭代理后，eCFR / Federal Register 可直连，EUR-Lex 仍会返回
-      202 + 空响应体（反爬），需要由调用方如实记录，不能当成“可访问”。
+      202 + 空响应体（反爬），需要由调用方如实记录，不能当成“可访问”；
+      欧盟链接的核验改走 Cellar 官方资源接口（见
+      scripts/check_freshness.py 的 `_probe_eu_api`），不再依赖网页响应。
 
 这里只做网络策略，不写业务结论：
     mode="auto"   → 有代理先探测端口；不可达则清空代理并直连（记录 fallback）
