@@ -18,7 +18,7 @@ from modules import m2_timeline
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
 JS = (ROOT / "assets" / "chat.js").read_text(encoding="utf-8")
-BUILD_VERSION = "2026.10.19-chat1.2"
+BUILD_VERSION = "2026.10.19-chat1.3"
 CAPABILITIES = [
     ("map", "相关法规", "查看品类与市场对应的法规、来源及覆盖范围"),
     ("todo", "合规待办", "整理下一步、后续准备与待确认事项"),

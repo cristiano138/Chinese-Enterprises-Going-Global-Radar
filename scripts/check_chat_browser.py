@@ -18,17 +18,53 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 
 
+class ModelScopeEmbeddedPage:
+    """Supply only a parent frame; load the deployed app without alteration."""
+
+    def __init__(self, page):
+        self.outer = page
+        self.frame = None
+
+    def goto(self, url, **kwargs):
+        from html import escape
+        self.outer.route("**/__cr_acceptance_harness__", lambda route: route.fulfill(
+            content_type="text/html",
+            body='<html><body style="margin:0"><iframe name="cr-app" style="border:0;width:100vw;height:100vh" src="'
+            + escape(url, quote=True) + '"></iframe></body></html>'))
+        response = self.outer.goto("https://www.modelscope.cn/__cr_acceptance_harness__", **kwargs)
+        self._attach()
+        return response
+
+    def _attach(self):
+        self.outer.frame_locator('iframe[name="cr-app"]').locator("#cr-input textarea").wait_for(timeout=60000)
+        self.frame = self.outer.frame(name="cr-app")
+
+    def reload(self, **kwargs):
+        response = self.outer.reload(**kwargs)
+        self._attach()
+        return response
+
+    def __getattr__(self, name):
+        if name in ("locator", "get_by_role", "get_by_text", "get_by_label", "evaluate", "wait_for_function"):
+            return getattr(self.frame, name)
+        return getattr(self.outer, name)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:7861")
     parser.add_argument("--output", type=Path, help="Separate output directory for an online acceptance run")
     parser.add_argument("--auth-from-git", action="store_true", help="Read ModelScope credentials from Git's credential manager")
+    parser.add_argument("--modelscope-embed", action="store_true", help="Embed the real runtime under the required ModelScope parent origin; does not validate the public portal")
     args = parser.parse_args()
+    response_timeout = 90000 if args.modelscope_embed else 25000
     output = args.output or ROOT / "docs" / "ui-preview"
     output.mkdir(parents=True, exist_ok=True)
     checks = []
     token = None
     target = urlsplit(args.url)
+    if args.modelscope_embed and (target.scheme != "https" or not re.fullmatch(r"(?:studio-[a-z0-9-]+\.api-inference\.modelscope\.net|[a-z0-9-]+\.ms\.show)", target.netloc)):
+        parser.error("Embedded acceptance is restricted to ModelScope Studio runtime hosts")
     if args.auth_from_git:
         if target.scheme != "https" or not re.fullmatch(r"studio-[a-z0-9-]+\.api-inference\.modelscope\.net", target.netloc):
             parser.error("Credential authentication is restricted to ModelScope Studio API runtime hosts")
@@ -48,7 +84,10 @@ def main():
         print("PASS", name, flush=True)
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch()
+        browser = pw.chromium.launch(args=["--no-proxy-server", "--disable-http2", "--disable-quic"] if args.auth_from_git or args.modelscope_embed else [])
+        def new_page(context):
+            page = context.new_page()
+            return ModelScopeEmbeddedPage(page) if args.modelscope_embed else page
         def make_context(**kwargs):
             context = browser.new_context(**kwargs)
             if token:
@@ -61,7 +100,7 @@ def main():
             return context
 
         context = make_context(viewport={"width": 1440, "height": 1080})
-        page = context.new_page()
+        page = new_page(context)
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         page.goto(args.url, wait_until="domcontentloaded")
@@ -85,8 +124,8 @@ def main():
             page.locator("#cr-input textarea").fill(text)
             page.locator("#cr-send").click()
             try:
-                page.wait_for_function("before => {const h=document.querySelector('.cr-result-header'); return h && h.dataset.resultId !== before}", arg=before, timeout=25000)
-                page.locator(".cr-result-header h2").filter(has_text=title).wait_for(timeout=25000)
+                page.wait_for_function("before => {const h=document.querySelector('.cr-result-header'); return h && h.dataset.resultId !== before}", arg=before, timeout=response_timeout)
+                page.locator(".cr-result-header h2").filter(has_text=title).wait_for(timeout=response_timeout)
             except Exception:
                 page.screenshot(path=str(output / "failure.png"), full_page=True)
                 print(page.locator("body").inner_text()[-6500:], flush=True)
@@ -177,7 +216,7 @@ def main():
         record("mobile expanded result no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
         page.screenshot(path=str(output / "08-mobile-expanded.png"), full_page=True)
         reduced = make_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
-        small = reduced.new_page()
+        small = new_page(reduced)
         small.goto(args.url, wait_until="domcontentloaded")
         small.locator("#cr-input textarea").wait_for()
         small.wait_for_function("window.__crChatInitialized === true")
@@ -188,7 +227,7 @@ def main():
                 fallback.add_init_script("Object.defineProperty(window, 'sessionStorage', {get(){throw new Error('storage unavailable')}})")
             if method == "initialization failure":
                 fallback.add_init_script("Object.defineProperty(window, '__crChatInitialized', {value:true,writable:false})")
-            probe = fallback.new_page()
+            probe = new_page(fallback)
             probe.goto(args.url, wait_until="domcontentloaded")
             probe.locator("#cr-input textarea").wait_for()
             probe.wait_for_function("window.__crChatInitialized === true")
@@ -211,6 +250,7 @@ def main():
         browser.close()
     report = {"url": args.url, "browser": "Playwright Chromium", "checks": checks,
               "authenticated_runtime": bool(token),
+              "modelscope_parent_harness": args.modelscope_embed,
               "note": "真实浏览器与业务数据；未启用模型，不代表ASR识别准确率验收。"}
     (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Browser acceptance: {len(checks)} checks passed")

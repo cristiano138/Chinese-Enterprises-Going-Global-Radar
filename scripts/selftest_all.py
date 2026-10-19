@@ -21,6 +21,7 @@ SCRIPTS = [
     "scripts/selftest_llm_reliability.py",
     "scripts/selftest_voice.py",
     "scripts/selftest_asr_safety.py",
+    "scripts/selftest_model_assets.py",
     "scripts/selftest_voice_confirmation.py",
     "scripts/selftest_law_store.py",
     "scripts/selftest_python311.py",
