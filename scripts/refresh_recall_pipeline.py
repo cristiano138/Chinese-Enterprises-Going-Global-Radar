@@ -22,8 +22,8 @@
     python scripts/refresh_recall_pipeline.py --law-id EU:32026R9999 --rebuild
 
     # 从时效性报告/日志提取变化的 law_id
-    python scripts/refresh_recall_pipeline.py --changed-file data/freshness_latest.json --rebuild
-    python scripts/refresh_recall_pipeline.py --changed-file data/freshness_log.jsonl --rebuild
+    python scripts/refresh_recall_pipeline.py --changed-file data/metadata_check_latest.json --rebuild
+    （链接级 data/freshness_latest.json 不含 law_id，不能作为变更信号来源）
 
     # 从新法规建档日志提取
     python scripts/refresh_recall_pipeline.py --from-intake-log --rebuild
@@ -50,8 +50,13 @@ if sys.platform == "win32":
 HERE = os.path.dirname(os.path.abspath(__file__))
 GO_RADAR_ROOT = os.path.dirname(HERE)
 PROJECT = GO_RADAR_ROOT  # 项目根目录就是 GO_RADAR_ROOT；上一级是 workbuddy 工作区
-SQLITE_DIR = os.path.join(PROJECT, "sqlite")
-DB_PATH = os.path.join(SQLITE_DIR, "regulations.sqlite3")
+if GO_RADAR_ROOT not in sys.path:
+    sys.path.insert(0, GO_RADAR_ROOT)
+from core import law_store  # noqa: E402
+
+# 与 core.law_store 保持同一套查找规则：优先 <项目>/sqlite，其次 <工作区>/sqlite。
+DB_PATH = str(law_store.db_path())
+SQLITE_DIR = os.path.dirname(DB_PATH)
 BUILD_SCRIPT = os.path.join(HERE, "build_recall_tree.py")
 INTAKE_LOG = os.path.join(SQLITE_DIR, "law_intake_log.jsonl")
 TASK_DIR = os.path.join(GO_RADAR_ROOT, "data", "material_tasks")

@@ -22,6 +22,8 @@ import os
 import sys
 import threading
 import time
+import urllib.error
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from concurrent.futures import TimeoutError as FuturesTimeout
 
@@ -529,3 +531,79 @@ def m3_actions(actions):
     if not meta["ok"]:
         return {}, meta
     return parse_keyed_lines(text), meta
+
+
+# ── 联网工具（DeepSeek Search / Fetch）────────────────────────────────
+# 文档：https://api-docs.deepseek.com/zh-cn/guides/search
+#   POST /v1/tools/search  {query, count, need_content}
+#   POST /v1/tools/fetch   {url}
+# 鉴权与对话接口相同（Bearer Token），按成功请求计费（5 元 / 1000 次），
+# Search QPS 100、Fetch QPS 25。这里只做“取回结果”，不替调用方判断真伪；
+# 发现层必须再用官方 API 核验候选，才能进入候选报告。
+WEB_SEARCH_PATH = "/v1/tools/search"
+WEB_FETCH_PATH = "/v1/tools/fetch"
+WEB_RETRY_STATUS = {408, 429, 500, 502, 503, 504}
+WEB_TIMEOUT = 45
+
+
+def _web_post(path, payload, timeout=None):
+    """POST 到 DeepSeek 工具接口；任何异常都走返回值，不抛出。"""
+    if not READY:
+        return None, {"ok": False, "reason": "模型链路未配置（缺 Token/Base/Model）",
+                      "status": None}
+    url = BASE + path
+    last = {"ok": False, "reason": "", "status": None}
+    for attempt in range(1, 4):
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+                headers={"Authorization": f"Bearer {TOKEN}",
+                         "Content-Type": "application/json"},
+                method="POST",
+            )
+            with urllib.request.urlopen(
+                    req, timeout=timeout or WEB_TIMEOUT) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data, {"ok": True, "reason": "", "status": resp.status}
+        except urllib.error.HTTPError as exc:
+            last["status"] = exc.code
+            last["reason"] = f"HTTP {exc.code}"
+            if exc.code in WEB_RETRY_STATUS and attempt < 3:
+                time.sleep(min(2 ** attempt, 10))
+                continue
+            return None, last
+        except Exception as exc:
+            last["reason"] = f"{type(exc).__name__}: {str(exc)[:120]}"
+            if attempt < 3:
+                time.sleep(min(2 ** attempt, 10))
+                continue
+            return None, last
+    return None, last
+
+
+def web_search(query, count=10, need_content=False, timeout=None):
+    """调用 DeepSeek 网页搜索，返回 (results, meta)。
+
+    results 为官方文档里的结果列表；失败时为空列表，meta 里有原因。
+    不会抛异常，调用方可直接降级。
+    """
+    payload = {
+        "query": str(query or "")[:128],
+        "count": max(1, min(int(count), 50)),
+        "need_content": bool(need_content),
+    }
+    data, meta = _web_post(WEB_SEARCH_PATH, payload, timeout)
+    if not isinstance(data, dict):
+        return [], meta
+    results = data.get("results")
+    return (results if isinstance(results, list) else []), meta
+
+
+def web_fetch(url, timeout=None):
+    """调用 DeepSeek 网页抓取，返回 ({title, content}, meta)。"""
+    data, meta = _web_post(WEB_FETCH_PATH, {"url": str(url or "")[:8192]}, timeout)
+    if not isinstance(data, dict):
+        return {"title": "", "content": ""}, meta
+    return {"title": data.get("title") or "",
+            "content": data.get("content") or ""}, meta

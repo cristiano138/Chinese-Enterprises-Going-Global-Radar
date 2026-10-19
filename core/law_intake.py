@@ -90,11 +90,12 @@ def _missing_db_result():
                       f"请从项目离线包放入 sqlite/regulations.sqlite3 后再调用"}
 
 
-def _connect():
+def _connect(backup=True):
     if not db_ready():
         raise FileNotFoundError(_missing_db_result()["reason"])
     con = law_store.connect(DB_PATH, writable=True)
-    law_store.backup(con, DB_PATH)
+    if backup:
+        law_store.backup(con, DB_PATH)
     return con
 
 
@@ -117,6 +118,11 @@ def _write_log(record):
         con.close()
 
 
+def _archiver(source):
+    """按调用来源如实描述建档方，避免把所有自动建档都说成 LLM。"""
+    return "新法规发现脚本" if source == "discover_new_laws" else "搜索校验LLM"
+
+
 def _seed_json_and_hash(payload):
     """跟库内现有 seed_json 一致的 JSON 序列化方式（排序键，中文不转义），
     并算出 seed_sha256（laws.seed_sha256 列是 NOT NULL，必须提供）。
@@ -127,8 +133,12 @@ def _seed_json_and_hash(payload):
 
 
 # ── EU ────────────────────────────────────────────────────────────────
-def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
+def intake_eu_law(celex, category="", note="", source="search_verify_llm",
+                  backup=True):
     """用 CELEX 号建档一条新 EU 法规骨架记录。
+
+    ``backup=False`` 供批量建档使用：调用方在整批开始前只备份一次，
+    避免每条法规都复制一份 2.2GB 库（见 scripts/discover_new_laws.py）。
 
     流程：
       1) 先查 laws 表是否已存在这个 law_id（EU:{celex}），存在就跳过，
@@ -146,7 +156,7 @@ def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
         return _missing_db_result()
     law_id = f"EU:{celex}"
     ts = _now_str()
-    con = _connect()
+    con = _connect(backup=backup)
     try:
         if _law_exists(con, law_id):
             _write_log(
@@ -222,8 +232,8 @@ def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
             "类目": category,
             "编号核对": "一致" if eli else "待查",
             "链接可打开": "待查",
-            "备注／问题": f"{note}｜由搜索校验LLM自主建档（{source}），待人工复核" if note
-            else f"由搜索校验LLM自主建档（{source}），待人工复核",
+            "备注／问题": f"{note}｜由{_archiver(source)}自主建档（{source}），待人工复核" if note
+            else f"由{_archiver(source)}自主建档（{source}），待人工复核",
         }
         seed_json, seed_sha256 = _seed_json_and_hash(seed_payload)
 
@@ -288,11 +298,13 @@ def intake_eu_law(celex, category="", note="", source="search_verify_llm"):
 
 
 # ── US ────────────────────────────────────────────────────────────────
-def intake_us_law(title_number, part_number, category="", agency="", source="search_verify_llm"):
+def intake_us_law(title_number, part_number, category="", agency="",
+                  source="search_verify_llm", backup=True):
     """用 Title+Part 号建档一条新 US 法规骨架记录。
 
     流程跟 intake_eu_law 对称：已存在跳过；查不到对应 eCFR Part 判定
     失败不建档；否则组装 seed_json、INSERT、写日志。
+    ``backup=False`` 的语义与 intake_eu_law 相同（批量建档时由调用方统一备份）。
 
     "查不到"的判定：eCFR structure API 没有现成的"单个 part 是否存在"
     查询，这里用 query_us_official() 的返回是否为空 dict 作为代理判断——
@@ -302,7 +314,7 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
         return _missing_db_result()
     law_id = f"US:{title_number}:{part_number}"
     ts = _now_str()
-    con = _connect()
+    con = _connect(backup=backup)
     try:
         if _law_exists(con, law_id):
             _write_log(
@@ -360,7 +372,7 @@ def intake_us_law(title_number, part_number, category="", agency="", source="sea
             "类目": category,
             "编号核对": "待查",
             "链接可打开": "待查",
-            "备注／问题": f"由搜索校验LLM自主建档（{source}），待人工复核；"
+            "备注／问题": f"由{_archiver(source)}自主建档（{source}），待人工复核；"
             f"最新FR文档号：{fr_doc or '未查到'}",
         }
         seed_json, seed_sha256 = _seed_json_and_hash(seed_payload)

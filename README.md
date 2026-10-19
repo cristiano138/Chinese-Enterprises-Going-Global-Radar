@@ -162,7 +162,32 @@
 >
 > **响应提速**：保留模型解析12s超时与内存缓存；2026-10-19新入口取消启动查询及模型预热，明确条件使用本地规则。实际响应取决于输入与服务状态，自检见 `scripts/selftest_m15.py`。
 >
-> **时效性监控（10-16，最小可行版）**：`scripts/check_freshness.py` 定期核验 86 条官方链接（状态 / Last-Modified / 内容哈希），日志追加 `data/freshness_log.jsonl`，最新态落在 `data/freshness_latest.json` 并显示在每个结果页页脚。口径三分：可访问 / 链接异常（4xx-5xx，待复核）/ 本机网络未连通（不判死链）。全文落库与定时推送为后续路线，详见 [`docs/时效性监控.md`](docs/时效性监控.md)；比赛说明材料见 [`docs/比赛说明材料七要素.md`](docs/比赛说明材料七要素.md)。
+> **时效性监控（10-19 更新）**：两层检查，北京时间每天 19:00、22:00 自动运行。
+> 链接级 `scripts/check_freshness.py` 核验 86 行法规去重后的 115 个官方链接
+> （57 eCFR + 29 EUR-Lex + 29 ELI），区分「取得内容 / 官方空响应 / 官方限流 /
+> 链接异常 / 本机网络未连通」，eCFR 走官方 versioner API 避免页面限流；
+> EU 链接改走欧盟出版局 Cellar 官方资源接口（按 CELEX 取 RDF + ETag），
+> 不再把 EUR-Lex / data.europa.eu 的 202 空体当成已核验；
+> 字段级 `scripts/check_metadata_freshness.py` 比对官方修订日期、生效日期与
+> 最新文档号。最新态写入 `data/freshness_latest.json` 与
+> `data/metadata_check_latest.json`，日志可回放。定时入口
+> `scripts/run_freshness_checks.py`；Windows 注册脚本
+> `scripts/install_freshness_schedule.ps1`，GitHub Actions 备选。
+> 详见 [`docs/时效性监控.md`](docs/时效性监控.md) 与
+> [`docs/时效性检查-实施计划-20261019.md`](docs/时效性检查-实施计划-20261019.md)。
+
+> **新法规发现（10-20）**：`scripts/discover_new_laws.py` 去官方源找
+> `laws` 表里还没有的法规——欧盟走 Cellar SPARQL、美国走 Federal Register API，
+> 结果与库内 CELEX / Title+Part 去重后写入 `data/new_law_candidates.json`。
+> `--web` 还会用 DeepSeek Search/Fetch（`/v1/tools/search`、`/v1/tools/fetch`）
+> 按 5 类商品 × 2 个市场搜索官方站点；**搜索只是线索，所有候选必须再经
+> 官方 API 核验**。官方接口说“没有”而搜索说“有”的冲突只写
+> `data/new_law_conflicts.jsonl` / `data/new_law_conflicts.json`
+> （`visibility=admin_only`），不进入候选报告，普通用户页面不展示。
+> **默认只出报告不写库**；`--intake` 才调用 `core/law_intake.py` 建骨架，
+> 且只建 LLM 判定为相关的候选。LLM 只做「是否相关 / 品类 / 一句话摘要」，
+> 编号、日期、链接全部来自官方接口。详见
+> [`docs/新法规发现链路.md`](docs/新法规发现链路.md)。
 
 > **语音输入（10-18）**：M1.5 的输入方式之一，**不是新的一条判定链路**。
 > - **只做「声音 → 文字」** —— 转写文本回填到输入框，用户看得见、改得动，确认后才出判定；转写按钮不会自动查询，点击“发送”时才使用输入框当前文字。
