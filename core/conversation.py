@@ -402,12 +402,16 @@ def _update_context(state, text, action, use_model=None):
         context.update(market="欧盟", country="德国", site="德国站")
     if "美国站" in destination_text and context.get("platform") == "亚马逊":
         context.update(market="美国", country="", site="美国站")
-    if re.search(r"(?:不|无|非|没有)带?电|不用电|无电池|不含电池", text):
+    if "是否带电暂不确定" in text:
+        context["electric"] = None
+    elif re.search(r"(?:不|无|非|没有)带?电|不用电|无电池|不含电池", text):
         context["electric"] = False
     elif re.search(r"带电|电动|含电池|有电池|充电|电池供电|插电", text):
         context["electric"] = True
     age_match = re.search(r"(?:适合|面向|供)?\s*(\d{1,2}\s*(?:[-—至到~]\s*\d{1,2})?\s*岁(?:以下|以上)?)", text)
-    if age_match:
+    if "年龄暂不确定" in text:
+        context["age"] = ""
+    elif age_match:
         context["age"] = age_match.group(1)
     elif "婴幼儿" in text:
         context["age"] = "婴幼儿（具体年龄未确认）"
@@ -415,11 +419,11 @@ def _update_context(state, text, action, use_model=None):
         if material in text:
             context["materials"] = material
             break
-    if re.search(r"\bfba\b|亚马逊(?:仓|配送)", text, re.I):
+    if re.search(r"(?<![A-Za-z])fba(?![A-Za-z])|亚马逊(?:仓|配送)", text, re.I):
         context["fulfillment"] = "FBA"
-    elif re.search(r"\bfbm\b|自发货|卖家自配送", text, re.I):
+    elif re.search(r"(?<![A-Za-z])fbm(?![A-Za-z])|自发货|自行发货|卖家自配送", text, re.I):
         context["fulfillment"] = "自发货"
-    elif re.search(r"(?:未定|没定|没有确定|还没选).{0,4}(?:履约|发货)|履约.*(?:未定|没定)", text):
+    elif re.search(r"(?:未定|没定|没有确定|还没选).{0,4}(?:履约|发货)|履约.*(?:未定|没定|暂不确定)", text):
         context["fulfillment"] = ""
     phase_words = [("选品", "选品与销售准入"), ("打样", "检测、标识与资料"),
                    ("准备上架", "商品刊登与提交"), ("准备上线", "商品刊登与提交"),
@@ -443,6 +447,12 @@ def _update_context(state, text, action, use_model=None):
             context["reports"].append(description)
     context["conditions"] = dict(context.get("conditions") or {}, age=context.get("age", ""),
                                   electric=context.get("electric"), materials=context.get("materials", ""))
+    deferred = list(context["conditions"].get("deferred_questions") or [])
+    for key, phrase in (("age", "年龄暂不确定"), ("electric", "是否带电暂不确定"),
+                        ("fulfillment", "履约方式暂不确定")):
+        if phrase in text and key not in deferred:
+            deferred.append(key)
+    context["conditions"]["deferred_questions"] = deferred
     if context.get("stage"):
         context["preparation"] = context["stage"]
     current_scope = _task_scope(context)
@@ -469,7 +479,7 @@ def _intent(text):
         return "readiness"
     if re.search(r"待办|下一步|做什么|怎么做|需要做|准备什么|准备哪些|缺什么|行动清单|材料清单", text):
         return "todo"
-    if re.search(r"法规|法律|依据|准入|相关要求|哪些要求|什么要求|适用|标签|标识|警告语", text):
+    if re.search(r"法规|法律|依据|准入|相关要求|哪些要求|什么要求|适用(?!年龄)|标签|标识|警告语", text):
         return "map"
     if re.search(r"全流程|全过程|从.*到|六个阶段|路线|开始做|怎么开始|如何开始|从哪(?:里)?开始", text):
         return "journey"
@@ -896,6 +906,45 @@ def _normalize(action, context, raw):
     if route.get("version"):
         result["data_version"]["journey"] = route["version"]
         result["data_version"]["sources_retrieved_on"] = route.get("retrieved_on", "未知")
+    return _action_guidance(result, context)
+
+
+def _action_guidance(result, context):
+    """Make existing tasks and one relevant unknown visible; never invent rules."""
+    result["next_actions"], result["follow_up"] = [], []
+    if (result.get("kind") not in ("todo", "journey", "readiness")
+            or context.get("category") != "儿童玩具" or context.get("market") != "欧盟"):
+        return result
+    seen = set()
+    for task in _all_tasks(result):
+        details = task.get("details", {})
+        if (task.get("id") in seen or task.get("group") != "下一步"
+                or task.get("status") in ("user_reported_done", "excluded", "historical")
+                or details.get("blocked_by") or not task.get("sources")):
+            continue
+        seen.add(task["id"])
+        result["next_actions"].append({"task_id": task["id"], "title": task["title"],
+            "reason": details.get("分组原因", "先核对适用条件与来源，再决定如何执行。"),
+            "status": task.get("status"), "sources": copy.deepcopy(task["sources"])})
+        if len(result["next_actions"]) == 3:
+            break
+    deferred = context.get("conditions", {}).get("deferred_questions", [])
+    candidates = [
+        ("age", not context.get("age"), "这款玩具面向哪个年龄段？可以按实际设计年龄直接填写。",
+         [("3岁以上", "适用年龄3岁以上"), ("3岁以下", "适用年龄3岁以下"), ("暂不确定", "年龄暂不确定")]),
+        ("electric", context.get("electric") is None, "这款玩具是否带电或含电池？这会影响需要进一步核对的分支。",
+         [("不带电", "这款产品不带电"), ("带电或含电池", "这款产品带电"), ("暂不确定", "是否带电暂不确定")]),
+        ("fulfillment", not context.get("fulfillment") and context.get("country") == "德国"
+         and context.get("platform") == "亚马逊" and context.get("site") == "德国站",
+         "计划怎样发货？FBA 是亚马逊仓储配送；自行发货由卖家安排履约。",
+         [("亚马逊配送 FBA", "采用FBA发货"), ("自行发货", "采用自行发货"), ("暂不确定", "履约方式暂不确定")]),
+    ]
+    for key, needed, question, options in candidates:
+        if needed and key not in deferred:
+            result["follow_up"] = [{"field": key, "question": question,
+                "options": [{"label": label, "text": text} for label, text in options],
+                "note": "补充后更新当前结果；暂不确定也可继续查看已有资料。"}]
+            break
     return result
 
 
@@ -1084,6 +1133,7 @@ def complete_task(state, result_id, item_id):
         result["raw"]["动作"] = [_todo_action(task) for task in result["items"]]
         result["raw"]["分组"] = [(group, [row for row in result["raw"]["动作"] if row.get("会话分组") == group])
                                  for group in ("下一步", "后续事项", "待确认", "用户自述已完成")]
+    _action_guidance(result, state["context"])
     return _record(state, result, replace=True)
 
 

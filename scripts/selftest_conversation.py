@@ -24,6 +24,55 @@ from core import conversation as service  # noqa: E402
 
 
 class ConversationTests(unittest.TestCase):
+    def test_positive_guidance_answers_keep_route_and_parse_chinese_fba(self):
+        state, result = service.respond("儿童玩具卖到德国亚马逊，从哪里开始")
+        for text in ("适用年龄3岁以上", "这款产品不带电", "采用FBA发货"):
+            state, result = service.respond(text, state)
+            self.assertEqual(result["kind"], "journey")
+        self.assertEqual(state["context"]["age"], "3岁以上")
+        self.assertFalse(state["context"]["electric"])
+        self.assertEqual(state["context"]["fulfillment"], "FBA")
+        self.assertEqual(result["follow_up"], [])
+
+    def test_guidance_asks_one_unknown_and_keeps_real_route(self):
+        state, result = service.respond("儿童玩具卖到德国亚马逊，从哪里开始")
+        self.assertEqual(result["kind"], "journey")
+        self.assertEqual(len(result["stages"]), 6)
+        self.assertEqual([q["field"] for q in result["follow_up"]], ["age"])
+        state, result = service.respond("年龄暂不确定", state)
+        self.assertEqual(state["context"]["age"], "")
+        self.assertEqual(result["follow_up"][0]["field"], "electric")
+        state, result = service.respond("是否带电暂不确定", state)
+        self.assertIsNone(state["context"]["electric"])
+        self.assertEqual(result["follow_up"][0]["field"], "fulfillment")
+        state, result = service.respond("采用自行发货", state)
+        self.assertEqual(state["context"]["fulfillment"], "自发货")
+        self.assertEqual(result["follow_up"], [])
+        state, result = service.respond("另一款产品是木制玩具", state)
+        self.assertEqual(result["follow_up"][0]["field"], "age")
+
+    def test_guidance_does_not_replace_law_queries_or_leak_market(self):
+        state, result = service.respond("儿童玩具卖到德国亚马逊，只看法规")
+        self.assertEqual(result["kind"], "map")
+        self.assertEqual(result["follow_up"], [])
+        state, result = service.respond("改卖美国，先看待办", state)
+        self.assertEqual(result["follow_up"], [])
+        self.assertEqual(result["next_actions"], [])
+
+    def test_next_action_preview_uses_real_tasks_and_refreshes_after_completion(self):
+        state, result = service.respond("3岁以上不带电玩具卖到德国亚马逊，从哪里开始")
+        actions = result["next_actions"]
+        self.assertGreater(len(actions), 0)
+        self.assertLessEqual(len(actions), 3)
+        tasks = {task["id"]: task for task in service._all_tasks(result)}
+        for action in actions:
+            self.assertEqual(action["sources"], tasks[action["task_id"]]["sources"])
+            self.assertFalse(tasks[action["task_id"]]["details"]["blocked_by"])
+        completed = actions[0]["task_id"]
+        state, result = service.complete_task(state, result["id"], completed)
+        self.assertNotIn(completed, [a["task_id"] for a in result["next_actions"]])
+        self.assertFalse(state["context"]["completed"][completed]["evidence_verified"])
+
     def start(self, text="3岁以上不带电毛绒玩具卖到德国亚马逊德国站，先看待办"):
         return service.respond(text, service.new_session())
 

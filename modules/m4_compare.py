@@ -13,7 +13,7 @@ PRD 附录 D4：
 本期实现：占位 + 历史回放数据结构。
     - 真实回放记录存储在 data/m4_replays.jsonl（每行一条 JSON）
     - 工具侧：本工具查询结果（来自 m1+m2+m3 合并展示）
-    - 通用侧：占位（本期未配置真实模型 Token，固定显示「尚未生成对照记录」）
+    - 通用侧：没有真实历史记录时显示「尚未生成对照记录」
 
 边界（PRD D4）：
     - 不诱导模型犯错
@@ -59,6 +59,25 @@ def build_question(observation_date: str = None) -> str:
     return M4_FIXED_QUESTION_TEMPLATE.format(观察日期=obs)
 
 
+def _valid_replay(record):
+    if not isinstance(record, dict):
+        return False
+    fields = ("timestamp", "question", "observation_date", "snapshot_version", "generic_answer",
+              "tool_answer", "generic_model_name", "verdict")
+    if any(not isinstance(record.get(key), str) or not record[key].strip() for key in fields):
+        return False
+    try:
+        stamp = datetime.fromisoformat(record["timestamp"].replace("Z", "+00:00"))
+        if stamp.tzinfo is None or date.fromisoformat(record["observation_date"]).isoformat() != record["observation_date"]:
+            return False
+    except (ValueError, TypeError):
+        return False
+    return (record["question"] == build_question(record["observation_date"])
+            and isinstance(record.get("tool_conditions"), dict) and bool(record["tool_conditions"])
+            and all(isinstance(record.get(key), (str, dict, list)) and bool(record[key])
+                    for key in ("source_coverage", "evidence_support")))
+
+
 def load_replays():
     """加载历史回放记录。每行一条 JSON；缺字段的容错跳过。
 
@@ -74,10 +93,12 @@ def load_replays():
             if not ln:
                 continue
             try:
-                out.append(json.loads(ln))
+                record = json.loads(ln)
+                if _valid_replay(record):
+                    out.append(record)
             except json.JSONDecodeError:
                 continue
-    return out
+    return sorted(out, key=lambda r: datetime.fromisoformat(r["timestamp"].replace("Z", "+00:00")), reverse=True)
 
 
 def append_replay(record: Dict) -> str:
@@ -87,10 +108,10 @@ def append_replay(record: Dict) -> str:
         generic_answer, tool_answer, generic_model_name,
         tool_conditions, source_coverage, evidence_support, verdict
     """
+    if not _valid_replay(record):
+        raise ValueError("回放必须包含同题同日的真实原答、模型、带时区时间和完整核验记录")
     path = os.path.join(PROJECT, "data", "m4_replays.jsonl")
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    if "timestamp" not in record:
-        record["timestamp"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
     with open(path, "a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
     return path
@@ -121,8 +142,9 @@ def query(category="儿童玩具", market="欧盟",
             "工具侧": "（本期仅展示儿童玩具 × 欧盟）",
         }
 
-    obs = observation_date or DEFAULT_OBSERVATION_DATE
     replays = load_replays()
+    obs = observation_date or (replays[0]["observation_date"] if replays else DEFAULT_OBSERVATION_DATE)
+    replays = [r for r in replays if r["observation_date"] == obs and r["question"] == build_question(obs)]
 
     return {
         "ok": True,

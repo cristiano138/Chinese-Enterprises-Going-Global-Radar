@@ -1,0 +1,272 @@
+{
+  "started_at_utc": "2026-10-19T09:30:27.995428+00:00",
+  "source_parts_preserved": true,
+  "parts": [
+    {
+      "name": "regulations.sqlite3(1).part001",
+      "bytes": 471859200,
+      "sha256": "e6c864c117734e590c4d66569bcf56dc72bdd2b2b26231ebff0426da69029123",
+      "verified": true
+    },
+    {
+      "name": "regulations.sqlite3(1).part002",
+      "bytes": 471859200,
+      "sha256": "05ffdb0451fe25421311306ee50f3ddcdb9195053ee6e6419922a8fa194b00d8",
+      "verified": true
+    },
+    {
+      "name": "regulations.sqlite3(1).part003",
+      "bytes": 471859200,
+      "sha256": "ab4c692a2a9ab5a6c16264a0e577dbf95b78a1e7fca3e7de8a9334f0c04747a7",
+      "verified": true
+    },
+    {
+      "name": "regulations.sqlite3(1).part004",
+      "bytes": 471859200,
+      "sha256": "90652b00f6301456d7dd1946f271dfe2ed261d06dc6ee2e0f0a7666bbf64d115",
+      "verified": true
+    },
+    {
+      "name": "regulations.sqlite3(1).part005",
+      "bytes": 346279936,
+      "sha256": "9fb6d77f303e7bd059c141b4ee9c476d53e8ee6bbc41889d8dbed78fbcbe811c",
+      "verified": true
+    }
+  ],
+  "steps": [
+    {
+      "step": "dry-run",
+      "exit_code": 0,
+      "log": "db-governance-dry-run.log"
+    },
+    {
+      "step": "apply",
+      "exit_code": 0,
+      "log": "db-governance-apply.log"
+    },
+    {
+      "step": "verify-only",
+      "exit_code": 0,
+      "log": "db-governance-verify-only.log"
+    }
+  ],
+  "restored_bytes": 2233716736,
+  "restored_sha256": "bfb145a5c8ccf6a65809ddc237bdf0e463efc4e03e1b6e52dee64c0f9150012b",
+  "backup": {
+    "file": "sqlite\\regulations.sqlite3.bak-governance-20261019-173037",
+    "bytes": 2233716736,
+    "sha256": "a9f117b72bfb4adc9e26bca7e75435275ff6f8c7b3b7bc8e2358eecd0cdcabf5"
+  },
+  "governed_sha256": "55a05b3a61ae9ad7d2b9af56f346a698ce2b9afcdf8ac439fc5c19f1b9b34f6c",
+  "quick_check": "ok",
+  "foreign_key_errors": 0,
+  "tables": {
+    "laws": {
+      "rows": 86,
+      "columns": [
+        "id",
+        "jurisdiction",
+        "title_number",
+        "part_number",
+        "celex",
+        "seed_json",
+        "seed_sha256",
+        "official_title",
+        "association_review",
+        "last_modification_date",
+        "in_force",
+        "latest_amendment_celex",
+        "latest_corrigendum_celex",
+        "latest_fr_document_number",
+        "fr_effective_on",
+        "updated_at",
+        "effective_status_detail"
+      ]
+    },
+    "documents": {
+      "rows": 1794,
+      "columns": [
+        "id",
+        "jurisdiction",
+        "kind",
+        "source_identifier",
+        "official_title",
+        "language",
+        "version_date",
+        "publication_date",
+        "legal_status",
+        "source_url",
+        "metadata_status",
+        "transfer_status",
+        "parse_status",
+        "full_text",
+        "notes"
+      ]
+    },
+    "law_documents": {
+      "rows": 1933,
+      "columns": [
+        "law_id",
+        "document_id",
+        "role"
+      ]
+    },
+    "units": {
+      "rows": 14371,
+      "columns": [
+        "document_id",
+        "ordinal",
+        "locator",
+        "unit_type",
+        "heading",
+        "body",
+        "source_fragment"
+      ]
+    },
+    "blobs": {
+      "rows": 3197,
+      "columns": [
+        "sha256",
+        "encoding",
+        "raw_size",
+        "payload"
+      ]
+    },
+    "responses": {
+      "rows": 3254,
+      "columns": [
+        "id",
+        "requested_url",
+        "final_url",
+        "accept_header",
+        "retrieved_at",
+        "status",
+        "media_type",
+        "headers_json",
+        "blob_sha256"
+      ]
+    }
+  },
+  "table_bytes": {
+    "artifacts": 532480,
+    "attempts": 1146880,
+    "blobs": 789241856,
+    "document_metadata": 27721728,
+    "documents": 280227840,
+    "documents_fts_config": 4096,
+    "documents_fts_content": 279773184,
+    "documents_fts_data": 33439744,
+    "documents_fts_docsize": 28672,
+    "documents_fts_idx": 151552,
+    "events": 1495040,
+    "idx_artifact_document": 192512,
+    "idx_units_document": 462848,
+    "law_documents": 110592,
+    "laws": 147456,
+    "relations": 610304,
+    "responses": 6283264,
+    "settings": 4096,
+    "source_citations": 540672,
+    "sqlite_autoindex_artifacts_1": 356352,
+    "sqlite_autoindex_blobs_1": 278528,
+    "sqlite_autoindex_document_metadata_1": 176128,
+    "sqlite_autoindex_documents_1": 61440,
+    "sqlite_autoindex_events_1": 1671168,
+    "sqlite_autoindex_law_documents_1": 135168,
+    "sqlite_autoindex_laws_1": 4096,
+    "sqlite_autoindex_relations_1": 634880,
+    "sqlite_autoindex_responses_1": 1458176,
+    "sqlite_autoindex_settings_1": 4096,
+    "sqlite_autoindex_source_citations_1": 98304,
+    "sqlite_autoindex_tasks_1": 90112,
+    "sqlite_autoindex_units_1": 507904,
+    "sqlite_schema": 12288,
+    "tasks": 2342912,
+    "units": 735678464
+  },
+  "law_store_status": {
+    "ok": true,
+    "reason": "SQLite 条款库已接入",
+    "laws": 86
+  },
+  "retrieval": [
+    {
+      "law_id": "EU:32009L0048",
+      "ok": true,
+      "unit_count": 3,
+      "release_eligible": false,
+      "units": [
+        {
+          "document_id": "EU-DOC:32009L0048",
+          "locator": "http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1.0006.02/DOC_1#art_1",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": false
+        },
+        {
+          "document_id": "EU-DOC:32009L0048",
+          "locator": "http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1.0006.02/DOC_1#art_2",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": false
+        },
+        {
+          "document_id": "EU-DOC:32009L0048",
+          "locator": "http://publications.europa.eu/resource/cellar/ab7917e6-0d8a-42e4-b4df-0bbd7d927cc1.0006.02/DOC_1#art_3",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": true
+        }
+      ]
+    },
+    {
+      "law_id": "EU:32023R0988",
+      "ok": true,
+      "unit_count": 3,
+      "release_eligible": false,
+      "units": [
+        {
+          "document_id": "EU-DOC:32023R0988",
+          "locator": "http://publications.europa.eu/resource/cellar/b5f5fb53-f906-11ed-a05c-01aa75ed71a1.0006.03/DOC_1#art_1",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32023R0988",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": false
+        },
+        {
+          "document_id": "EU-DOC:32023R0988",
+          "locator": "http://publications.europa.eu/resource/cellar/b5f5fb53-f906-11ed-a05c-01aa75ed71a1.0006.03/DOC_1#art_2",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32023R0988",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": false
+        },
+        {
+          "document_id": "EU-DOC:32023R0988",
+          "locator": "http://publications.europa.eu/resource/cellar/b5f5fb53-f906-11ed-a05c-01aa75ed71a1.0006.03/DOC_1#art_3",
+          "unit_type": "article",
+          "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32023R0988",
+          "kind": "eu_original",
+          "parse_status": "extracted_unreviewed",
+          "version_date": null,
+          "truncated": true
+        }
+      ]
+    }
+  ],
+  "completed_at_utc": "2026-10-19T09:32:39.746921+00:00",
+  "complete": true
+}

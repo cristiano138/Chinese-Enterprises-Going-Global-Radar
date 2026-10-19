@@ -90,6 +90,7 @@ def main():
         checks.append({"scenario": name, "passed": bool(condition)})
         (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         if not condition:
+            page.screenshot(path=str(output / "failure.png"), full_page=True)
             raise AssertionError(name)
         print("PASS", name, flush=True)
 
@@ -148,6 +149,13 @@ def main():
         ask("我想把毛绒玩具卖到德国亚马逊，请查看全流程", "从选品到售后")
         record("new answer scrolls into reading position", page.locator(".cr-result-header").bounding_box()["y"] >= -2 and page.locator(".cr-result-header").bounding_box()["y"] < 200)
         record("main route exposes all six stages", page.locator(".cr-stage").count() == 6)
+        record("main route offers current priority tasks", page.get_by_text("现在先核对这几项", exact=False).count() > 0)
+        for label, next_label in (("3岁以上", "不带电"), ("不带电", "亚马逊配送 FBA")):
+            page.get_by_role("button", name=label, exact=True).click()
+            page.get_by_role("button", name=next_label, exact=True).wait_for(timeout=response_timeout)
+        page.get_by_role("button", name="亚马逊配送 FBA", exact=True).click()
+        page.get_by_role("button", name="亚马逊配送 FBA", exact=True).wait_for(state="detached", timeout=response_timeout)
+        record("one question at a time updates known conditions", page.get_by_text("补充一个条件", exact=False).count() == 0 and page.locator(".cr-stage").count() == 6)
         page.locator(".cr-stage > button").first.click()
         task = page.locator(".cr-stage").first.locator(".cr-item > button").first
         task.click()
@@ -160,8 +168,9 @@ def main():
         page.screenshot(path=str(output / "03-stages-expanded.png"), full_page=True)
 
         ask("先看合规待办", "我现在需要做什么")
-        task = page.locator(".cr-item > button").first
+        task = page.locator(".cr-task > button").first
         task.click()
+        page.get_by_role("button", name="依据与官方原文", exact=False).first.wait_for()
         record("task card exposes evidence control", page.get_by_role("button", name="依据与官方原文", exact=False).count() > 0)
         page.get_by_role("button", name="依据与官方原文", exact=False).first.click()
         record("official source has a real external URL", page.locator(".cr-item a[href^='https://']").count() > 0)
@@ -211,6 +220,14 @@ def main():
         page.get_by_role("button", name="打开选中的结果", exact=True).click()
         page.wait_for_function("id => document.querySelector('.cr-result-header')?.dataset.resultId === id", arg=todo_id, timeout=25000)
         record("history opens the saved result", page.locator(".cr-result-header h2").inner_text() == "我现在需要做什么")
+
+        page.locator("#cr-coverage > button").click()
+        page.get_by_label("按法规编号检索条款", exact=True).fill("32009L0048")
+        page.get_by_role("button", name="检索已有条款", exact=True).click()
+        page.locator("#cr-clause-result").get_by_text("查看官方原文", exact=False).first.wait_for(timeout=response_timeout)
+        record("desktop database returns clauses with official provenance", page.locator("#cr-clause-result a[href*='eur-lex.europa.eu']").count() > 0 and "EU:32009L0048" in page.locator("#cr-clause-result").inner_text())
+        page.screenshot(path=str(output / "09-clause-retrieval.png"), full_page=True)
+        page.locator("#cr-coverage > button").click()
 
         page.locator("#cr-reset").click()
         page.locator("#cr-input textarea").wait_for()

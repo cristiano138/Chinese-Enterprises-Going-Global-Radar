@@ -18,7 +18,7 @@ from modules import m2_timeline
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
 JS = (ROOT / "assets" / "chat.js").read_text(encoding="utf-8")
-BUILD_VERSION = "2026.10.19-chat1.3"
+BUILD_VERSION = "2026.10.19-chat1.4"
 CAPABILITIES = [
     ("map", "相关法规", "查看品类与市场对应的法规、来源及覆盖范围"),
     ("todo", "合规待办", "整理下一步、后续准备与待确认事项"),
@@ -66,6 +66,22 @@ def context_html(context, label="当前理解"):
         return ""
     return '<div class="cr-context"><span class="cr-context-label">' + _e(label) + '</span>' + "".join(
         f"<span>{_e(value)}</span>" for value in parts) + '</div>'
+
+
+def clause_markdown(result):
+    parts = [_md(result.get("reason", ""))]
+    if result.get("law_id"):
+        parts.append("法规编号：" + _md(result["law_id"]))
+    for unit in result.get("units", []):
+        parts.append("**" + _md(unit.get("heading") or unit.get("locator")) + "**\n\n" +
+                     _md(unit.get("body")))
+        parts.append(_link("查看官方原文 ↗", unit.get("source_url")) + " · " +
+                     _link("条款定位 ↗", unit.get("locator")))
+        parts.append("版本日期：" + _md(unit.get("version_date") or "未记录，请核对原文") +
+                     " · 文本状态：" + _md(unit.get("parse_status") or "待核对"))
+        if unit.get("truncated"):
+            parts.append("本次仅展示部分正文，请打开官方原文查看完整条款。")
+    return "\n\n".join(parts)
 
 
 def _unpack(state, result, notice=""):
@@ -197,7 +213,8 @@ def _item_card(item, result_id, index, state_component, result_component, status
     status = item.get("status", "evidence_pending")
     status_text = STATUS.get(status, status or "待核验")
     label = f"{item.get('title', '查看条目')}  ·  {status_text}"
-    with gr.Accordion(label, open=False, key=key, preserved_by_key=["open"], elem_classes="cr-item"):
+    with gr.Accordion(label, open=False, key=key, preserved_by_key=["open"],
+                      elem_classes=["cr-item"] + (["cr-task"] if item.get("kind") == "task" else [])):
         if item.get("information_type") or item.get("stage_title"):
             gr.Markdown(" · ".join(_md(item.get(name)) for name in ("information_type", "stage_title") if item.get(name)))
         _details(item, key)
@@ -437,6 +454,23 @@ def build_ui():
                 '</span><h2>' + _e(current.get("title", "你的查询结果")) + '</h2><p>' +
                 _e(current.get("summary", "")) + '</p></div>')
             gr.HTML(context_html(current.get("context", {}), label="本次查询条件"))
+            for followup in current.get("follow_up", [])[:1]:
+                gr.Markdown("**补充一个条件** · " + _md(followup["question"]))
+                with gr.Row(elem_classes="cr-actions"):
+                    for index, choice in enumerate(followup["options"]):
+                        button = gr.Button(choice["label"], size="sm", key=f"{rid}-followup-{index}")
+                        button.click(lambda s, text=choice["text"]: submit_message(text, s),
+                                     inputs=session, outputs=outputs, show_progress="minimal",
+                                     concurrency_id="conversation", concurrency_limit=1)
+                gr.Markdown(_md(followup["note"]))
+            if kind == "journey":
+                priorities = current.get("next_actions", [])
+                preview = "**现在先核对这几项**\n\n" + "\n".join(
+                    f"{index + 1}. {_md(action['title'])}" for index, action in enumerate(priorities))
+                if not priorities:
+                    preview = "当前阶段暂无可直接推荐的未完成事项；请在下方核对待确认条件与前置事项。"
+                gr.Markdown(preview + "\n\n点击下方阶段标题，查看执行说明、资料与依据。",
+                            key=rid + "-priorities")
             version = current.get("data_version") or snapshot.SNAPSHOT_VERSION
             if isinstance(version, dict):
                 version = str(version.get("snapshot", "")) + " · 目录截止 " + str(version.get("cutoff", "未知")) + " · 查询 " + str(version.get("query_date", "未知")) + (" · 路线资料获取 " + str(version.get("sources_retrieved_on")) if version.get("sources_retrieved_on") else "")
@@ -465,11 +499,21 @@ def build_ui():
                     for index, replay in enumerate(raw["回放列表"]):
                         with gr.Accordion("真实回放 " + str(index + 1) + " · 点击查看", open=False,
                                           key=f"{rid}-replay-{index}", elem_classes="cr-item"):
+                            gr.Markdown("**历史记录** · 模型：" + _md(replay["generic_model_name"]) +
+                                        " · 录制：" + _md(replay["timestamp"]) +
+                                        " · 观察日期：" + _md(replay["observation_date"]) +
+                                        " · 快照：" + _md(replay["snapshot_version"]))
+                            gr.Markdown("原题：" + _md(replay["question"]))
                             with gr.Row():
                                 with gr.Column():
                                     gr.Markdown("**通用回答**\n\n" + _md(replay.get("generic_answer", "无记录")))
                                 with gr.Column():
                                     gr.Markdown("**本工具回答**\n\n" + _md(replay.get("tool_answer", "无记录")))
+                            for label, field in (("来源覆盖记录", "source_coverage"),
+                                                 ("证据支持记录", "evidence_support"), ("核验结论", "verdict")):
+                                value = replay[field]
+                                text = value if isinstance(value, str) else json.dumps(value, ensure_ascii=False, indent=2)
+                                gr.Markdown("**" + label + "**\n\n" + _md(text))
                 else:
                     gr.Markdown("尚无可展示的真实回放记录；不生成模拟对照结果。")
             elif kind == "multi":
@@ -576,7 +620,7 @@ def build_ui():
             clause_id = gr.Textbox(label="按法规编号检索条款", placeholder="如 16 CFR Part 1250")
             clause_heading = gr.Textbox(label="条款标题关键词（可选）")
             clause_btn = gr.Button("检索已有条款", size="sm")
-            clause_out = gr.Markdown()
+            clause_out = gr.Markdown(elem_id="cr-clause-result")
         gr.HTML('<div class="cr-footer">有来源，有边界。帮助你准备下一步，不构成法律意见。 · ' + BUILD_VERSION + '</div>')
 
         outputs = [session, active, chat, welcome, examples, context, text, status, download, settings, history]
@@ -667,11 +711,7 @@ def build_ui():
 
         def search_clauses(identifier, heading):
             result = law_store.retrieve(identifier or "", heading or "")
-            text_parts = [_md(result.get("reason", ""))]
-            for unit in result.get("units", []):
-                text_parts.append("**" + _md(unit.get("heading") or unit.get("locator")) + "**\n\n" +
-                                  _md(unit.get("body")) + "\n\n" + _md(unit.get("parse_status")))
-            return "\n\n".join(text_parts)
+            return clause_markdown(result)
 
         clause_btn.click(search_clauses, inputs=[clause_id, clause_heading], outputs=clause_out)
         # Bind initialization to the component-ready event; the launch-time

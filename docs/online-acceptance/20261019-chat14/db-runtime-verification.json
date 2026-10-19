@@ -1,0 +1,32 @@
+{
+  "passed": true,
+  "laws_compared": 86,
+  "runtime_status": {
+    "ok": true,
+    "reason": "SQLite 条款库已接入",
+    "laws": 86
+  },
+  "retrieval_matches_full_database": true,
+  "excluded_raw_requests_and_blobs": true,
+  "release_eligible": false,
+  "runtime_bytes": 124350464,
+  "manifest": {
+    "format": 1,
+    "asset_path": "runtime-assets/law-store.bundle",
+    "compression": "gzip",
+    "database_bytes": 124350464,
+    "database_sha256": "0e37d0e31b4974d0baa4d3a02ee455284b475d6c78c854285525cd0f584e8091",
+    "source_database_sha256": "55a05b3a61ae9ad7d2b9af56f346a698ce2b9afcdf8ac439fc5c19f1b9b34f6c",
+    "source_manifest_sha256": "c08a8329253071b026dea38b96a045378486d0552626af82219328e1d7703f0e",
+    "tables": {
+      "laws": 86,
+      "documents": 1794,
+      "law_documents": 1933,
+      "units": 14371
+    },
+    "release_eligible": false,
+    "scope": "Extracted clauses and provenance from the supplied full database; no automatic legal sign-off",
+    "bundle_bytes": 24912515,
+    "bundle_sha256": "ebc1878019e321825bbfa5ed7e16b2af5bc631b5d2e783ad5caa012d4f938ab0"
+  }
+}

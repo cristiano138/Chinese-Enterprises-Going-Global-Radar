@@ -22,6 +22,18 @@ import ui_chat
 
 
 class ChatUITests(unittest.TestCase):
+    def test_clause_render_retains_source_version_and_truncation(self):
+        text = ui_chat.clause_markdown({"ok": True, "law_id": "EU:32009L0048", "reason": "抽取文本",
+            "units": [{"heading": "Article 1", "body": "<script>test</script>",
+                       "source_url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+                       "locator": "https://example.invalid/#art1", "version_date": None,
+                       "parse_status": "extracted_unreviewed", "truncated": True}]})
+        self.assertIn("eur-lex.europa.eu", text)
+        self.assertIn("extracted_unreviewed", text)
+        self.assertIn("未记录", text)
+        self.assertIn("部分正文", text)
+        self.assertNotIn("<script>", text)
+
     def test_build_does_not_execute_queries_or_call_a_model(self):
         with ExitStack() as stack:
             probes = [stack.enter_context(patch.object(module, "query", side_effect=AssertionError("eager query")))

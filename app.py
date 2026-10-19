@@ -3,12 +3,19 @@
 先核对打包语音模型是否仍为 LFS 指针，再转发至 app_main.py 启动应用。
 模型补齐失败时保留文字查询服务，并在运行日志中记录不含敏感信息的错误类别。
 
-build: 2026.10.19-chat1.3 修复部署后语音模型仅有 LFS 指针的情况
+build: 2026.10.19-chat1.4 接入正式库条款检索与主线行动指引
 """
 import os
 import runpy
 
 from core.model_assets import ensure_bundled_whisper
+from core.database_assets import ensure_bundled_database
+
+try:
+    if ensure_bundled_database():
+        print("[LAW] Public clause database verified and prepared", flush=True)
+except Exception as error:
+    print("[LAW] Clause asset preparation failed: " + type(error).__name__, flush=True)
 
 try:
     if ensure_bundled_whisper():

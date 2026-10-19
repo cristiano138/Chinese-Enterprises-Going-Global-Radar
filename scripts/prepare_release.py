@@ -29,7 +29,7 @@ SOURCE_DIRS = {"core", "modules", "scripts", "assets", "docs", "tools"}
 DATA_FILES = {
     "语料核对表_完整版.csv", "语料核对表_骨架总表.csv",
     "eu_regulations.csv", "us_regulations.csv", "snapshot.json",
-    "journey_sources.json", "freshness_latest.json", "data_quality_report.json",
+    "journey_sources.json", "freshness_latest.json", "data_quality_report.json", "law_store_manifest.json",
     "数据总览.md", "指南核对报告.md", "欧盟待补清单.md",
     "链接检查报告.txt", "骨架体检报告.txt",
 }
@@ -42,6 +42,7 @@ REQUIRED_FILES = {
 REQUIRED_FILES.update("core/" + name for name in (
     "__init__.py", "actions.py", "asr.py", "copy_zh.py", "corpus.py", "dates.py",
     "law_content.py", "law_intake.py", "law_store.py", "llm.py", "snapshot.py", "verify.py",
+    "model_assets.py", "database_assets.py",
 ))
 REQUIRED_FILES.update("modules/" + name for name in (
     "__init__.py", "m1_map.py", "m15_router.py", "m2_timeline.py", "m3_todo.py",
