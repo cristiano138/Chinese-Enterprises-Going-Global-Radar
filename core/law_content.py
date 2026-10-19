@@ -194,6 +194,7 @@ def apply(candidate_path, expected_sha256, path=None):
     if parsed != body:
         raise ValueError('正文与留存的官方响应解析不一致')
     with closing(law_store.connect(path, writable=True)) as con:
+        # 备份必须在 BEGIN IMMEDIATE 之前：持锁连接调用 backup 会自我死锁。
         backup_path = law_store.backup(con, path)
         try:
             con.execute('BEGIN IMMEDIATE')

@@ -167,7 +167,7 @@ def _cache_get(key):
         return None
 
 
-def _prune_cache(reserve=0):
+def _prune_cache(reserve=0, replacing=None):
     entries = []
     now = time.time()
     with os.scandir(CACHE_DIR) as files:
@@ -176,9 +176,29 @@ def _prune_cache(reserve=0):
                     and entry.is_file(follow_symlinks=False)):
                 continue
             info = entry.stat(follow_symlinks=False)
-            if (not 0 <= now - info.st_mtime < CACHE_TTL
+            age = now - info.st_mtime
+            if age < 0:
+                # Filesystem timestamp conversion can put a just-written file
+                # one floating-point tick ahead of time.time() on Windows.
+                # Confirm the payload's creation time instead of deleting a
+                # valid fresh entry merely because its metadata rounded up.
+                try:
+                    with open(entry.path, "rb") as fh:
+                        payload = fh.read(CACHE_MAX_ENTRY_BYTES + 1)
+                    created = json.loads(payload).get("created")
+                    if (len(payload) > CACHE_MAX_ENTRY_BYTES or isinstance(created, bool)
+                            or not isinstance(created, (int, float)) or not math.isfinite(created)):
+                        raise ValueError
+                    age = now - created
+                except (OSError, ValueError, TypeError, AttributeError):
+                    age = -1
+            if (not 0 <= age < CACHE_TTL
                     or info.st_size > CACHE_MAX_ENTRY_BYTES):
                 os.unlink(entry.path)
+            elif entry.path == replacing:
+                # The reserved payload replaces this entry; it consumes no
+                # additional entry and its old bytes must not be counted twice.
+                continue
             else:
                 entries.append((info.st_mtime, entry.path, info.st_size))
     total = sum(item[2] for item in entries)
@@ -195,13 +215,14 @@ def _cache_put(key, text):
         return
     temporary = None
     try:
-        payload = json.dumps({"created": time.time(), "text": text},
+        created = time.time()
+        payload = json.dumps({"created": created, "text": text},
                              ensure_ascii=False).encode("utf-8")
         if len(payload) > min(CACHE_MAX_ENTRY_BYTES, CACHE_MAX_BYTES):
             return
         with _cache_lock:
             os.makedirs(CACHE_DIR, exist_ok=True)
-            _prune_cache(reserve=len(payload))
+            _prune_cache(reserve=len(payload), replacing=_cache_path(key))
             with tempfile.NamedTemporaryFile(mode="wb", dir=CACHE_DIR,
                                              prefix=".asr_", suffix=".tmp",
                                              delete=False) as fh:
@@ -209,6 +230,9 @@ def _cache_put(key, text):
                 fh.write(payload)
                 fh.flush()
                 os.fsync(fh.fileno())
+            # Use the payload's clock for TTL cleanup too. Filesystem commit
+            # time is a different sample and can briefly round into the future.
+            os.utime(temporary, (created, created))
             os.replace(temporary, _cache_path(key))
             temporary = None
     except Exception:
@@ -401,6 +425,12 @@ def _transcribe_work(path, deadline, state):
         raw = _transcribe_cloud(audio, timeout=_remaining(deadline))
     else:
         raw = _transcribe_local(audio)
+    # Event.wait() may return at a scheduler boundary slightly before the clock
+    # deadline. Once the caller has abandoned this request, a late backend result
+    # must never reach the optional disk cache, even with clock granularity.
+    cancelled = state.get("cancelled")
+    if cancelled is not None and cancelled.is_set():
+        raise _ASRFailure("语音转写超时，请稍后重试")
     _remaining(deadline)
     if not isinstance(raw, str):
         raise _ASRFailure("语音服务返回格式无效")
@@ -424,7 +454,8 @@ def transcribe(path):
         return "", meta
 
     done = threading.Event()
-    state = {"backend": "", "text": "", "cached": False, "reason": ""}
+    state = {"backend": "", "text": "", "cached": False, "reason": "",
+             "cancelled": threading.Event()}
 
     def work():
         try:
@@ -446,6 +477,7 @@ def transcribe(path):
         return "", meta
 
     if not done.wait(max(0.0, deadline - time.monotonic())):
+        state["cancelled"].set()
         meta.update(reason="语音转写超时，请稍后重试", backend=state["backend"],
                     seconds=round(time.monotonic() - started, 2))
         return "", meta

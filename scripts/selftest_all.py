@@ -23,6 +23,10 @@ SCRIPTS = [
     "scripts/selftest_asr_safety.py",
     "scripts/selftest_voice_confirmation.py",
     "scripts/selftest_law_store.py",
+    "scripts/selftest_python311.py",
+    "scripts/selftest_journey.py",
+    "scripts/selftest_conversation.py",
+    "scripts/selftest_chat_ui.py",
 ]
 
 
@@ -49,6 +53,7 @@ def main() -> int:
     print("LLM 可靠性: PASS")
     print("语音输入: PASS")
     print("语音边界: PASS")
+    print("Python 3.11 / 六阶段 / 会话服务 / 聊天界面: PASS")
     print("失败数：0")
     return 0
 

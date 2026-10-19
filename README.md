@@ -1,11 +1,22 @@
 # ComplianceRadar 出海合规雷达
 
+2026-10-19 界面更新：默认入口改为简洁聊天，七项原功能通过“更多功能”或自然语言按需使用。
+回答支持可展开任务、法规来源、区域对照表、日期节点和六阶段路线；不在首页预生成法律结论。
+首期重点为儿童玩具 → 德国 → 亚马逊德国站，其他范围保留原查询能力并展示覆盖缺口。
+
+- [部署、从项目根目录上传 GitHub / 魔搭](docs/部署与上传.md)
+- [本轮改动、验证与演示](docs/界面优化交付.md)
+- [主路线官方资料与尚待核验内容](docs/主路线资料覆盖.md)
+
+建议使用 Python 3.11 和 `requirements.txt` 中固定的 Gradio 6.2.0。下面的原有项目资料继续保留；
+其中历史界面说明、覆盖描述与统计不代表本次已完成逐条专业法律核验。
+
 > **Sellers enter "what I sell + where I sell it" → get which regulations apply, what changed recently, and what to do next — every conclusion backed by a link to its official source.**
 
 面向出海卖家的法规合规自查工具。输入「商品类目 + 目标市场」，输出**适用法规清单 · 法规变化时间线 · 可执行待办清单**，**每条结论强制附官方原文链接**。
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![Event](https://img.shields.io/badge/AI%2BX%20Hackathon-2026-orange.svg)](#)
 
 ---
@@ -20,7 +31,7 @@
 - [快速开始](#快速开始)
 - [项目结构](#项目结构)
 - [数据来源与引用规范](#数据来源与引用规范)
-- [当前进展](#当前进展)
+- [历史实现记录](#历史实现记录)
 - [路线图](#路线图)
 - [团队分工](#团队分工)
 - [合规声明](#合规声明)
@@ -43,22 +54,22 @@
 | **更新跟不动** | 法规频繁修订甚至整部被取代，卖家往往事后才知道 |
 | **通用 AI 不可靠** | 直接问大模型容易编造条款号、引用已被废止的旧法规，且不给来源 |
 
-### 两个真实案例
+### 两种需要核实的风险
 
-**案例一：法规已被取代，AI 还在答旧法**
+**法规生效与一般适用日期不同**
 
-欧盟儿童玩具法规已经更替：
+欧盟新玩具法规处于过渡安排中：
 
 - **Regulation (EU) 2025/2509** 于 2025-11-26 通过，**2026-01-01 生效**
-- 将于 **2030-08-01 起全面取代** 沿用十余年的 **Directive 2009/48/EC**
+- 一般自 **2030-08-01 适用**；部分条文自2026-01-01提前适用，旧 **Directive 2009/48/EC** 的废止及产品过渡另有安排
 
-一个做了十几年玩具出口的卖家，如果现在还按旧指令准备合规，就选错了标准。而直接问通用大模型，它多半还会回答已经过时的 `Directive 2009/48/EC`，且不提供来源链接。
+不能因为新法规已生效，就把旧指令整体提前判为无效。具体产品仍须按适用日期、过渡条件和实际投放时间核验。[新法规官方原文第56、57、59条](https://eur-lex.europa.eu/eli/reg/2025/2509/oj/eng)。
 
-**案例二：AI 会编造不存在的法规编号**
+**法规编号和模型回答需要证据**
 
-我们在实测中向通用大模型询问法规信息时，曾得到一个编号 `32015R1000`。经欧盟官方接口（EUR-Lex SPARQL）逐一核查，**这个编号在官方数据库中根本不存在**。
+模型回答中的法规编号必须回到官方来源核实。当前仓库没有可以公开核验的真实模型对照回放，不能据此宣布某个编号不存在，也不能预写本工具与通用模型的胜负。
 
-这类错误对卖家是致命的 —— 照着一个不存在的编号去准备合规，等于白做。而**大模型不会告诉你它在编**，它会用同样肯定的语气说出来。
+模型对照模块如实显示“尚未生成对照记录”；目录查询、链接可访问和机器读取都不代表具体产品已经通过合规审核。
 
 **这正是本工具的切入点：不靠 AI「记得」法规，而是让它「查」到法规 —— 且每条结论都能点开官方原文核实。**
 
@@ -143,12 +154,12 @@
 > - **依据可追溯** —— 判定卡分开显示模型给的「识别依据」与词典的「词典命中」「槽位来源」，不再用词典命中词冒充路由理由。
 > - **降级如实标注** —— `route_via` 按「模型是否真的贡献了槽位」判定；模型调用失败时标「本地词典解析」，不会与「模型解析不可用」的提示自相矛盾。
 >
-> **响应提速（10-16）**：模型解析加 12s 硬超时（实测模糊输入曾拖满 26s+）、解析结果内存缓存（键为 sha256，不含原文，守住「不落盘」红线）、启动后台预热演示常用输入 —— 重复/例句输入毫秒级返回。自检见 `scripts/selftest_m15.py`（30 项）。
+> **响应提速**：保留模型解析12s超时与内存缓存；2026-10-19新入口取消启动查询及模型预热，明确条件使用本地规则。实际响应取决于输入与服务状态，自检见 `scripts/selftest_m15.py`。
 >
 > **时效性监控（10-16，最小可行版）**：`scripts/check_freshness.py` 定期核验 86 条官方链接（状态 / Last-Modified / 内容哈希），日志追加 `data/freshness_log.jsonl`，最新态落在 `data/freshness_latest.json` 并显示在每个结果页页脚。口径三分：可访问 / 链接异常（4xx-5xx，待复核）/ 本机网络未连通（不判死链）。全文落库与定时推送为后续路线，详见 [`docs/时效性监控.md`](docs/时效性监控.md)；比赛说明材料见 [`docs/比赛说明材料七要素.md`](docs/比赛说明材料七要素.md)。
 
 > **语音输入（10-18）**：M1.5 的输入方式之一，**不是新的一条判定链路**。
-> - **只做「声音 → 文字」** —— 转写文本回填到输入框，用户看得见、改得动，确认后才出判定；转写按钮不会自动调用 M1.5，点击「开始判定」时才使用输入框当前文字。
+> - **只做「声音 → 文字」** —— 转写文本回填到输入框，用户看得见、改得动，确认后才出判定；转写按钮不会自动查询，点击“发送”时才使用输入框当前文字。
 > - **必须人工核对** —— 转写错误可能改变识别到的品类或市场，不能把识别结果直接当作合规结论。转写失败只返回原因，不覆盖原有输入，也不产出法规结论。
 > - **双后端，零密钥可跑** —— 本地 `faster-whisper` 或云端 `/audio/transcriptions`；两者都不可用时语音入口自动置灰，打字链路完全不受影响。
 > - **隐私口径** —— 应用不另存录音，转写缓存默认关闭；启用云端 ASR 时录音会发送到配置的服务，不应输入客户敏感信息。
@@ -215,25 +226,25 @@
 
 ---
 
-## 魔搭部署与版本核验（2026-10-17）
+## 魔搭部署与版本核验
 
-当前采用 Python + Gradio，`app.py` 转发到 `app_main.py`；保留淡黄色工作台、开场动画、M1/M1.5/M2/M3/M5/M6/M7 和 CSV 导出，M4 仍为占位。法规查询与校验由规则执行，模型仅辅助理解与摘要，失败自动降级。DeepSeek 的三个配置变量保持不变。
+当前采用 Python + Gradio，`app.py` 转发到 `app_main.py`，默认构建 `ui_chat.py` 聊天界面。原七模块及自然语言、可选语音输入保留，M4仍缺真实回放。模型只辅助输入理解与可选摘要，失败回到本地规则。
 
-- 根目录 `ms_deploy.json` 使用官方 schema，选择免费 CPU、Python 3.11 镜像和 Gradio 6.2.0；`requirements.txt` 与其一致。
+- 根目录 `ms_deploy.json` 使用官方 schema、CPU资源、Python 3.11镜像和 Gradio 6.2.0；`requirements.txt` 与SDK版本一致。以目标空间实际资源选项和费用显示为准。
 - 服务监听 `0.0.0.0`，端口优先 `PORT`、其次 `SERVER_PORT`、默认 7860。已有空间需要在设置中核对 SDK、版本和基础镜像；上传 JSON 本身不证明设置已生效。
-- 更新已有空间：https://www.modelscope.cn/studios/zhanxy2551/ComplianceRadar 。登录有写权限的账号，进入文件页，按原目录覆盖上传运行文件，不要套额外的顶层文件夹。
-- 必需内容：`app.py`、`app_main.py`、`requirements.txt`、`ms_deploy.json`、完整 `core/`、完整 `modules/`、`data/语料核对表_完整版.csv`、`data/snapshot.json`、`data/data_quality_report.json`。建议同时上传 LICENSE、THIRD_PARTY_NOTICES.md 和本说明。
+- 登录有写权限的目标空间，复制其实际Git仓库地址，不根据展示名猜地址。最终上传源固定为 `E:\workbuddy\2026-10-14-01-02-52\compliance-radar`。
+- 必需内容包括 `app.py`、`app_main.py`、`ui_chat.py`、`assets/`、`requirements.txt`、`ms_deploy.json`、完整 `core/`、`modules/`、主CSV、`data/snapshot.json`、`data/journey_sources.json`。推荐从根目录使用 `scripts/prepare_release.py` 生成完整源码ZIP。
 - 严禁上传 `.env`、访问令牌、`.git/`、虚拟环境、缓存和临时导出。网页上传不一定遵守 `.gitignore`，必须核对文件清单。
 - 在平台环境变量中设置 `MODEL_API_TOKEN`（私密）、`MODEL_API_BASE`、`MODEL_NAME`，沿用现有 DeepSeek 配置；不配置时仅确定性功能可用，不把令牌预填到前端。
-- 上传后重建或重启，确认日志无安装或启动错误；对比平台文件中的 `app_main.py` 与本地版本，然后打开应用检查淡黄色、左侧导航、区域对比、多区域汇总、OPC 及 CSV 下载。仅空间页面返回 200 或显示运行中，不算新版本已上传验证。
-- 本轮完整回归在本地现有 Gradio 环境通过；目标 Gradio 6.2.0 的独立环境测试与平台构建须单独验证，不冒充已通过。
+- 上传后使用空间的部署操作，检查依赖和运行日志，再验收聊天入口、七功能、任务来源、状态隔离与CSV下载。仅空间页面返回200或Git推送成功，不算部署验收。
+- 本地专用验证环境已使用 Python 3.11.17 / Gradio 6.2.0；本轮没有执行魔搭构建或上传。本地最终测试状态见[界面优化交付](docs/界面优化交付.md)。
 - 美国 57 条法规仍待人工核对，M3/M7 禁止据其生成执行任务；此版本只能按数据边界试用，不构成法律意见。
 
-官方配置定义：https://modelscope.cn/api/v1/studios/deploy_schema.json
+完整命令、GitHub候选分支、魔搭默认分支核对、密钥配置与回退见[部署与上传](docs/部署与上传.md)。[官方配置定义](https://modelscope.cn/api/v1/studios/deploy_schema.json)。
 
 ## SQLite 条款检索与正文更新（2026-10-18）
 
-构建版本 `2026.10.18-db1` 增加独立“条款检索”页签。通过 `COMPLIANCE_DB_PATH` 指向已有 SQLite 法规库，或放置于 `sqlite/regulations.sqlite3`。缺库时明确提示，CSV 查询仍可用，不会创建空库。先按 CELEX / `US:16:1250` / `16 CFR Part 1250` 精确定位，再按 heading 关键词筛选；默认最多返回 12 个片段、正文总预算 24000 字符。
+此前构建版本 `2026.10.18-db1` 增加条款检索；本轮在折叠的资料覆盖区域保留该能力。通过 `COMPLIANCE_DB_PATH` 指向已有 SQLite 法规库，或放置于 `sqlite/regulations.sqlite3`。缺库时明确提示，CSV 查询仍可用，不会创建空库。先按 CELEX / `US:16:1250` / `16 CFR Part 1250` 精确定位，再按 heading 关键词筛选；默认最多返回12个片段、正文总预算24000字符。
 
 `scripts/sync_law_content.py --law US:16:1250` 只抓取官方正文并生成 `pending_review` 候选，包含原始响应、SHA256、正文差异和切片。审阅后使用 `--apply 候选文件 --confirm-sha256 正文哈希 --db 已有库路径` 才写入；写前备份，事务内同步正文、units 与可用的 FTS，异常回滚。单片最多 12000 字符，不丢弃超长正文。新法规仍为待核对，`release_eligible=false`，不自动进入执行动作。
 
@@ -243,127 +254,58 @@
 
 > ℹ️ M1 / M2 / M3 / M5 / M6 / M7 已实现可用；M4（对照演示）仍为占位。部署配置已补齐，线上版本以创空间重建后的运行页面为准。
 
-### 环境要求
+### 从项目根目录安装与启动
 
-- Python 3.10+
-- 可访问官方数据源
+推荐 Python 3.11，运行依赖固定 Gradio 6.2.0。不配置模型或语音密钥也能查询现有本地语料；联网更新语料、调用模型与语音后端需要各自的网络或配置。
 
-### 安装
+在PowerShell执行；已有可用 `.venv` 时跳过创建步骤：
 
-```bash
-git clone https://github.com/<your-username>/compliance-radar.git
-cd compliance-radar
-pip install -r requirements.txt
+```powershell
+Set-Location -LiteralPath 'E:\workbuddy\2026-10-14-01-02-52\compliance-radar'
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe app.py
 ```
 
-### 配置
+浏览器打开 `http://127.0.0.1:7860`。没有 `py` 或使用 `uv` 时，见[部署与上传](docs/部署与上传.md)的完整安装方法。新安装请从实际GitHub仓库地址克隆，不使用本文虚构仓库名。
 
-复制环境变量模板，填入你的 API Token：
+首屏输入产品和市场，或点“更多功能”打开法规地图、变化时间线、待办、模型对照、区域对比、多市场汇总、OPC准备。明确条件使用本地规则，结果保留来源、快照和待核对提示；来源与任务按需展开，M3/M7可导出CSV。新建对话清空当前业务，历史结果保留其原始条件。
 
-```bash
-cp .env.example .env
-# 编辑 .env，填入 MODEL_API_TOKEN
+### 可选模型与命令行
+
+已有 `.env` 请保留。首次需要模型时，可从 `.env.example` 复制模板，填写 `MODEL_API_TOKEN`、`MODEL_API_BASE`、`MODEL_NAME` 并重启；不要提交 `.env` 或真实密钥。
+
+原模块CLI仍可调用。新对话服务的条件约束与安全过滤由 `core/conversation.py` 提供，直接调用旧模块时须留意原语料局限：
+
+```powershell
+.\.venv\Scripts\python.exe modules\m1_map.py 儿童玩具 欧盟 --no-llm
+.\.venv\Scripts\python.exe modules\m2_timeline.py 儿童玩具 美国 '近 6 个月' --no-llm
+.\.venv\Scripts\python.exe modules\m3_todo.py 儿童玩具 欧盟 --no-llm
+.\.venv\Scripts\python.exe modules\m3_todo.py 儿童玩具 欧盟 --no-llm --export
+.\.venv\Scripts\python.exe modules\m4_compare.py
+.\.venv\Scripts\python.exe scripts\selftest_all.py
 ```
 
-> 🔒 **安全提示**：API Token 必须通过环境变量传入，不要写死在代码里。本项目已在 `.gitignore` 中排除 `.env`。
+`selftest_all.py` 为16个离线入口的总门禁；它会刷新数据质量检查报告。离线测试不能替代真实模型、语音、正文库、浏览器或魔搭构建的验收，实际状态见[界面优化交付](docs/界面优化交付.md)。
 
-### 运行
-
-> ⚙️ **先确认解释器。** 本机依赖装在 WorkBuddy 的隔离 venv 里，**不要用系统 PATH 上的裸 `python`**
-> （那是另一个解释器，7 个依赖一个都没装）：
->
-> ```
-> C:\Users\Kevin\.workbuddy\binaries\python\envs\default\Scripts\python.exe
-> ```
->
-> 下文用 `$PY` 代指它：
->
-> ```bash
-> PY="C:/Users/Kevin/.workbuddy/binaries/python/envs/default/Scripts/python.exe"
-> ```
->
-> 用错解释器**不一定报错**——`app.py` 会直接 `ModuleNotFoundError: No module named 'gradio'`，
-> 但 `m1_map.py` 只是**静默降级**（少了模型润色却看不出来）。详见
-> [`docs/07-运行指南.md`](docs/07-运行指南.md) 第零节。
-
-**M1 / M2 / M3 已可用**（M4 占位 / 缺真实历史回放）：
-
-```bash
-$PY -m pip install -r requirements.txt
-$PY app.py               # 启动 Web 界面（默认 http://127.0.0.1:7860）
-```
-
-界面：选「品类 + 市场」→ 一次得到四样东西，分四个标签页展示：
-
-| 标签页 | 输出 |
-|---|---|
-| **M1 · 合规地图** | 适用法规清单，每条带官方原文链接与 ELI 永久标识，可点开核验 |
-| **M2 · 变化时间线** | 近 12 个月（可缩 6 个月）法规变化 + 「即将发生 / 过渡期」节点 |
-| **M3 · 待办清单** | 按类型分组的可执行动作，按紧迫度排序，**卡片默认折叠**（D5-1），点开展开「动作→条件→条款→摘录→原文」完整证据链；**仅导出 CSV**（PRD 第 9 节规定本期不做 PDF） |
-| **M4 · 对照演示** | 「儿童玩具 × 欧盟」固定题干（D4），双栏展示通用大模型与本工具；本期仅占位（未录制真实历史回放） |
-| **M1.5 · 智能判定** | 一句话输入（可**语音**，转写回填输入框后确认）→ 自动识别品类 / 市场 → 判定卡（受影响法规 + 缺失资料清单 + 路由依据）；模型只做理解，结论 100% 来自核对语料，原文不落盘；范围外输入点名用户说的品类 / 市场，不做硬编答案 |
-
-**所有页固定顶部**：查询条件 / 查询日期 / 快照版本 / 数据截止时间 / 模块状态 / 免责声明（PRD D3）
-**所有页固定页脚**：免责 + WAF 提示「部分官方站点会拦截自动访问，真人浏览器一般可正常打开」
-
-也可以不开界面，直接用命令行查看：
-
-```bash
-$PY modules/m1_map.py 儿童玩具 欧盟          # M1 合规清单
-$PY modules/m2_timeline.py 儿童玩具 美国      # M2 变化时间线（默认近 12 个月）
-$PY modules/m2_timeline.py 儿童玩具 美国 近\ 6\ 个月
-$PY modules/m3_todo.py 儿童玩具 欧盟          # M3 待办清单
-$PY modules/m3_todo.py 儿童玩具 欧盟 --export # M3 + 导出 CSV 到 data/export/
-$PY modules/m4_compare.py                     # M4 对照演示占位（玩具×欧盟）
-```
-
-三个模块都支持 `--no-llm`（跳过模型润色，输出确定性结果 —— 未配 Token 时加这个）。
-
-**自检**：
-
-```bash
-$PY scripts/selftest_all.py      # 发布前总闸门：M1 / M1.5 / M2 / M3 / 语料体检
-$PY scripts/selftest_m1.py       # M1：分层断言（覆盖率 / 回挂率 / 防幻觉 / 边界 / 降级）
-$PY scripts/selftest_m15.py      # M1.5 路由：模型路径（桩注入 llm.chat / is_ready，离线、30 项）
-$PY scripts/selftest_m2_m3.py    # M2/M3：固定日期、证据链、CSV 和边界
-$PY modules/m15_router.py        # M1.5 路由：词典路径（离线确定性，含 ok ⇒ m1.ok 不变量）
-$PY scripts/selftest_voice.py    # 语音链路：ASR 降级 / 路由复用 / 界面回调（离线，20 项）
-```
-
-两份自检脚本均可离线复跑，退出码 0 = 无失败项。
-
-**数据管线**（已跑通，可复跑）：
-
-```bash
-$PY scripts/fetch_eu.py       # 欧盟：CELEX → SPARQL → 官方元数据
-$PY scripts/fetch_us.py       # 美国：eCFR API → 法规骨架
-$PY scripts/merge_corpus.py   # 合并 + 相关性过滤 + 去重 + 体检
-$PY scripts/check_links.py    # 逐条实测链接（非破坏写入）
-$PY scripts/enrich_cn.py      # 批量补中文名（需 .env 中的模型 Token）
-$PY scripts/make_overview.py  # 生成数据总览
-$PY scripts/make_todo_eu.py   # 生成欧盟待补清单
-```
-
-也可以直接双击 `run_pipeline.bat` 一键重跑全部管线（脚本内部已自动指向正确的解释器）。
-
-> ℹ️ M1 / M2 / M3 均已实现并可用；M4（对照演示）仅占位，未录制真实历史回放；部署上线尚未完成。
+只有主动更新法规语料时才运行抓取、合并、核对等数据管线；启动应用无需重跑。`run_pipeline.bat` 使用PATH中的 `python`，不会自动选择 `.venv`，应先激活正确环境或按[运行指南](docs/07-运行指南.md)使用明确的解释器执行各脚本。管线会写入CSV和报告，更新前先备份并审查结果。
 
 ### 语音输入（可选，不装也能跑）
 
 语音是**可选入口**：未安装本地依赖且未配置云端 ASR 时，语音入口自动置灰，文字输入仍可使用。
 
-```bash
+```powershell
 # ① 装可选依赖（faster-whisper + 兼容版 av，约 50MB）
-$PY -m pip install -r requirements-asr.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements-asr.txt
 
 # ② 准备模型（默认走国内镜像 + 实体文件落盘，约 464MB，只需一次）
-$PY scripts/prepare_asr.py
+.\.venv\Scripts\python.exe scripts\prepare_asr.py
 
-# ③ 起界面，① 智能判定页签里按住说话
-$PY app.py
+# ③ 起界面，在折叠的语音输入区录音或上传
+.\.venv\Scripts\python.exe app.py
 ```
 
-**想走云端而不下模型**（零新增依赖，只换 3 个环境变量）：
+**想走云端而不下模型**（零新增依赖，配置以下4项；在 `.env` 中填写实际服务）：
 
 ```bash
 ASR_BACKEND=cloud
@@ -374,7 +316,7 @@ ASR_MODEL=<whisper-1 之类的模型名>
 
 **关键约定**：
 
-- 转写文本**只回填到输入框**，不直接出结论 —— 用户必须看见、可修改后再点「开始判定」。
+- 转写文本**只回填到输入框**，不直接出结论，用户检查、修改后再点“发送”。
 - 语音链路失败（没装模型、麦克风没权限、网络断）**只降级提示**，不抛异常、不污染已有输入。
 - 转写缓存默认关闭；显式启用后仅缓存转写文本和必要元数据，缓存键隔离音频摘要、后端、模型与语言。录音由界面临时存储，本应用不另存音频；云端转写会将录音发送到配置的服务。
 - 媒体依赖 `av` 必须 `<19`：`faster-whisper 1.2.1` 仍在传 `metadata_errors`，PyAV 19 已移除该参数（已锁在 `requirements-asr.txt`）。
@@ -403,17 +345,23 @@ compliance-radar/
 │   ├── check_links.py          链接有效性检测（OK / WAF / BAD 三级判定）
 │   ├── make_overview.py        生成数据总览
 │   ├── make_todo_eu.py         生成待补清单
-│   ├── selftest_m1.py          M1 自检（24 项断言，退出码 0 = 全绿）
-│   ├── selftest_m15.py         M1.5 路由自检（模型路径桩注入 llm.chat / is_ready，24 项断言）
+│   ├── selftest_m1.py          M1 离线自检
+│   ├── selftest_m15.py         M1.5 路由自检（模型桩及降级边界）
 │   ├── selftest_m2_m3.py       M2/M3 自检（固定日期 / 证据链 / CSV / 边界）
-│   ├── selftest_all.py         发布前总闸门（四模块 + 语料体检）
+│   ├── selftest_all.py         离线总门禁（16个入口）
+│   ├── selftest_conversation.py 会话隔离、纠正、来源与导出边界
+│   ├── selftest_chat_ui.py     新界面服务调用与渲染边界
+│   ├── check_chat_browser.py  独立真实浏览器验收
+│   ├── prepare_release.py     生成完整源码ZIP，不上传
 │   ├── prepare_asr.py          语音模型一键准备（镜像下载 + 实体文件落盘）
-│   ├── selftest_voice.py       语音链路自检（ASR 降级 / 路由复用 / 界面回调，20 项）
+│   ├── selftest_voice.py       语音链路自检（ASR 降级 / 路由复用 / 界面回调）
 │   ├── validate_corpus.py      主语料重复键、必填字段、链接和状态体检
-│   └── build_snapshot.py       生成 data/snapshot.json 发布快照
+│   ├── build_snapshot.py       生成 data/snapshot.json 发布快照
 │   └── audit_guide.py          文档链接与数据批量核对器
 │
-├── core/                       ✅ 核心引擎（纯确定性代码）
+├── core/                       核心服务（规则、来源与可选模型/语音）
+│   ├── conversation.py         七模块统一会话服务与同一结果导出
+│   ├── journey.py              德国儿童玩具六阶段路线
 │   ├── corpus.py               语料库：86 条按「类目 + 市场」精确筛选；类目入口严格 5 个（PRD 第 3 节）
 │   ├── dates.py                日期事件抽取：散文日期 → 231 个结构化事件（M2 用）
 │   ├── actions.py              待办动作候选抽取：判定「能落到动作」的条目（M3 用）
@@ -426,8 +374,15 @@ compliance-radar/
 │   ├── m1_map.py                M1 合规地图（含顶部元数据条）
 │   ├── m2_timeline.py           M2 变化时间线（时间窗 12 / 6 个月）
 │   ├── m3_todo.py               M3 待办清单（D5-1 卡片折叠 + CSV D3 导出）
-│   └── m4_compare.py            M4 对照演示（D4 固定题干 + 真实回放占位）
-├── app.py                       ✅ Web 界面入口（M1/M2/M3/M4 四标签页）
+│   ├── m4_compare.py            M4 对照演示（D4 固定题干 + 真实回放占位）
+│   ├── m5_compare.py            M5 区域差异对比
+│   ├── m6_multi_region.py       M6 多区域汇总
+│   └── m7_opc_readiness.py      M7 OPC准备与CSV
+├── app.py                      Web启动入口
+├── app_main.py                 主入口转发及保留的旧渲染器
+├── ui_chat.py                  默认聊天界面
+├── assets/chat.css             界面样式
+├── assets/chat.js              开场动画、阅读位置与会话行为
 │
 ├── data/                       ✅ 语料数据（86 条）
 │   ├── 语料核对表_完整版.csv     ⭐ 主底表：86 条 × 20 列
@@ -438,16 +393,17 @@ compliance-radar/
 │   ├── 骨架体检报告.txt          缺项统计 + 去重/筛选/效力状态提示
 │   ├── 链接检查报告.txt          86 条链接逐条检测结果
 │   ├── 欧盟待补清单.md
+│   ├── snapshot.json            原目录快照与审核统计
+│   ├── journey_sources.json     新主路线官方资料及覆盖缺口
 │   └── export/                  M3 待办清单的 CSV 导出目录（**生成物**，随时可删、下次导出重建）
-│                               写入方：`app.py` M3 页签的「⬇ 导出 CSV」按钮 / `m3_todo.py --export`
-│                               刻意**不进 .gitignore** —— 导出件要能在仓库里直接看到；导过一次后
-│                               git status 会多出未跟踪文件，属预期行为
-│
-├── modules/                    🔄 功能模块
-│   ├── m1_map.py               ✅ M1 合规地图（已实现，含 CLI）
-│   └── __init__.py
+│                               写入方：当前结果的CSV导出 / `m3_todo.py --export`
+│                               已由 .gitignore 忽略，源码包也排除用户导出
 │
 └── docs/                       项目文档
+    ├── 部署与上传.md            从固定根目录安装、GitHub/魔搭上传及回退
+    ├── 界面优化交付.md          本轮验证状态与演示
+    ├── 基线与功能保留.md        开发前实际运行结果
+    ├── 主路线资料覆盖.md        新路线资料、定位与明确缺口
     ├── 01-项目定位.md
     ├── 02-Project-Overview-EN.md
     ├── 03-AI执行手册.md
@@ -530,7 +486,9 @@ compliance-radar/
 
 ---
 
-## 当前进展
+## 历史实现记录
+
+以下表格与修改记录保留2026-10-15至17的开发状态，包含旧页签和当时测试数量。当前入口、安装和本轮实际验收状态以上方快速开始及[界面优化交付](docs/界面优化交付.md)为准。
 
 > **2026-10-17 评估结论**：核心查询、跨区域对比、OPC 上线准备和输出契约已通过完整发布门禁（失败数 0）。当前快照共 86 条候选语料，其中欧盟 29 条已人工核对、美国 57 条仍为“待核对”；因此美国结果可用于候选发现和差异分析，不能直接作为已发布合规依据。M3/M7 已阻止待核对记录进入可执行清单和导出。
 

@@ -1,0 +1,191 @@
+"""Real browser acceptance checks; requires Playwright only for development.
+
+Start app.py first, then run python scripts/check_chat_browser.py --url URL.
+Screenshots and a report are written to docs/ui-preview. No model calls are
+enabled by these scenarios, and no production data or external account is used.
+"""
+import argparse
+import json
+from pathlib import Path
+import sys
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--url", default="http://127.0.0.1:7861")
+    args = parser.parse_args()
+    output = ROOT / "docs" / "ui-preview"
+    output.mkdir(parents=True, exist_ok=True)
+    checks = []
+
+    def record(name, condition):
+        checks.append({"scenario": name, "passed": bool(condition)})
+        if not condition:
+            raise AssertionError(name)
+        print("PASS", name, flush=True)
+
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch()
+        context = browser.new_context(viewport={"width": 1440, "height": 1080})
+        page = context.new_page()
+        errors = []
+        page.on("pageerror", lambda error: errors.append(str(error)))
+        page.goto(args.url, wait_until="domcontentloaded")
+        page.locator("#cr-input textarea").wait_for()
+        page.wait_for_function("window.__crChatInitialized === true")
+        record("component ready script actually initializes", page.evaluate("window.__crChatInitialized === true"))
+        record("first visit plays the radar intro", page.locator(".cr-intro.cr-play").is_visible())
+        page.wait_for_timeout(2100)
+        record("empty composer and no unsolicited result", page.locator("#cr-input textarea").input_value() == "" and page.locator(".cr-result-header").count() == 0)
+        record("animation completes without blocking input", not page.locator(".cr-intro").is_visible())
+        record("desktop no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
+        page.screenshot(path=str(output / "01-desktop.png"), full_page=True)
+        page.locator("#cr-discover > button").click()
+        record("all seven functions discoverable", all(page.get_by_role("button", name=title).count() for title in
+               ("相关法规", "合规待办", "变化与关键日期", "两个市场对比", "多个市场汇总", "上线准备计划", "回答方法与来源对照")))
+        page.screenshot(path=str(output / "02-capabilities.png"), full_page=True)
+        page.locator("#cr-discover > button").click()
+
+        def ask(text, title):
+            before = page.locator(".cr-result-header").get_attribute("data-result-id") if page.locator(".cr-result-header").count() else ""
+            page.locator("#cr-input textarea").fill(text)
+            page.locator("#cr-send").click()
+            try:
+                page.wait_for_function("before => {const h=document.querySelector('.cr-result-header'); return h && h.dataset.resultId !== before}", arg=before, timeout=25000)
+                page.locator(".cr-result-header h2").filter(has_text=title).wait_for(timeout=25000)
+            except Exception:
+                page.screenshot(path=str(output / "failure.png"), full_page=True)
+                print(page.locator("body").inner_text()[-6500:], flush=True)
+                raise
+            page.wait_for_timeout(600)
+
+        ask("我想把毛绒玩具卖到德国亚马逊，请查看全流程", "从选品到售后")
+        record("new answer scrolls into reading position", page.locator(".cr-result-header").bounding_box()["y"] >= -2 and page.locator(".cr-result-header").bounding_box()["y"] < 200)
+        record("main route exposes all six stages", page.locator(".cr-stage").count() == 6)
+        page.locator(".cr-stage > button").first.click()
+        task = page.locator(".cr-stage").first.locator(".cr-item > button").first
+        task.click()
+        done = page.get_by_role("button", name="我已准备此项（仅记录自述）", exact=True).first
+        done.wait_for()
+        record("stage task expands real details", page.get_by_text("适用条件", exact=False).count() > 0)
+        done.click()
+        page.get_by_role("button", name="撤回自述完成", exact=True).first.wait_for()
+        record("self report changes task status", page.get_by_text("用户自述已完成", exact=False).count() > 0)
+        page.screenshot(path=str(output / "03-stages-expanded.png"), full_page=True)
+
+        ask("先看合规待办", "我现在需要做什么")
+        task = page.locator(".cr-item > button").first
+        task.click()
+        record("task card exposes evidence control", page.get_by_role("button", name="依据与官方原文", exact=False).count() > 0)
+        page.get_by_role("button", name="依据与官方原文", exact=False).first.click()
+        record("official source has a real external URL", page.locator(".cr-item a[href^='https://']").count() > 0)
+        page.screenshot(path=str(output / "04-task-evidence.png"), full_page=True)
+        page.get_by_role("button", name="生成当前结果的导出文件", exact=True).click()
+        download = page.get_by_role("button", name="下载这份结果", exact=True)
+        download.wait_for()
+        with page.expect_download() as event:
+            download.click()
+        file = event.value
+        file.save_as(str(output / "acceptance-todo.csv"))
+        record("actual CSV download succeeds", file.suggested_filename.endswith(".csv") and (output / "acceptance-todo.csv").stat().st_size > 30)
+        todo_id = page.locator(".cr-result-header").get_attribute("data-result-id")
+        page.locator("#cr-input textarea").fill("导出当前待办")
+        page.locator("#cr-send").click()
+        # The generated file has identical bytes, so Gradio may reuse its hash
+        # URL. Wait for this submission's textbox update, not the old notice.
+        page.wait_for_function("document.querySelector('#cr-input textarea').value === ''", timeout=25000)
+        record("natural export preserves current result and creates download", page.locator(".cr-result-header").get_attribute("data-result-id") == todo_id and download.is_visible())
+
+        ask("比较欧盟和美国的法规目录", "比较两个市场")
+        page.locator(".cr-comparison").wait_for()
+        record("comparison is a real table", page.locator(".cr-comparison table").count() > 0)
+        choice = page.get_by_label("选择一条法规，查看这行的官方来源")
+        choice.fill("Regulation (EU) 2025/2509")
+        choice.press("Enter")
+        page.get_by_text("目录记录，适用性待核验", exact=False).wait_for()
+        record("comparison row detail has source", page.get_by_text("目录记录，适用性待核验", exact=False).count() > 0)
+        page.screenshot(path=str(output / "05-comparison.png"), full_page=True)
+        ask("查看变化时间线", "查看变化与关键日期")
+        record("timeline uses actual date nodes", page.locator(".cr-timeline-label").count() > 0)
+        page.locator(".cr-item > button").first.click()
+        page.screenshot(path=str(output / "06-timeline.png"), full_page=True)
+        ask("多个市场汇总", "一起查看多个市场")
+        page.get_by_role("button", name="欧盟 · 点击查看逐条法规与来源", exact=False).click()
+        record("multi region has reachable individual sources", page.locator(".cr-item .cr-item").count() > 0)
+        ask("整理上线准备计划", "整理上线准备计划")
+        record("readiness has interactive phase panels", page.locator(".cr-stage").count() > 0)
+        page.locator(".cr-stage > button").first.click()
+        record("readiness phase includes actual task cards", page.locator(".cr-stage .cr-item").count() > 0)
+        ask("查看模型对照", "查看回答方法与来源差异")
+        record("missing replay is explicit", page.get_by_text("尚无可展示的真实回放记录", exact=False).count() > 0)
+        page.locator("#cr-history > button").click()
+        history = page.get_by_label("历史结果", exact=True)
+        history.fill("我现在需要做什么")
+        history.press("Enter")
+        page.get_by_role("button", name="打开选中的结果", exact=True).click()
+        page.wait_for_function("id => document.querySelector('.cr-result-header')?.dataset.resultId === id", arg=todo_id, timeout=25000)
+        record("history opens the saved result", page.locator(".cr-result-header h2").inner_text() == "我现在需要做什么")
+
+        page.locator("#cr-reset").click()
+        page.locator("#cr-input textarea").wait_for()
+        page.locator(".cr-result-header").wait_for(state="detached", timeout=25000)
+        record("new chat clears visible result without replaying intro", page.locator(".cr-result-header").count() == 0 and not page.locator(".cr-intro").is_visible())
+        page.reload(wait_until="domcontentloaded")
+        page.locator("#cr-input textarea").wait_for()
+        page.wait_for_function("window.__crChatInitialized === true")
+        record("same browser session remembers intro", page.evaluate("sessionStorage.getItem('compliance-radar-intro-v1') === 'played'") and not page.locator(".cr-intro").is_visible())
+        page.set_viewport_size({"width": 390, "height": 844})
+        page.wait_for_timeout(300)
+        record("mobile no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
+        page.screenshot(path=str(output / "07-mobile.png"), full_page=True)
+        ask("儿童玩具卖到欧盟，相关法规", "查看相关法规")
+        page.locator(".cr-item > button").first.click()
+        record("mobile expanded result no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
+        page.screenshot(path=str(output / "08-mobile-expanded.png"), full_page=True)
+        reduced = browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+        small = reduced.new_page()
+        small.goto(args.url, wait_until="domcontentloaded")
+        small.locator("#cr-input textarea").wait_for()
+        small.wait_for_function("window.__crChatInitialized === true")
+        record("reduced motion bypasses intro", not small.locator(".cr-intro").is_visible())
+        for method in ("skip", "focus", "storage failure", "initialization failure"):
+            fallback = browser.new_context()
+            if method == "storage failure":
+                fallback.add_init_script("Object.defineProperty(window, 'sessionStorage', {get(){throw new Error('storage unavailable')}})")
+            if method == "initialization failure":
+                fallback.add_init_script("Object.defineProperty(window, '__crChatInitialized', {value:true,writable:false})")
+            probe = fallback.new_page()
+            probe.goto(args.url, wait_until="domcontentloaded")
+            probe.locator("#cr-input textarea").wait_for()
+            probe.wait_for_function("window.__crChatInitialized === true")
+            if method in ("skip", "focus"):
+                probe.locator(".cr-intro.cr-play").wait_for()
+                if method == "skip":
+                    probe.get_by_role("button", name="跳过开场", exact=True).click()
+                else:
+                    probe.locator("#cr-input textarea").focus()
+            record("intro remains usable: " + method, not probe.locator(".cr-intro").is_visible())
+            if method in ("storage failure", "initialization failure"):
+                probe.locator("#cr-input textarea").fill("功能目录")
+                probe.locator("#cr-send").click()
+                probe.locator(".cr-result-header h2").filter(has_text="你可以这样使用").wait_for(timeout=25000)
+                record("queries work after " + method, probe.locator(".cr-result-header").count() == 1)
+            fallback.close()
+        record("no browser script errors", not errors)
+        reduced.close()
+        context.close()
+        browser.close()
+    report = {"url": args.url, "browser": "Playwright Chromium", "checks": checks,
+              "note": "真实浏览器与本地真实业务数据；未启用模型，不代表ASR或线上部署验收。"}
+    (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(f"Browser acceptance: {len(checks)} checks passed")
+
+
+if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    main()

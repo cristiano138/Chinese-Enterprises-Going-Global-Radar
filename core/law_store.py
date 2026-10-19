@@ -3,6 +3,7 @@
 import os
 import re
 import sqlite3
+import time
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -43,13 +44,25 @@ def status(path=None):
         return {'ok': False, 'reason': str(exc)}
 
 
-def backup(con, path=None):
+def backup(con, path=None, attempts=40, delay=0.25):
     path = Path(path or db_path())
     stamp = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
-    target = path.with_name(path.name + '.bak-' + stamp)
-    with closing(sqlite3.connect(target)) as dst:
-        con.backup(dst)
-    return str(target)
+    # Windows 时钟精度约 15.6ms，多进程仅靠时间戳会撞名；追加 pid 保证唯一。
+    target = path.with_name(path.name + '.bak-' + stamp + '-p' + str(os.getpid()))
+    if target.exists():
+        target.unlink()
+    last = None
+    # 锁外备份：并发写者持锁时 backup 抛 OperationalError，重试等到空窗。
+    # 不可放到 BEGIN IMMEDIATE 之后——持锁连接调用 backup 会自我死锁。
+    for _ in range(max(int(attempts), 1)):
+        try:
+            with closing(sqlite3.connect(target)) as dst:
+                con.backup(dst)
+            return str(target)
+        except sqlite3.OperationalError as exc:
+            last = exc
+            time.sleep(delay)
+    raise last
 
 
 def law_id(identifier):

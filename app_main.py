@@ -28,6 +28,12 @@ import html
 import os
 import sys
 
+# Gradio probes its own loopback URL during startup. Keep local traffic local
+# even on developer machines with a global HTTP proxy, preserving other bypasses.
+for _proxy_key in ("NO_PROXY", "no_proxy"):
+    _bypass = [part for part in os.environ.get(_proxy_key, "").split(",") if part]
+    os.environ[_proxy_key] = ",".join(dict.fromkeys(_bypass + ["localhost", "127.0.0.1", "0.0.0.0"]))
+
 if sys.platform == "win32":
     try:
         sys.stdout.reconfigure(encoding="utf-8")
@@ -1457,17 +1463,23 @@ def build_ui():
     return demo
 
 
+# Preserve old render helpers and callbacks for CLI integrations and regression
+# tests. The default web entry now builds only the conversation shell; there are
+# no startup queries, preset legal conclusions or automatic model calls.
+build_legacy_ui = build_ui
+
+
+def build_ui():
+    from ui_chat import build_ui as build_chat_ui
+    return build_chat_ui()
+
+
 if __name__ == "__main__":
-    # 后台预热智能判定（M1.5）：把演示常用输入的模型解析提前算进内存缓存，
-    # 演示首点即毫秒级命中；不阻塞启动，失败静默（词典兜底照常）。
-    m15_router.start_prewarm()
     port = int(os.getenv("PORT", os.getenv("SERVER_PORT", "7860")))
     # 魔搭创空间通过 PORT 注入服务端口；本地运行也绑定全网卡，便于容器探活。
     host = "0.0.0.0"
-    _major = int(gr.__version__.split(".")[0])
-    launch_kwargs = {"server_name": host, "server_port": port}
-    if _major < 6:
-        launch_kwargs.update(show_api=False, css=_CSS, theme=gr.themes.Soft())
-    else:
-        launch_kwargs.update(css=_CSS, theme=gr.themes.Soft())
+    from ui_chat import CSS
+    launch_kwargs = {"server_name": host, "server_port": port, "css": CSS,
+                     "theme": gr.themes.Soft(), "footer_links": [],
+                     "show_error": False, "max_file_size": "20mb"}
     build_ui().launch(**launch_kwargs)

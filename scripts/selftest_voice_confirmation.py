@@ -8,6 +8,8 @@ from unittest.mock import patch
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import app_main
+import ui_chat
+from core import conversation
 
 
 class VoiceConfirmationTests(unittest.TestCase):
@@ -80,15 +82,22 @@ assert app_main.asr.available()["enabled"]
     def test_ui_bindings_require_confirmation(self):
         demo = app_main.build_ui()
         functions = list(demo.fns.values())
-        transcribe = next(item for item in functions if item.fn == app_main.run_voice_transcription)
-        route = next(item for item in functions if item.fn == app_main.run_route)
-        self.assertEqual(len(transcribe.inputs), 3)
-        self.assertEqual(len(route.inputs), 2)
-        self.assertIs(transcribe.outputs[1], route.inputs[0])
-        self.assertEqual(route.inputs[0].label, "① 你的生意（一句话，或整份产品/合同文件）")
-        self.assertNotIn(transcribe.inputs[0], route.inputs)
-        self.assertEqual(transcribe.inputs[0].sources, ["microphone", "upload"])
-        self.assertEqual(transcribe.inputs[0].format, "wav")
+        transcribers = [item for item in functions if item.fn == ui_chat.transcribe]
+        senders = [item for item in functions if item.fn == ui_chat.submit_message]
+        self.assertTrue(transcribers, "New UI must register transcription callbacks.")
+        self.assertGreaterEqual(len(senders), 2, "Both send button and typed submit must use the same service.")
+        for transcribe in transcribers:
+            self.assertEqual(len(transcribe.inputs), 2)
+            self.assertEqual(len(transcribe.outputs), 2)
+            self.assertIs(transcribe.inputs[1], transcribe.outputs[0])
+            self.assertEqual(transcribe.outputs[1].get_block_name(), "markdown")
+            self.assertEqual(transcribe.inputs[0].sources, ["microphone", "upload"])
+            self.assertEqual(transcribe.inputs[0].format, "wav")
+            for send in senders:
+                self.assertEqual(len(send.inputs), 2)
+                self.assertIs(transcribe.outputs[0], send.inputs[0])
+                self.assertNotIn(transcribe.inputs[0], send.inputs)
+                self.assertEqual(send.inputs[1].get_block_name(), "state")
 
     def test_unavailable_backend_explains_disabled_upload(self):
         states = [
@@ -99,13 +108,16 @@ assert app_main.asr.available()["enabled"]
         for cfg in states:
             with self.subTest(cfg=cfg), patch.object(app_main.asr, "config_summary", return_value=cfg):
                 demo = app_main.build_ui()
-                transcribe = next(item for item in demo.fns.values() if item.fn == app_main.run_voice_transcription)
+                transcribe = next(item for item in demo.fns.values() if item.fn == ui_chat.transcribe)
                 self.assertFalse(transcribe.inputs[0].interactive)
                 hints = " ".join(str(getattr(block, "value", "")) for block in demo.blocks.values())
-                self.assertIn("录音/上传转写暂不可用", hints)
-                self.assertIn("ASR_API_BASE", hints)
-                self.assertIn("ASR_API_KEY", hints)
-                self.assertIn("ASR_MODEL", hints)
+                self.assertIn("语音服务未启用", hints)
+                self.assertIn("继续使用文字", hints)
+                self.assertIn("管理员配置", hints)
+                buttons = [block for block in demo.blocks.values()
+                           if getattr(block, "value", None) == "转写到输入框"]
+                self.assertTrue(buttons)
+                self.assertTrue(all(not button.interactive for button in buttons))
                 self.assertNotIn("<test>", hints)
 
     def test_backend_status_exception_is_safe(self):
@@ -118,6 +130,32 @@ assert app_main.asr.available()["enabled"]
         with patch.object(app_main.m15_router, "route", return_value={"ok": False}) as route, patch.object(app_main.m15_router, "render_parse", return_value="待确认"):
             app_main.run_route("用户修改后的文字", "补充内容")
         route.assert_called_once_with("用户修改后的文字", "补充内容")
+
+    def test_chat_transcription_never_calls_the_conversation_service(self):
+        meta = {"ok": True, "backend": "cloud", "cached": False}
+        with patch.object(ui_chat.asr, "transcribe", return_value=("毛绒玩具出口德国", meta)), \
+                patch.object(conversation, "respond") as respond:
+            text, status = ui_chat.transcribe("audio.wav", "原文字")
+        self.assertEqual(text, "毛绒玩具出口德国")
+        self.assertIn("核对", status)
+        self.assertIn("尚未", status)
+        respond.assert_not_called()
+
+    def test_chat_confirmation_uses_current_edited_text(self):
+        state = conversation.new_session()
+        with patch.object(conversation, "respond", return_value=(state, None)) as respond:
+            ui_chat.submit_message("用户核对并修改后的输入", state)
+        respond.assert_called_once_with("用户核对并修改后的输入", state, action=None)
+
+    def test_chat_transcription_failure_preserves_text_and_redacts_errors(self):
+        original = "  原文字\n保留末尾空格  "
+        with patch.object(ui_chat.asr, "transcribe", side_effect=RuntimeError("secret-token")), \
+                patch.object(conversation, "respond") as respond:
+            text, status = ui_chat.transcribe("audio.wav", original)
+        self.assertEqual(text, original)
+        self.assertNotIn("secret-token", status)
+        self.assertIn("原文字已保留", status)
+        respond.assert_not_called()
 
 
 if __name__ == "__main__":

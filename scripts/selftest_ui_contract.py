@@ -4,7 +4,7 @@
 这里守的是「以前踩过的坑」——都是模块各自的自检照不到、但一破就会
 让产品说谎或让红线失效的地方：
 
-  A. 免责声明：每个页签的输出都必须带（红线，不能只做在老页签上）
+  A. 免责声明：查询输出都必须带，旧渲染器与新聊天入口分别检查
   B. 顶部元数据：成功/失败分支都要有 header，且四要素齐全（PRD D3）
   C. 模块状态不许谎报：没跑过的模块不能显示成「空」（MODULE_NA 语义）
   D. ELI 永久链接：M1/M2/M3 三个页签都要渲染出来（欧盟 29 条都带 ELI）
@@ -150,7 +150,7 @@ def main():
         disc = snapshot.DISCLAIMER
 
         # ── 首页统计与 M5/M6 命名回归 ─────────────────────────
-        print("\n【I】首页统计与 M5/M6 页面契约")
+        print("\n【I】旧版统计兼容与新版七项能力入口契约")
 
         def overview_fixture(total, audit_distribution):
             with patch.object(snapshot, "CORPUS_ROWS_TOTAL", total), \
@@ -201,17 +201,49 @@ def main():
         check("core.snapshot M6 模块名统一",
               snapshot.MODULE_NAMES.get("M6") == "多区域汇总")
 
+        import ui_chat
+        from core import conversation
+
         ui = app_main.build_ui()
-        tab_labels = [c["props"].get("label") for c in ui.get_config_file()["components"]
-                      if c["type"] == "tabitem"]
-        m5_index = tab_labels.index("🧭 M5 区域对比")
-        m6_index = tab_labels.index("🌍 M6 多区域汇总")
-        check("M5 导航位于 M6 之前", m5_index < m6_index, str(tab_labels))
-        check("M5 导航标题统一", "🧭 M5 区域对比" in tab_labels, str(tab_labels))
-        check("M6 导航标题统一", "🌍 M6 多区域汇总" in tab_labels, str(tab_labels))
-        callback_names = {fn.fn.__name__ for fn in ui.fns.values() if fn.fn}
-        check("M5 回调仍保留", "run_compare" in callback_names)
-        check("M6 回调仍保留", "run_multi_region" in callback_names)
+        components = ui.get_config_file()["components"]
+        button_values = [c["props"].get("value", "") for c in components if c["type"] == "button"]
+        expected_actions = {"map", "todo", "timeline", "compare", "multi", "readiness", "model"}
+        check("新版目录保留完整七项能力",
+              {action for action, _, _ in ui_chat.CAPABILITIES} == expected_actions)
+        check("UI能力目录与会话服务目录一致",
+              {item["action"] for item in conversation.CAPABILITIES} == expected_actions)
+        for action, title, _ in ui_chat.CAPABILITIES:
+            check(f"{action} 有真实可见按钮", any(value.startswith(title) for value in button_values), title)
+        compare_title = next(title for action, title, _ in ui_chat.CAPABILITIES if action == "compare")
+        multi_title = next(title for action, title, _ in ui_chat.CAPABILITIES if action == "multi")
+        compare_positions = [i for i, value in enumerate(button_values) if value.startswith(compare_title)]
+        multi_positions = [i for i, value in enumerate(button_values) if value.startswith(multi_title)]
+        check("区域对比入口位于多市场汇总之前",
+              bool(compare_positions and multi_positions and compare_positions[0] < multi_positions[0]))
+
+        # Verify actual registered click callbacks, rather than only a constant
+        # containing seven labels. These callbacks must use the shared service.
+        bound_actions = set()
+        for callback in ui.fns.values():
+            if not callback.fn:
+                continue
+            defaults = getattr(callback.fn, "__defaults__", ()) or ()
+            action = next((value for value in defaults if isinstance(value, str) and value in expected_actions), None)
+            if not action:
+                continue
+            state = conversation.new_session()
+            with patch.object(ui_chat, "submit_message", return_value=()) as submit:
+                callback.fn(state)
+            actual = submit.call_args.args if submit.call_args else ()
+            check(f"{action} 点击回调复用同一会话入口",
+                  len(actual) == 3 and actual[0] == "" and actual[1] is state and actual[2] == action)
+            bound_actions.add(action)
+        check("七项能力均有已注册的点击回调", bound_actions == expected_actions, str(bound_actions))
+        check("旧M5/M6调用助手保留兼容",
+              callable(app_main.run_compare) and callable(app_main.run_multi_region))
+        check("新聊天入口包含明确免责声明",
+              any(disc in str(component["props"].get("value", ""))
+                  for component in components))
 
         renderers = [
             ("M1", app_main.render_m1(m1_map.query("儿童玩具", "欧盟", use_llm=False))),

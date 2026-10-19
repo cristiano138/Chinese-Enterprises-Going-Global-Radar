@@ -210,6 +210,47 @@ class ASRSafetyTests(unittest.TestCase):
         asr._cache_put("f" * 64, "大小测试")
         self.assertLessEqual(sum(file.stat().st_size for file in self.cache.glob("asr_*.json")), 160)
 
+    def test_valid_cache_entries_share_creation_clock_with_pruning(self):
+        self.patch("CACHE_ENABLED", True)
+        # Deterministically separate the application clock from filesystem
+        # commit time. Fresh payloads must not be deleted as future-dated files.
+        created = time.time() - 30
+        with mock.patch.object(asr.time, "time", return_value=created):
+            asr._cache_put("a" * 64, "第一条合法文本")
+            asr._cache_put("b" * 64, "第二条合法文本")
+            self.assertEqual(asr._cache_get("a" * 64), "第一条合法文本")
+            self.assertEqual(asr._cache_get("b" * 64), "第二条合法文本")
+            self.assertEqual(len(list(self.cache.glob("asr_*.json"))), 2)
+        for file in self.cache.glob("asr_*.json"):
+            self.assertAlmostEqual(file.stat().st_mtime, json.loads(file.read_bytes())["created"], places=5)
+
+    def test_replacing_full_cache_entry_keeps_other_valid_entries(self):
+        self.patch("CACHE_ENABLED", True)
+        self.patch("CACHE_MAX_ENTRIES", 2)
+        asr._cache_put("a" * 64, "原始文本")
+        asr._cache_put("b" * 64, "另一文本")
+        asr._cache_put("b" * 64, "更新文本")
+        self.assertEqual(asr._cache_get("a" * 64), "原始文本")
+        self.assertEqual(asr._cache_get("b" * 64), "更新文本")
+        self.assertEqual(len(list(self.cache.glob("asr_*.json"))), 2)
+
+    def test_future_file_metadata_uses_payload_ttl_without_serving_future_entries(self):
+        self.patch("CACHE_ENABLED", True)
+        self.cache.mkdir()
+        now = time.time()
+        for key, created in (("a", now - 1), ("b", now + 30), ("c", now - asr.CACHE_TTL - 1)):
+            file = Path(asr._cache_path(key * 64))
+            file.write_text(json.dumps({"created": created, "text": "缓存边界文本"}), encoding="utf-8")
+            os.utime(file, (now + 30, now + 30))
+        with mock.patch.object(asr.time, "time", return_value=now):
+            asr._cache_put("d" * 64, "新文本")
+            self.assertEqual(asr._cache_get("a" * 64), "缓存边界文本")
+            self.assertIsNone(asr._cache_get("b" * 64))
+            self.assertIsNone(asr._cache_get("c" * 64))
+        self.assertFalse(Path(asr._cache_path("b" * 64)).exists())
+        self.assertFalse(Path(asr._cache_path("c" * 64)).exists())
+        self.assertEqual(len(list(self.cache.glob("asr_*.json"))), 2)
+
     def test_concurrent_cache_writes_remain_valid_and_bounded(self):
         self.patch("CACHE_ENABLED", True)
         self.patch("CACHE_MAX_ENTRIES", 4)
