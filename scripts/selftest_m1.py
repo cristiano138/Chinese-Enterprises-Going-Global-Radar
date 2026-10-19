@@ -16,8 +16,10 @@ M1 自检（scripts/selftest_m1.py）
 退出码 0 = 全绿；1 = 有失败项。
 """
 
+import csv
 import os
 import sys
+from unittest.mock import patch
 
 if sys.platform == "win32":
     try:
@@ -32,11 +34,12 @@ if PROJECT not in sys.path:
 
 from core import corpus, verify, snapshot  # noqa: E402
 from modules import m1_map  # noqa: E402
+from scripts.fetch_eu import TARGETS  # noqa: E402
 
-# README「语料现状」表 —— 自检的期望值（不重算，直接对照文档口径）
+# 覆盖矩阵固定预期；依据 32023R1670 现有官方英文标题纠正分类，玩具减 1、电子加 1。
 EXPECTED = {
-    ("儿童玩具", "欧盟"): 3, ("儿童玩具", "美国"): 15,
-    ("电子电器", "欧盟"): 9, ("电子电器", "美国"): 9,
+    ("儿童玩具", "欧盟"): 2, ("儿童玩具", "美国"): 15,
+    ("电子电器", "欧盟"): 10, ("电子电器", "美国"): 9,
     ("纺织服装", "欧盟"): 4, ("纺织服装", "美国"): 11,
     ("美妆个护", "欧盟"): 1, ("美妆个护", "美国"): 5,
     ("食品接触材料", "欧盟"): 7, ("食品接触材料", "美国"): 13,
@@ -78,6 +81,61 @@ def main():
     chk = corpus.search("儿童玩具", "欧盟")
     check(f"横切不作独立入口（PRD 第 3 节），随品类附带 {len(chk['cross'])} 条",
           len(chk["cross"]) > 0)
+    print()
+
+    # ── 1b. 32023R1670 分类纠错回归 ─────────────────────────
+    print("【1b】手机及平板电脑生态设计条目不得混入玩具")
+    celex = "32023R1670"
+    note = "智能手机、其他手机、无绳电话和平板电脑生态设计要求条例"
+    targets = [t for t in TARGETS if t["celex"] == celex]
+    check("源 TARGETS 唯一且归入电子电器",
+          len(targets) == 1 and targets[0]["category"] == "电子电器"
+          and targets[0]["note"] == note, repr(targets))
+    table_rows = []
+    for filename in ["eu_regulations.csv", "语料核对表_骨架总表.csv",
+                     "语料核对表_完整版.csv"]:
+        path = os.path.join(PROJECT, "data", filename)
+        with open(path, encoding="utf-8-sig", newline="") as f:
+            rows = [r for r in csv.DictReader(f) if r["CELEX号"] == celex]
+        check(f"{filename} 目标记录唯一", len(rows) == 1, f"实际 {len(rows)} 条")
+        if len(rows) != 1:
+            continue
+        row = rows[0]
+        table_rows.append(row)
+        check(f"{filename} 与源分类及备注一致",
+              row["机构"] == "EU" and row["类目"] == "电子电器"
+              and note in row["备注／问题"]
+              and "儿童用品生态设计" not in row["备注／问题"], repr(row))
+        check(f"{filename} 分类依据为手机及平板电脑官方标题",
+              all(term in row["官方标题（英文）"] for term in
+                  ("smartphones", "cordless phones", "slate tablets")))
+        if filename == "语料核对表_完整版.csv":
+            check("完整版分类纠错后待核对且注明需重审",
+                  row["核对状态"] == "待核对"
+                  and "分类纠错需重审" in row["备注／问题"])
+        # 三个实际数据文件分别驱动检索，同时覆盖主表与骨架回退数据。
+        with patch.object(corpus, "resolve_corpus_path", return_value=path):
+            toys = corpus.search("儿童玩具", "欧盟")
+            electronics = corpus.search("电子电器", "欧盟")
+            check(f"{filename} 玩具主体及横切均不含 {celex}",
+                  toys["ok"] and all(r["CELEX号"] != celex
+                                     for r in toys["primary"] + toys["cross"]))
+            check(f"{filename} 电子主体唯一命中 {celex}",
+                  electronics["ok"] and sum(r["CELEX号"] == celex
+                                            for r in electronics["primary"]) == 1)
+    check("三表目标记录身份与分类一致",
+          len(table_rows) == 3 and len({
+              tuple(r[k] for k in ("CELEX号", "机构", "类目", "官方标题（英文）",
+                                   "官方编号", "ELI标识", "官方链接"))
+              for r in table_rows
+          }) == 1)
+    for category in corpus.ENTRY_CATEGORIES:
+        if category == "电子电器":
+            continue
+        res = corpus.search(category, "欧盟")
+        check(f"实际语料 {category} 不混入 {celex}",
+              res["ok"] and all(r["CELEX号"] != celex
+                                for r in res["primary"] + res["cross"]))
     print()
 
     # ── 2. 链接回挂率 100%（红线）────────────────────────────

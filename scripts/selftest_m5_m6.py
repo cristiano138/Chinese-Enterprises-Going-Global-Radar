@@ -21,7 +21,9 @@ def check(name, condition, detail=""):
 r6 = m6_multi_region.query("儿童玩具", ["欧盟", "美国"])
 check("M6 查询成功", r6["ok"])
 check("M6 返回两个区域", [x["市场"] for x in r6["区域"]] == ["欧盟", "美国"])
-check("M6 区域法规数量正确", [x["条数"] for x in r6["区域"]] == [8, 19],
+check("M6 区域法规数量正确", [x["条数"] for x in r6["区域"]] == [7, 19],
+      # 依据 32023R1670 现有官方英文标题纠正分类：该条由儿童玩具移至电子电器，
+      # 玩具口径下欧盟由 8 变 7、美国不变；电子口径见 selftest_m1 覆盖矩阵。
       [x["条数"] for x in r6["区域"]])
 check("M6 所有输出记录均有官方链接",
       all(verify.accept(row)[0] for x in r6["区域"] for row in x["法规"]))
