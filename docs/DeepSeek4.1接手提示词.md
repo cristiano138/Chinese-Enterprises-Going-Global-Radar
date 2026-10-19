@@ -1,5 +1,7 @@
 # 给 DeepSeek 4.1 的项目接手提示词
 
+**交接状态更新（2026-10-19 18:38）：请优先使用 [当前接手提示词](DeepSeek接手提示词-当前状态.md)。** 最新线上检查发现平台 Running，但运行接口实际返回旧版 chat1，chat1.5 与法规库接入未获确认；不得依据本文历史记录宣布线上完成。
+
 **最新补充：** 发布期间已正常合并 GitHub 队友提交 `2f21ca7`，当前应用目标提升为 **chat1.5**。接手首先阅读 [语音合并与最终验收](语音合并与最终验收-20261019.md) 及其最新回执；下文 chat1.4 的提交号和 19 项门禁是此前基线。合并后本地门禁为 **21 项、浏览器 37 项**。线上仍保留已验证的 Whisper 配置；新 SenseVoice 引擎代码合入，不代表已经启用或完成 Linux 线上验收。
 
 将下面正文完整交给具有本地文件、终端和浏览器访问能力的 DeepSeek 4.1 工作环境。普通聊天窗口无法直接读取本机路径或替你部署；那种情况下应提供源码包和独立法规查询资产包，不能声称已经访问本机或完成发布。
@@ -36,8 +38,8 @@ E:\workbuddy\2026-10-14-01-02-52\compliance-radar
 
 按顺序阅读这些文件，执行 `git status --short`、`git log -5 --oneline`，再核对远程分支和线上版本。文档中的历史状态不是当前完成证明。
 
-1. `docs/一日收尾与法规库接入-20261019.md`：本轮范围、结果、人工依赖及最新发布状态。
-2. `docs/online-acceptance/20261019-chat14/`：本轮测试与数据库证据，分清本地和线上。
+1. `docs/语音合并与最终验收-20261019.md` 与 `docs/online-acceptance/20261019-chat15/`：当前合并版本的发布状态和验收证据。
+2. `docs/一日收尾与法规库接入-20261019.md` 与 `docs/online-acceptance/20261019-chat14/`：法规库恢复、治理及前一阶段记录，分清本地和线上。
 3. `docs/部署与上传.md`、`README.md`：运行与发布方式。
 4. `docs/基线与功能保留.md`、`docs/线上验收-20261019.md`：包含上一版历史记录，先看版本再引用。
 5. `data/snapshot.json`、`data/journey_sources.json`、`data/law_store_manifest.json`：审核边界、官方来源及资产哈希。
@@ -54,7 +56,7 @@ C:\Users\ThinkPad\Documents\xwechat_files\wxid_dri4yixft7ug22_c7c5\msg\file\2026
 
 chat1.4 应用源码提交：`c9f99418ac2ba89597fc283c5ba618c7c5c802b8`。
 对应魔搭应用部署提交：`3cf9d0c16644eccb198d0d2b28e269a7345c93eb`。
-目标应用版本：`2026.10.19-chat1.4`。后续文档提交可能改变仓库 HEAD；必须区分“仓库最新提交”和“容器运行的应用提交”。线上完成状态查最新验收记录，并实测。
+上述是法规库接入基线。合并队友语音升级后的目标应用版本为 **`2026.10.19-chat1.5`**，应用源码提交 `f89656e1a4f4c824ef4d7119e90325207db285a8`，魔搭应用部署提交 `17239e9c2aa52e8e815fac7219d0651849bb35ca`。后续文档提交可能改变仓库 HEAD；必须区分“仓库最新提交”和“容器运行的应用提交”。线上完成状态查最新验收记录，并实测。
 
 已实现：
 
@@ -93,7 +95,7 @@ C:\Users\ThinkPad\Desktop\新建文件夹\regulations.sqlite3(1).part001
 
 ## 6. 测试与验收方法
 
-本轮已有 **19 个离线入口、37 项本地浏览器检查通过**，证据在上述 chat14 目录。不要把这些数字写成线上通过；线上脚本跳过四项本地故障注入，正常应为 33 项。新改动只补跑相关测试，最终再做必要回归。
+合并后已有 **21 个离线入口、37 项本地浏览器检查通过**，证据在上述 chat15 目录；chat14 的 19 项是历史基线。不要把这些数字写成线上通过；线上脚本跳过四项本地故障注入，正常应为 33 项。新改动只补跑相关测试，最终再做必要回归。
 
 ```powershell
 Set-Location -LiteralPath 'E:\workbuddy\2026-10-14-01-02-52\compliance-radar'
@@ -106,7 +108,7 @@ Set-Location -LiteralPath 'E:\workbuddy\2026-10-14-01-02-52\compliance-radar'
 ..\compliance-radar-ui-candidate\.venv\Scripts\python.exe scripts\check_chat_browser.py --url https://zhanxy2551-complianceradar-v2.ms.show --modelscope-embed --output outputs\online-browser-followup
 ```
 
-输出目录换成新的名称。`--modelscope-embed` 使用测试父页承载真实匿名应用；还应单独打开真实魔搭门户，不能把承载页截图当作门户验收。默认浏览器网络曾验证可用，不擅自修改系统代理。
+输出目录换成新的名称。`--modelscope-embed` 使用测试父页承载真实匿名应用；还应打开真实魔搭门户，不能把承载页截图当作门户验收。测试父页曾出现长连接超时，最终采用本机 `outputs/actual_portal_browser.py` 直接在真实门户运行相同检查；它复用本机已有代理，仅影响测试进程。若换电脑，请使用该机实际可用的连接，不复制不存在的代理地址，也不要修改系统代理。
 
 验收必须覆盖：空白输入、七功能入口、六阶段、逐步追问、任务自述状态、官方来源、正文检索、CSV 下载、导出后继续查询、历史结果、重置、手机布局、真实公开语音样本。语音须转写后等待用户核对再发送；单个合成样本成功不等于口音和噪声准确率达标。
 
@@ -117,13 +119,13 @@ Set-Location -LiteralPath 'E:\workbuddy\2026-10-14-01-02-52\compliance-radar'
 3. 本机有忽略的运维脚本 `outputs/publish_tree.py`：使用独立 Git 索引、保留模型依赖、验证数据库包后生成部署提交。执行前先阅读；它依赖本机发布回执和最新远程引用，不能脱离状态盲跑。部署分支旧名 `deploy/modelscope-chat11-20261019` 不代表运行版本旧。
 4. 凭证使用现有 Git 凭证管理器，禁止输出 token、读取展示 `.env` 或把凭证拼进 remote URL；密钥不得进入提示词、截图、日志和压缩包。
 5. Git 推送之后核对实际构建。之前普通 deploy 接口曾使用旧快照；本机 `outputs/rebuild_chat12.py` 名字虽旧，但调用的是目标空间 `reset_restart`，已用于正确重建。先检查是否已有构建，避免重复触发。
-6. `outputs/watch_publish.py` / `publish_check.py` 检查 Running、版本 chat1.4、数据库接入和资源状态。不能只凭 Running 宣布成功，必须通过真实页面与业务调用。
+6. `outputs/watch_publish.py` / `publish_check.py` 检查 Running、版本 chat1.5、数据库接入和资源状态。不能只凭 Running 宣布成功，必须通过真实页面与业务调用。
 7. 可复用本机 `outputs/verify_online.py`、`verify_public_page.py`、`check_public_voice.py`、`check_startup_receipt.py`。这些是本机运维脚本，不在源码包内；跨机器接手时根据文档重建必要操作。
 8. 仅文档/验收证据后续提交不必重复重建已验证应用；明确记录运行源码提交和最新文档提交。
 
 ## 8. 下一步执行顺序与交付标准
 
-先查最新版验收记录及线上状态：若 chat1.4 已验收，不重复发布；若尚未完成，继续构建检查、匿名页面/业务/正文/语音验证，失败则定位并修复。
+先查最新版验收记录及线上状态：若 chat1.5 已验收，不重复发布；若尚未完成，继续构建检查、匿名页面/业务/正文/语音验证，失败则定位并修复。保留当前 Whisper 配置；SenseVoice 新引擎须先完成 Linux 资产、校验、监听范围及真实样本检查，不能只凭离线测试切换线上后端。
 
 随后处理用户最新反馈，优先解决阻塞这条演示路线的问题；不要把未要求的新平台、长流程账户系统或装饰性功能塞进一天工期。涉及法规适用性、政策更新时查公开官方资料，记录来源与日期，区分原文、推断与待确认项。
 

@@ -1,0 +1,132 @@
+{
+  "url": "https://zhanxy2551-complianceradar-v2.ms.show",
+  "browser": "Playwright Chromium",
+  "checks": [
+    {
+      "scenario": "component ready script actually initializes",
+      "passed": true
+    },
+    {
+      "scenario": "first visit plays the radar intro",
+      "passed": true
+    },
+    {
+      "scenario": "empty composer and no unsolicited result",
+      "passed": true
+    },
+    {
+      "scenario": "animation completes without blocking input",
+      "passed": true
+    },
+    {
+      "scenario": "desktop no horizontal overflow",
+      "passed": true
+    },
+    {
+      "scenario": "all seven functions discoverable",
+      "passed": true
+    },
+    {
+      "scenario": "new answer scrolls into reading position",
+      "passed": true
+    },
+    {
+      "scenario": "main route exposes all six stages",
+      "passed": true
+    },
+    {
+      "scenario": "main route offers current priority tasks",
+      "passed": true
+    },
+    {
+      "scenario": "one question at a time updates known conditions",
+      "passed": true
+    },
+    {
+      "scenario": "stage task expands real details",
+      "passed": true
+    },
+    {
+      "scenario": "self report changes task status",
+      "passed": true
+    },
+    {
+      "scenario": "task card exposes evidence control",
+      "passed": true
+    },
+    {
+      "scenario": "official source has a real external URL",
+      "passed": true
+    },
+    {
+      "scenario": "actual CSV download succeeds",
+      "passed": true
+    },
+    {
+      "scenario": "natural export preserves current result and creates download",
+      "passed": true
+    },
+    {
+      "scenario": "comparison is a real table",
+      "passed": true
+    },
+    {
+      "scenario": "comparison row detail has source",
+      "passed": true
+    },
+    {
+      "scenario": "timeline uses actual date nodes",
+      "passed": true
+    },
+    {
+      "scenario": "multi region has reachable individual sources",
+      "passed": true
+    },
+    {
+      "scenario": "readiness has interactive phase panels",
+      "passed": true
+    },
+    {
+      "scenario": "readiness phase includes actual task cards",
+      "passed": true
+    },
+    {
+      "scenario": "missing replay is explicit",
+      "passed": true
+    },
+    {
+      "scenario": "history opens the saved result",
+      "passed": true
+    },
+    {
+      "scenario": "desktop database returns clauses with official provenance",
+      "passed": true
+    },
+    {
+      "scenario": "new chat clears visible result without replaying intro",
+      "passed": true
+    },
+    {
+      "scenario": "same browser session remembers intro",
+      "passed": true
+    },
+    {
+      "scenario": "mobile no horizontal overflow",
+      "passed": true
+    },
+    {
+      "scenario": "query completes: 查看相关法规",
+      "passed": false,
+      "error_type": "TimeoutError"
+    }
+  ],
+  "authenticated_runtime": false,
+  "modelscope_parent_harness": true,
+  "network": "system browser network",
+  "completed": false,
+  "skipped": [
+    "storage failure injection",
+    "initialization failure injection"
+  ],
+  "note": "线上不注入平台 SDK 启动故障；故障注入保留在本地完整检查。语音准确率另行验收。"
+}

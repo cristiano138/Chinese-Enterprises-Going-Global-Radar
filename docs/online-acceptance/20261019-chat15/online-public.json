@@ -1,0 +1,54 @@
+{
+  "http": 200,
+  "frames": [
+    {
+      "url": "https://www.modelscope.cn/studios/zhanxy2551/ComplianceRadar-v2",
+      "chat15": false,
+      "text_sample": ""
+    },
+    {
+      "url": "https://g.alicdn.com/platform/xdomain-storage/0.2.4/frame.html",
+      "chat15": false,
+      "text_sample": "!function(e){var t={};function r(n){if(t[n])return t[n].exports;var o=t[n]={i:n,l:!1,exports:{}};return e[n].call(o.exports,o,o.exports,r),o.l=!0,o.exports}r.m=e,r.c=t,r.d=function(e,t,n){r.o(e,t)||Object.defineProperty(e,t,{enumerable:!0,get:n})},r.r=function(e){\"undefined\"!=typeof Symbol&&Symbol.toStringTag&&Object.defineProperty(e,Symbol.toStrin"
+    },
+    {
+      "url": "https://zhanxy2551-complianceradar-v2.ms.show/",
+      "chat15": true,
+      "text_sample": "出海合规雷达\nCOMPLIANCE RADAR\n＋ 新建对话\n从一个问题，到清楚的下一步\n出海的第一步，\n从说清你的生意开始。\n\n告诉我你准备卖什么、卖到哪里、在哪个平台销售。\n一起梳理相关要求，按需要展开行动和依据。\n\n毛绒玩具卖到德国亚马逊， 从哪里开始？\n儿童玩具卖到欧盟， 先看相关法规\n比较欧盟和美国， 儿童玩具的法规目录\n你的问题\nEnter 发送 · Shift + Enter 换行\n发送 ↑\n更多功能 · 查看全部 7 项能力\n▼\n语音输入 · 转写后确认再发送\n▼\n资料覆盖、来源与条款检索\n▼\n有来源，有边界。帮助你准备下一步，不构成法律意见。 · 2026.10.19-chat1.5"
+    }
+  ],
+  "pending": [
+    "https://www.google-analytics.com/g/collect",
+    "https://www.google.com/ccm/collect",
+    "https://www.google.com/g/collect",
+    "https://www.google.com/rmkt/collect/16672271323/"
+  ],
+  "script_status": {
+    "ready": "complete",
+    "scripts": [
+      "https://g.alicdn.com/AWSC/et/1.83.41/et_f.js",
+      "https://g.alicdn.com/sd/baxia/2.5.37/baxiaCommon.js",
+      "https://g.alicdn.com/AWSC/AWSC/awsc.js",
+      "https://g.alicdn.com/secdev/sufei_data/3.9.14/index.js",
+      "https://o.alicdn.com/baxia/baxia-entry-gray/index.js",
+      "https://o.alicdn.com/frontend-lib/common-lib/jquery.min.js",
+      "https://g.alicdn.com/alilog/mlog/aplus_v2.js",
+      "https://g.alicdn.com/vip/havana-login/0.3.2/js/mini-login-embedder-min.js",
+      "https://o.alicdn.com/captcha-frontend/aliyunCaptcha/AliyunCaptcha.js",
+      "https://lang.alicdn.com/mcms/modelscope-fe/0.0.256/modelscope-fe.json",
+      "https://www.googletagmanager.com/gtag/js?id=G-K9CSTSKFC5",
+      "https://log.mmstat.com/eg.js?t=1792408548384",
+      "https://googleads.g.doubleclick.net/pagead/viewthroughconversion/16672271323/?random=1792408548900&cv=11&fst=1792408548900&bg=ffffff&guid=ON&async=1&en=gtag.config&gtm=45je6ae1v9194054171za208zd9194054171xecxf1&gcd=13l3l3l3l1l1&dma=0&tag_exp=115938466~115938468~118897920~118897930~120213116~120385423~120469145~120469153~121246026~121246034&u_w=1440&u_h=1000&url=https%3A%2F%2Fwww.modelscope.cn%2Fstudios%2Fzhanxy2551%2FComplianceRadar-v2%3Fmode%3Dfull&rcb=15&frm=0&tiba=ComplianceRadar-v2%20-%20ModelScope%20%E9%AD%94%E6%90%AD%E7%A4%BE%E5%8C%BA&hn=www.googleadservices.com&npa=0&pscdl=noapi&auid=1050802002.1792408549&uaa=x86&uab=64&uafvl=Not%253AA-Brand%3B8.0.0.0%7CChromium%3B156.0.8078.4%7CHeadlessChrome%3B156.0.8078.4&uamb=0&uam=&uap=Windows&uapv=10.0.0&uaw=0&data=event%3Dgtag.config&ept=9&rfmt=3&fmt=4",
+      "https://fourier.taobao.com/rp?ext=51&data=jm_5elcI2mw2wUCASeuhKzc2GAX&random=3033442208123929&href=https%3A%2F%2Fwww.modelscope.cn%2Fstudios%2Fzhanxy2551%2FComplianceRadar-v2%3Fmode%3Dfull&protocol=https:&callback=jsonpCallback",
+      "https://g.alicdn.com/sail-web/maas/2.13.167/umi.js",
+      "https://at.alicdn.com/t/a/font_3466851_c5qbm3dmo3.js",
+      "https://at.alicdn.com/t/a/font_5122478_qy44jmi96aq.js",
+      "https://at.alicdn.com/t/a/font_4508348_ao4gpor921g.js",
+      "https://at.alicdn.com/t/a/font_4923299_ff1vsn4irn8.js",
+      "https://at.alicdn.com/t/a/font_4508348_ao4gpor921g.js",
+      "https://at.alicdn.com/t/a/font_3466851_c5qbm3dmo3.js"
+    ],
+    "root": "<div class=\"css-l6sb4f antd5-app\"><div class=\"antd5-layout acss-1ym8svg ms-page-studiosDetail css-l6sb4f\"><div class=\"acss-mshk0a\"><div class=\"acss-eluzu8\" style=\"transform: translateY(200px);\"><div class=\"acss-ygvmt9 acss-m90f83\"><div class=\"acss-1ky4osv\"><img src=\"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAFAAAABQCAYAAACOEfKtAAAAAXNSR0IArs4c6QAAAARzQklUCAgICHwIZIgAAAdwSURBVHic7Z0/bBvXHce/v/fuKFFKZV5FB0VtIMzQLYC5JUsBukiHNEPsqV0CS0u79I+8GSiaWOiSzXY6t5KQJUECuBmabAnHBCgQpsjUFghTtEArkjhK0R/y7t7"
+  },
+  "anonymous_new_ui_verified": true
+}

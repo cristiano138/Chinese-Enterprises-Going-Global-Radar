@@ -1,0 +1,11 @@
+{
+  "version": "2026.10.19-chat1.4",
+  "anonymous": true,
+  "sample": "public synthetic Chinese WAV",
+  "upload_http": 200,
+  "text": "歡迎大家來體驗達摩院推出的語音識別模型",
+  "notice": "已转写到输入框。请核对产品、市场和数字，再点击发送；尚未发起业务查询。",
+  "recognized": true,
+  "confirm_before_send": true,
+  "did_not_submit_business_query": true
+}

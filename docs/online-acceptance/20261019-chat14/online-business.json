@@ -1,0 +1,21 @@
+{
+  "url": "https://studio-zhanxy2551-complianceradar-v2.api-inference.modelscope.net",
+  "version": "2026.10.19-chat1.4",
+  "checks": {
+    "toy_regulations": true,
+    "german_journey": true,
+    "todo": true,
+    "comparison": true,
+    "clause_32009L0048": true,
+    "clause_32023R0988": true
+  },
+  "text_passed": true,
+  "errors": {},
+  "asr": {
+    "attempted": true,
+    "text": "歡迎大家來體驗達摩院推出的語音識別模型",
+    "notice": "已转写到输入框。请核对产品、市场和数字，再点击发送；尚未发起业务查询。",
+    "recognized": true,
+    "confirm_before_send": true
+  }
+}
