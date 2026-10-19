@@ -13,6 +13,7 @@ import csv
 import hashlib
 import io
 import json
+import os
 import re
 import uuid
 from datetime import date, datetime
@@ -287,7 +288,11 @@ def _parse(text, context, use_model=False):
         local["市场"] = m15_router.OOS
         local["用户市场"] = "、".join(unsupported)
     meta = {"via": "本地词典", "model_used": False}
-    if use_model and llm.is_ready() and (not local.get("品类") or not local.get("市场")):
+    # 规则没解析出品类/市场时，只要配置了模型就自动补位（可用 LLM_AUTO_FALLBACK=0 关闭）。
+    # 这样"连衣裙卖到法国"这类词表没收录的新说法不会退化成反复追问同一句话。
+    auto_model = os.getenv("LLM_AUTO_FALLBACK", "1").strip().lower() not in ("0", "false", "off", "no")
+    needs_model = not local.get("品类") or not local.get("市场")
+    if needs_model and llm.is_ready() and (use_model or auto_model) and len(destination_text.strip()) >= 4:
         try:
             slots, info = m15_router.parse_model(destination_text[:500], "")
             if slots is not None:
