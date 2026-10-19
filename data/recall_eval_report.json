@@ -3,12 +3,12 @@
     "mode": "llm",
     "queries": 8,
     "mean_route_recall": 1.0,
-    "mean_slice_recall": 0.9335,
+    "mean_slice_recall": 0.9405,
     "total_invalid_refs": 0,
     "failures": 0,
-    "latency_p50_ms": 3610,
-    "latency_p95_ms": 4135,
-    "latency_max_ms": 4135
+    "latency_p50_ms": 4295,
+    "latency_p95_ms": 5218,
+    "latency_max_ms": 5218
   },
   "rows": [
     {
@@ -37,18 +37,15 @@
       "extra_laws": [
         "EU:31994L0011",
         "EU:32011R1169",
-        "EU:32023R1670",
-        "EU:32025R0040"
+        "EU:32023R1670"
       ],
       "invalid_refs": 0,
-      "coverage": "partial",
+      "coverage": "sufficient",
       "gaps": [
-        "toy safety: 未选到 Directive 2009/48/EC 中关于玩具标签（如警告、年龄标识、制造商信息）的具体条款切片",
-        "labeling requirements: 玩具专用标签要求切片缺失",
-        "chemical safety: 玩具中化学物质迁移/限值要求切片缺失"
+        "ecodesign"
       ],
-      "latency_ms": 4135,
-      "selected_slices": 16
+      "latency_ms": 5218,
+      "selected_slices": 24
     },
     {
       "id": "toy_us",
@@ -92,10 +89,11 @@
       "invalid_refs": 0,
       "coverage": "partial",
       "gaps": [
-        "care labeling"
+        "care labeling",
+        "flammability"
       ],
-      "latency_ms": 2871,
-      "selected_slices": 23
+      "latency_ms": 4039,
+      "selected_slices": 22
     },
     {
       "id": "bt_eu",
@@ -131,13 +129,13 @@
         "EU:32017R1369"
       ],
       "invalid_refs": 0,
-      "coverage": "sufficient",
+      "coverage": "partial",
       "gaps": [
-        "REACH chemical safety",
-        "CLP classification labelling"
+        "low voltage",
+        "CLP labeling"
       ],
-      "latency_ms": 3610,
-      "selected_slices": 24
+      "latency_ms": 3600,
+      "selected_slices": 22
     },
     {
       "id": "cosmetic_eu",
@@ -167,12 +165,10 @@
       "invalid_refs": 0,
       "coverage": "partial",
       "gaps": [
-        "REACH restrictions 未选到直接针对化妆品成分限制的切片",
-        "cosmetic product labeling 缺少化妆品标签具体条款（如第19条标签要求）切片",
-        "ingredient safety 缺少化妆品禁用/限用成分清单切片"
+        "检索模型未返回有效 JSON"
       ],
-      "latency_ms": 3057,
-      "selected_slices": 17
+      "latency_ms": 4701,
+      "selected_slices": 14
     },
     {
       "id": "textile_us",
@@ -212,13 +208,11 @@
         "US:16:503"
       ],
       "invalid_refs": 0,
-      "coverage": "partial",
+      "coverage": "sufficient",
       "gaps": [
-        "carpet and rug surface flammability",
-        "mattress flammability",
         "fair packaging and labeling"
       ],
-      "latency_ms": 3354,
+      "latency_ms": 4798,
       "selected_slices": 24
     },
     {
@@ -252,8 +246,6 @@
         "EU:32009R0450",
         "EU:32011R1169",
         "EU:32023R0988",
-        "US:16:500",
-        "US:16:502",
         "US:21:170",
         "US:21:171",
         "US:21:172",
@@ -265,12 +257,13 @@
         "US:21:186"
       ],
       "invalid_refs": 0,
-      "coverage": "sufficient",
+      "coverage": "partial",
       "gaps": [
-        "US: no dedicated federal regulation specifically for plastic food-contact materials analogous to EU 10/2011; coverage relies on FDA indirect food additive parts (21 CFR 174-178) and food-contact notif"
+        "EU labeling of plastic food contact materials not directly covered by selected slices",
+        "US labeling requirements for food contact articles not present in candidate slices"
       ],
-      "latency_ms": 3680,
-      "selected_slices": 23
+      "latency_ms": 3624,
+      "selected_slices": 19
     },
     {
       "id": "bt_toy_compare",
@@ -279,7 +272,7 @@
       "reason": "",
       "route_via": "模型路由",
       "route_recall": 1.0,
-      "slice_recall": 0.6111,
+      "slice_recall": 0.6667,
       "route_hits": [
         "EU:32006R1907",
         "EU:32008R1272",
@@ -302,35 +295,36 @@
       ],
       "slice_hits": [
         "EU:32006R1907",
-        "EU:32008R1272",
         "EU:32009L0048",
         "EU:32014L0053",
         "EU:32025R2509",
         "US:16:1107",
+        "US:16:1110",
         "US:16:1250",
         "US:16:1251",
         "US:16:1252",
         "US:16:1307",
+        "US:16:1500",
         "US:47:15"
       ],
       "missing": [],
       "extra_laws": [
         "EU:32011R1007",
         "EU:32011R1169",
+        "EU:32023R1670",
         "EU:32025R0040",
         "US:16:1112",
-        "US:16:1120",
         "US:16:1303"
       ],
       "invalid_refs": 0,
       "coverage": "partial",
       "gaps": [
-        "EU toy chemical safety (2009/48/EC Annex II substance restrictions) not directly represented in candidates",
-        "EU toy labeling/warnings (2009/48/EC Article 11) not directly represented",
-        "US labeling requirements for toys (ASTM F963 / CPSIA tracking label) not directly represented",
-        "US FCC Part 15 chemical/labeling not applicable; only labeling slice selected"
+        "EU toy chemical safety substance restrictions (Annex II of 2009/48/EC) not present in candidates",
+        "EU toy labeling requirements (warnings, age grading) not present in candidates",
+        "US chemical safety toy standard heavy elements (ASTM F963) not directly present",
+        "US Bluetooth radio equipment FCC certification (47 CFR 15 subpart C) not directly present"
       ],
-      "latency_ms": 3823,
+      "latency_ms": 4295,
       "selected_slices": 14
     },
     {
@@ -364,13 +358,13 @@
         "US:16:503"
       ],
       "invalid_refs": 0,
-      "coverage": "partial",
+      "coverage": "sufficient",
       "gaps": [
-        "electrical safety: 未选到针对非儿童用LED台灯的通用电气安全认证切片（如UL/电气安全标准），16 CFR 1505仅适用于儿童电玩具",
-        "children's electrical toys: 用户产品为普通LED台灯，未选儿童电玩具相关切片"
+        "electrical safety: 无针对LED台灯（非玩具类）的专门电气安全切片，16 CFR 1505仅适用于电玩具",
+        "testing and labeling: 1107中仅选到通用/儿童产品条款，缺少针对非儿童LED台灯的专门测试与标签条款"
       ],
-      "latency_ms": 2889,
-      "selected_slices": 16
+      "latency_ms": 4148,
+      "selected_slices": 20
     }
   ]
 }

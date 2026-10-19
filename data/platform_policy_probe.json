@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-10-19T20:24:07+08:00",
+  "probes": {
+    "amazon_de_public_help": {
+      "url": "https://www.amazon.de/gp/help/customer/display.html?nodeId=201909000",
+      "http": 403,
+      "final": "https://www.amazon.de/gp/help/customer/display.html?nodeId=201909000",
+      "bytes": 2305,
+      "login_wall": true
+    },
+    "amazon_seller_central_policy": {
+      "url": "https://sellercentral.amazon.de/help/hub/reference/G20103030",
+      "http": 200,
+      "final": "https://sellercentral.amazon.de:443/ap/signin?clientContext=259-1153030-5243403&openid.pape.preferred_auth_policies=Policy15&openid.pape.max_auth_age=300&openid.return_to=https%3A%2F%2Fsellercentral.amazon.de%2Fhelp%2Fhub%2Freference%2FG20103030&openid.identity=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&openid.assoc_handle=sc_de_amazon_v2&openid.mode=checkid_setup&intercept=false&language=de_DE&openid.claimed_id=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0%2Fidentifier_select&pageId=sc_amazon_v3_unified&openid.ns=http%3A%2F%2Fspecs.openid.net%2Fauth%2F2.0&ssoResponse=eyJ6aXAiOiJERUYiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiQTI1NktXIn0.f9TdRA0cAWGUSqH3y_pGS0bQqdbYVk7kDB_sRIKF5DyOTDLh2LikxQ.NKsv22AZOC_RNGqu.zvCtiXH55Gzqr7gwWmgYfeCqiqGYykqlqK--JLe5QXEaaPjjTVLsTc3C6UVaBk3JoKV21kFpx1o_AwYxhLpCYUeHuHsAWXcw1eYbf2leqa-N4olVqd_QhGCjRUbvxUpBBKR8VCKP93_r39TV03aPMKa_oY4lFwUI9Cu8UfyXh95607O8Xr4OePxxfqcALpg-EJEAx5gD.uhBCsTcTI9J8ettgMUMRrw",
+      "bytes": 141183,
+      "login_wall": true
+    },
+    "eu_toy_safety_lex": {
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+      "http": 202,
+      "final": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+      "bytes": 0,
+      "login_wall": false
+    }
+  }
+}

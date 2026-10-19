@@ -1,0 +1,34 @@
+{
+  "generated_at": "2026-10-19T20:25:00+08:00",
+  "purpose": "记录「卖家中心 / 平台私有政策」这一缺口的真实状态与补齐路径，避免用公开资料冒充账号内数据。",
+  "current_state": {
+    "amazon_de_public_help": {
+      "url": "https://www.amazon.de/gp/help/customer/display.html?nodeId=201909000",
+      "http": 403,
+      "note": "公开帮助页对脚本返回 403，需人工浏览器访问或走官方 API。"
+    },
+    "amazon_seller_central_policy": {
+      "url": "https://sellercentral.amazon.de/help/hub/reference/G20103030",
+      "http": 302,
+      "final": "https://sellercentral.amazon.de/ap/signin?...",
+      "note": "强制登录（SSO），无卖家账号无法读取；不得伪造此类政策内容。"
+    },
+    "eu_eur_lex": {
+      "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0048",
+      "http": 202,
+      "note": "官方原文可用（异步渲染，202 属正常），已是当前系统的主要来源。"
+    }
+  },
+  "what_is_in_system_now": {
+    "official_sources": "EUR-Lex（欧盟）与 eCFR（美国）已入库，86 部法规 / 1,794 份文档 / 14,371 个正文切片。",
+    "platform_private": "未接入。系统内没有卖家中心后台政策、没有真实 ASIN 字段、没有提交流程结果。",
+    "display_rule": "涉及平台私有内容时，界面只显示公开招聘页面链接，并标注来源为「公开资料」与抓取日期。"
+  },
+  "how_to_close_the_gap": [
+    "取得卖家账号授权（或由客户在自己的账号内导出政策页面），把导出的 HTML/PDF 作为材料走 scripts/ingest_law_material.py 落库。",
+    "为每个站点记录：抓取时间、账号类型（卖家/供应商）、页面版本或快照哈希，便于后续比对变更。",
+    "真实 ASIN 字段（如 recommended_browse_nodes、item_type_keyword、required attributes）只能在授权账号内读取，不能由公开页面推断。",
+    "接入后仍需人工核对：平台政策会随时改动，机器只能记录「某时刻看到什么」。"
+  ],
+  "boundary": "在拿到授权数据之前，系统不会展示任何「账号内政策」或「真实 ASIN 字段」，演示里也不会把公开页面说成后台数据。"
+}
