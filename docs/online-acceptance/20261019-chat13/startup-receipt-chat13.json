@@ -1,0 +1,8 @@
+{
+  "version": "2026.10.19-chat1.3",
+  "startup_model_messages": [
+    "[2026-10-19 15:29:39] [ASR] Bundled model recovered and SHA-256 verified"
+  ],
+  "image": 28,
+  "status": "Running"
+}

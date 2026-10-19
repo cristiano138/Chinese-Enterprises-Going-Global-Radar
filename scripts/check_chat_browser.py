@@ -56,12 +56,21 @@ def main():
     parser.add_argument("--output", type=Path, help="Separate output directory for an online acceptance run")
     parser.add_argument("--auth-from-git", action="store_true", help="Read ModelScope credentials from Git's credential manager")
     parser.add_argument("--modelscope-embed", action="store_true", help="Embed the real runtime under the required ModelScope parent origin; does not validate the public portal")
+    parser.add_argument("--direct-network", action="store_true", help="Use a direct test-browser connection without changing system proxy settings")
     args = parser.parse_args()
     response_timeout = 90000 if args.modelscope_embed else 25000
     output = args.output or ROOT / "docs" / "ui-preview"
     output.mkdir(parents=True, exist_ok=True)
     checks = []
     token = None
+    report = {"url": args.url, "browser": "Playwright Chromium", "checks": checks,
+              "authenticated_runtime": args.auth_from_git,
+              "modelscope_parent_harness": args.modelscope_embed,
+              "network": "direct HTTP/1.1" if args.direct_network else "system browser network",
+              "completed": False,
+              "skipped": (["storage failure injection", "initialization failure injection"] if args.modelscope_embed else []),
+              "note": "线上不注入平台 SDK 启动故障；故障注入保留在本地完整检查。语音准确率另行验收。"}
+    (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     target = urlsplit(args.url)
     if args.modelscope_embed and (target.scheme != "https" or not re.fullmatch(r"(?:studio-[a-z0-9-]+\.api-inference\.modelscope\.net|[a-z0-9-]+\.ms\.show)", target.netloc)):
         parser.error("Embedded acceptance is restricted to ModelScope Studio runtime hosts")
@@ -79,12 +88,13 @@ def main():
 
     def record(name, condition):
         checks.append({"scenario": name, "passed": bool(condition)})
+        (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
         if not condition:
             raise AssertionError(name)
         print("PASS", name, flush=True)
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=["--no-proxy-server", "--disable-http2", "--disable-quic"] if args.auth_from_git or args.modelscope_embed else [])
+        browser = pw.chromium.launch(args=["--no-proxy-server", "--disable-http2", "--disable-quic"] if args.direct_network else [])
         def new_page(context):
             page = context.new_page()
             return ModelScopeEmbeddedPage(page) if args.modelscope_embed else page
@@ -126,7 +136,10 @@ def main():
             try:
                 page.wait_for_function("before => {const h=document.querySelector('.cr-result-header'); return h && h.dataset.resultId !== before}", arg=before, timeout=response_timeout)
                 page.locator(".cr-result-header h2").filter(has_text=title).wait_for(timeout=response_timeout)
-            except Exception:
+            except Exception as error:
+                checks.append({"scenario": "query completes: " + title, "passed": False,
+                               "error_type": type(error).__name__})
+                (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
                 page.screenshot(path=str(output / "failure.png"), full_page=True)
                 print(page.locator("body").inner_text()[-6500:], flush=True)
                 raise
@@ -221,7 +234,8 @@ def main():
         small.locator("#cr-input textarea").wait_for()
         small.wait_for_function("window.__crChatInitialized === true")
         record("reduced motion bypasses intro", not small.locator(".cr-intro").is_visible())
-        for method in ("skip", "focus", "storage failure", "initialization failure"):
+        methods = ("skip", "focus") if args.modelscope_embed else ("skip", "focus", "storage failure", "initialization failure")
+        for method in methods:
             fallback = make_context()
             if method == "storage failure":
                 fallback.add_init_script("Object.defineProperty(window, 'sessionStorage', {get(){throw new Error('storage unavailable')}})")
@@ -248,10 +262,7 @@ def main():
         reduced.close()
         context.close()
         browser.close()
-    report = {"url": args.url, "browser": "Playwright Chromium", "checks": checks,
-              "authenticated_runtime": bool(token),
-              "modelscope_parent_harness": args.modelscope_embed,
-              "note": "真实浏览器与业务数据；未启用模型，不代表ASR识别准确率验收。"}
+    report["completed"] = True
     (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Browser acceptance: {len(checks)} checks passed")
 

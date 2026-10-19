@@ -1,0 +1,19 @@
+{
+  "verified_at_utc": "2026-10-19T08:10:54.470847+00:00",
+  "version": "2026.10.19-chat1.3",
+  "application_source_commit": "2a2fcdce20df0410221cc285baea09ea28cac5f2",
+  "studio_application_commit": "cd9844c0487fba618e4a4291c9fa8daaea299c9c",
+  "status": "Running",
+  "runtime_http": 200,
+  "hardware": "platform/2v-cpu-8g-mem",
+  "gradio_version": "6.2.0",
+  "css_matches_root": true,
+  "temporary_asr_diagnostic_removed": true,
+  "browser_checks_passed": 30,
+  "offline_gate_entry_points": 17,
+  "anonymous_portal_and_voice": true,
+  "formal_sqlite_verified": false,
+  "asr_scope": "one public synthetic Chinese sample; no general accuracy claim",
+  "downloaded_csv_bytes": 21791,
+  "downloaded_csv_sha256": "eaabea9b206597bb4c95a156e18296f9bc70b57afeaecb2b9eccf6b1ce807e81"
+}
