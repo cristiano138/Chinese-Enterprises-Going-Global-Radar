@@ -40,6 +40,24 @@
 
 ---
 
+## 二·补、语音引擎（外部二进制，不在 pip 清单内）
+
+本地语音**不通过 pip 安装任何 ASR 库**，而是调用独立可执行文件。这两个组件不在 `requirements.txt` 的扫描范围内，因此单独建档：
+
+| # | 组件 | 版本 | 许可证 | 用途 | 分发方式 |
+|---|---|---|---|---|---|
+| A | **sherpa-onnx**（`k2-fsa/sherpa-onnx`） | v1.13.8 | **Apache-2.0** | 离线语音识别运行时（C++ / ONNX Runtime） | 运行时从 GitHub Releases 下载预编译包，落在 `models/sherpa-onnx/bin/`（`.gitignore` 排除，不进仓库） |
+| B | **SenseVoice int8 模型**（`FunAudioLLM/SenseVoice`，经 sherpa-onnx 转换） | 2024-07-17 | **模型权重单独许可**：适用《FunASR Model Open Source License Agreement》（FunASR **工具包**代码为 MIT，**权重不与工具包同许可**） | 中/英/日/韩/粤语音识别权重 | 同上，落在 `models/sherpa-onnx/models/` |
+
+**履约要点**：
+
+- sherpa-onnx 为 Apache-2.0，可商用、可闭源分发，需保留其版权与许可证副本。二进制包内自带 `LICENSE`，模型目录内自带 `LICENSE`（指向 FunASR 许可说明）。
+- SenseVoice **权重许可需单独复核**：其条款与 MIT/Apache 不同，若用于对外商业分发，请以模型卡片当时展示的许可为准，并保留原文。**本项目不转售模型权重，仅在本地运行**。
+- 这两个组件的升级/替换只影响 `core/asr_engine.py` 一处；`ASR_ENGINE_VERSION` / `ASR_ENGINE_MODEL` 可切换版本。
+- 历史组件 `faster-whisper`（MIT）+ `av`（BSD-3-Clause）已降级为可选兜底，**默认不再安装**。
+
+---
+
 ## 三、这几类许可证分别是什么意思
 
 ### Apache-2.0 —— 4 个（`gradio`、`requests`、`openai`、`tenacity`）

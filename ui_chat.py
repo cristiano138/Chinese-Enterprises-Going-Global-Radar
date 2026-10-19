@@ -136,16 +136,55 @@ def prepare_export(state, result):
         return gr.update(value=None, visible=False), "查询条件已变化或此结果不可导出，请重新查询。"
 
 
-def transcribe(audio, original):
+VOICE_PREEDIT_HINT = ("识别结果会**先进输入框做预编辑**：文字可以直接改，"
+                      "确认无误再点「发送」；点「撤销识别」可恢复识别前的文字。")
+
+
+def _preedit_note(text, meta):
+    """预编辑状态说明。只讲「发生了什么」，不给任何合规结论。"""
+    backend = {"engine": "本地引擎", "cloud": "云端"}.get(meta.get("backend"), "转写")
+    seconds = meta.get("seconds")
+    timing = f" · {seconds}s" if isinstance(seconds, (int, float)) else ""
+    length = len(text or "")
+    return (
+        f"**预编辑 · 未提交**　{backend}{timing} · {length} 字\n\n"
+        "文字已进入输入框，可直接改字；尚未发起任何查询。"
+        "请核对产品、市场和数字，确认后点「发送」，或点「撤销识别」回到原文。"
+    )
+
+
+def transcribe(audio, original, preedit=None):
+    """录音 → 文本，写进输入框并进入「预编辑」态（未提交、可撤销）。
+
+    返回 (输入框文本, 状态说明, 预编辑快照)。快照只存「识别前原文 + 识别结果」，
+    不含音频，也不参与任何合规判定。
+    """
     if not audio:
-        return original or "", "请先录音或上传音频。"
+        return original or "", "请先录音或上传音频。", preedit or {}
     try:
         text, meta = asr.transcribe(audio)
         if text and meta.get("ok"):
-            return text, "已转写到输入框。请核对产品、市场和数字，再点击发送；尚未发起业务查询。"
+            snapshot = {"before": original or "", "voice": text,
+                        "backend": meta.get("backend") or ""}
+            return text, _preedit_note(text, meta), snapshot
     except Exception:
         pass
-    return original or "", "语音暂未识别成功，可以重录或直接输入；原文字已保留。"
+    return original or "", "语音暂未识别成功，可以重录或直接输入；原文字已保留。", preedit or {}
+
+
+def undo_voice(preedit, current):
+    """撤销识别：恢复识别前的文字。
+
+    只在这段文字**没被改过**时才恢复 —— 否则说明用户已经在预编辑区改过字，
+    覆盖回去等于吞掉他的修改。
+    """
+    snapshot = preedit or {}
+    voice = snapshot.get("voice")
+    if voice is None:
+        return current, "没有可撤销的识别。", {}
+    if (current or "").strip() != str(voice).strip():
+        return current, "识别文字已被修改，撤销已失效；当前文字保留不动。", {}
+    return snapshot.get("before") or "", "已撤销识别，恢复为识别前的文字。", {}
 
 
 def _details(item, key):
@@ -606,10 +645,14 @@ def build_ui():
 
         with gr.Accordion("语音输入 · 转写后确认再发送", open=False, elem_id="cr-voice"):
             enabled = bool(asr.config_summary().get("enabled"))
-            gr.Markdown("尽量靠近麦克风说完整短句，核对产品名称、国家和数字后再发送。" if enabled else "当前环境语音服务未启用；可以继续使用文字。管理员配置后此入口自动启用。")
+            gr.Markdown("尽量靠近麦克风说完整短句，核对产品名称、国家和数字后再发送。" if enabled else "当前环境语音服务未启用；可以继续使用文字。管理员配置本地引擎（运行 scripts/prepare_asr_engine.py）或云端语音密钥后，此入口自动启用。")
             audio = gr.Audio(sources=["microphone", "upload"], type="filepath", format="wav",
                              label="录音或音频（最长60秒）", interactive=enabled)
-            voice_btn = gr.Button("转写到输入框", interactive=enabled, size="sm")
+            with gr.Row(elem_id="cr-voice-actions"):
+                voice_btn = gr.Button("转写到输入框", interactive=enabled, size="sm")
+                undo_btn = gr.Button("撤销识别", interactive=enabled, size="sm")
+            preedit = gr.State({})
+            gr.Markdown(VOICE_PREEDIT_HINT)
         with gr.Accordion("资料覆盖、来源与条款检索", open=False, elem_id="cr-coverage"):
             gr.Markdown(snapshot.DISCLAIMER)
             gr.Markdown("现有法规目录支持欧盟、美国及五类商品；德国亚马逊六阶段路线为首期重点。其他范围不保证相同深度。\n\n"
@@ -640,8 +683,12 @@ def build_ui():
             button.click(lambda s, a=action: submit_message("", s, a), inputs=session, outputs=outputs,
                          show_progress="minimal", concurrency_id="conversation", concurrency_limit=1)
         export_btn.click(prepare_export, inputs=[session, active], outputs=[download, status], show_progress="minimal")
-        voice_btn.click(transcribe, inputs=[audio, text], outputs=[text, status], concurrency_id="asr", concurrency_limit=1)
-        audio.stop_recording(transcribe, inputs=[audio, text], outputs=[text, status], concurrency_id="asr", concurrency_limit=1)
+        voice_bind = dict(inputs=[audio, text, preedit], outputs=[text, status, preedit],
+                          concurrency_id="asr", concurrency_limit=1)
+        voice_btn.click(transcribe, **voice_bind)
+        audio.stop_recording(transcribe, **voice_bind)
+        undo_btn.click(undo_voice, inputs=[preedit, text], outputs=[text, status, preedit],
+                       concurrency_id="asr", concurrency_limit=1)
 
         def update_conditions(current_state, cat, mkt, nation, sales_platform, delivery, preparation, time_window, regions, model):
             updated = deepcopy(current_state or conversation.new_session())

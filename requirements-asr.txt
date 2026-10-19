@@ -1,16 +1,14 @@
-# 本地语音识别依赖（可选）
+# 语音引擎说明 —— 这个文件不需要 pip install
 #
-# 只在本机想用「按住说话」时才装：pip install -r requirements-asr.txt
-# 不装不影响任何主流程 —— core/asr.py 会把语音入口自动关掉，文本框照常可用。
-# 云端转写不需要这个文件（走 HTTP，只用 requests）。
+# 本地语音已改为「外部引擎」：sherpa-onnx 预编译二进制 + SenseVoice int8 模型。
+#     python scripts/prepare_asr_engine.py
+# 引擎与模型落在 models/sherpa-onnx/（已在 .gitignore，不进仓库）。
+# core/asr_engine.py 只用标准库（subprocess / urllib / tarfile）起子进程，
+# 因此**不引入任何 Python ASR 库**，本文件保留仅为兼容旧文档引用。
 #
-# 装完后还要下模型：python scripts/prepare_asr.py
-
-faster-whisper>=1.2.0
-
-# ⚠️ av 必须锁 <19。
-# faster-whisper 1.2.1 内部仍调用 av.open(..., metadata_errors="ignore")，
-# 而 PyAV 19 已移除该参数，会直接报：
-#   TypeError: open() got an unexpected keyword argument 'metadata_errors'
-# 实测 av 18.1.0 正常。
-av>=11,<19
+# 历史后端 faster-whisper 已降级为兜底（ASR_BACKEND=local），不再推荐。
+# 如确需启用：
+#     pip install "faster-whisper>=1.2.0" "av>=11,<19"
+#     python scripts/prepare_asr.py
+# 注意：av 必须 <19 —— faster-whisper 1.2.1 仍在传 metadata_errors，
+# 而 PyAV 19 已移除该参数（TypeError: open() got an unexpected keyword argument）。

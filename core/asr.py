@@ -7,15 +7,24 @@
     转写出来的文本交给 modules/m15_router.py，与用户手打字走**完全相同**的链路。
     因此语音不会、也不允许绕过 core/verify.py 的引用对齐。
 
-三级后端（按可用性自动选；任一失败自动降级，任何情况都不抛异常）：
-    ① cloud —— OpenAI 兼容的 /audio/transcriptions（配 ASR_API_BASE + ASR_API_KEY + ASR_MODEL）
-    ② local —— faster-whisper（本机 CPU int8，**无需密钥、无需联网**；模型首次用时下载）
-    ③ off   —— 两者都没有 → available()["enabled"] 为 False，界面显示「语音未启用」，
-               文本框照常可用，主链路零影响
+四级后端（按可用性自动选；任何情况都不抛异常）：
+    ① cloud  —— OpenAI 兼容的 /audio/transcriptions（配 ASR_API_BASE + ASR_API_KEY + ASR_MODEL）
+    ② engine —— ★推荐：sherpa-onnx 预编译二进制 + SenseVoice 模型，走子进程，
+                 **不装任何 Python ASR 库**（core/asr_engine.py 只用标准库）
+    ③ local  —— faster-whisper（历史后端，保留作兜底；需要 pip 依赖，不再推荐）
+    ④ off    —— 全都没有 → available()["enabled"] 为 False，界面显示「语音未启用」，
+                文本框照常可用，主链路零影响
 
-为什么默认走 local：
+为什么把 engine 放在 local 之前：
+    中文短句 + 领域词是典型场景。SenseVoice 是非自回归模型，官方 184 条真实中文
+    音频实测 CER 7.81%，Whisper-large-v3 为 20.02%；CPU 上 SenseVoice 还快一个量级。
+    更准 + 更省 + 零 Python 依赖，没有理由继续用 whisper small。
+
+为什么默认不走 cloud：
     本机没有 .env、模型链路未配置，云端 ASR 无法实测。演示不能建立在一个
     「配置好了才能用」的假设上 —— 语音是入口，入口不能有前置条件。
+
+降级顺序（auto）：cloud（显式配了才用）→ engine → local → off。
 
 红线：
     ❌ 不产生法规编号 / 条款号 / 链接 / 结论（那是 corpus + verify 的事）
@@ -23,14 +32,15 @@
     转写文本默认不落盘；显式开启缓存后按后端、模型、语言及音频摘要隔离。
 
 环境变量（全部可选，不配也能跑）：
-    ASR_BACKEND       auto | cloud | local | off     默认 auto
+    ASR_BACKEND       auto | cloud | engine | local | off     默认 auto
     ASR_API_BASE      例 https://xxx/v1
     ASR_API_KEY       云端密钥（与 MODEL_API_TOKEN 分开，互不复用）
     ASR_MODEL         例 whisper-1 / paraformer-v2
     ASR_LANG          默认 zh；填 auto 交给模型判语言
-    ASR_LOCAL_MODEL   默认 small（可选 tiny / base / medium）
-    ASR_MODEL_DIR     本地模型下载目录（默认用 HuggingFace 缓存）
+    ASR_LOCAL_MODEL   本地 Whisper 型号（默认 small，仅 local 后端使用）
+    ASR_MODEL_DIR     本地 Whisper 模型下载目录
     ASR_CACHE_ENABLED 默认关闭；1/true/yes/on 显式允许缓存转写文本
+    （engine 后端另有 ASR_ENGINE_* 变量，见 core/asr_engine.py）
 
 用法：
     from core import asr
@@ -60,6 +70,11 @@ if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
+
+try:  # 包内导入（from core import asr）
+    from core import asr_engine
+except ImportError:  # 直接运行 python core/asr.py
+    import asr_engine
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PROJECT = os.path.dirname(HERE)
@@ -107,6 +122,14 @@ def _local_importable():
         return False
 
 
+def _engine_ready():
+    """引擎是否已就位（只查文件，**不触发下载、不起进程**）。"""
+    try:
+        return bool(asr_engine.status().get("ready"))
+    except Exception:  # noqa: BLE001 —— 探测失败等同于不可用
+        return False
+
+
 def available():
     """当前可用哪个后端。给界面显示状态用，**不加载模型**。"""
     if BACKEND_ENV == "off":
@@ -119,20 +142,40 @@ def available():
                 {"enabled": False, "backend": "off",
                  "detail": "指定了 cloud 但缺 ASR_API_BASE / ASR_API_KEY / ASR_MODEL"})
 
+    if BACKEND_ENV == "engine":
+        return ({"enabled": True, "backend": "engine",
+                 "detail": asr_engine.status()["detail"]}
+                if _engine_ready() else
+                {"enabled": False, "backend": "off",
+                 "detail": _engine_missing_detail("指定了 engine 但")})
+
     if BACKEND_ENV == "local":
         return ({"enabled": True, "backend": "local", "detail": "本地 Whisper 转写"}
                 if _local_importable() else
                 {"enabled": False, "backend": "off",
                  "detail": "指定了 local 但未安装 faster-whisper"})
 
-    # auto：云端优先（快、轻），否则本地，再否则关掉
+    # auto：云端（显式配置才生效）→ sherpa-onnx 引擎 → 本地 Whisper → 关掉
     if _cloud_ready():
         return {"enabled": True, "backend": "cloud", "detail": "云端转写"}
+    if _engine_ready():
+        return {"enabled": True, "backend": "engine",
+                "detail": asr_engine.status()["detail"]}
     if _local_importable():
         return {"enabled": True, "backend": "local",
                 "detail": f"本地 Whisper（{LOCAL_MODEL}）转写"}
     return {"enabled": False, "backend": "off",
-            "detail": "未配置云端密钥，且未安装 faster-whisper —— 语音入口暂不可用"}
+            "detail": _engine_missing_detail("")}
+
+
+def _engine_missing_detail(prefix):
+    """把「引擎没准备好」翻译成一句管理员能照做的话。"""
+    try:
+        detail = asr_engine.status()["detail"]
+    except Exception:  # noqa: BLE001
+        detail = "本地语音引擎不可用"
+    return (prefix + detail +
+            "；运行 scripts/prepare_asr_engine.py 准备引擎，或继续打字。")
 
 
 # ── 可选磁盘缓存（不存音频，任何缓存故障均按未命中处理） ──────────
@@ -141,7 +184,12 @@ def _cache_path(key):
 
 
 def _cache_key(audio, backend):
-    model = API_MODEL if backend == "cloud" else [LOCAL_MODEL, MODEL_DIR]
+    if backend == "cloud":
+        model = API_MODEL
+    elif backend == "engine":
+        model = [asr_engine.MODEL, asr_engine.VERSION]
+    else:
+        model = [LOCAL_MODEL, MODEL_DIR]
     # 不使用 API_KEY 或可能含凭据的 API_BASE，避免凭据进入缓存标识。
     identity = json.dumps([backend, model, LANG], ensure_ascii=False).encode("utf-8")
     return hashlib.sha256(identity + b"\0" + audio).hexdigest()
@@ -401,10 +449,24 @@ def _transcribe_local(audio):
     model = _get_local_model()
     lang = None if LANG == "auto" else (LANG or None)
     segments, info = model.transcribe(
-        io.BytesIO(audio), language=lang, beam_size=1, vad_filter=True,
+        io.BytesIO(audio), language=lang, beam_size=5, vad_filter=True,
+        vad_parameters={"threshold": 0.35, "min_silence_duration_ms": 500,
+                        "speech_pad_ms": 500},
         condition_on_previous_text=False,
     )
     return "".join(seg.text for seg in segments).strip()
+
+
+def _transcribe_engine(audio, timeout=TRANSCRIBE_TIMEOUT):
+    """sherpa-onnx 子进程转写。失败统一折成 _ASRFailure，不向上抛原始异常。"""
+    language = "auto" if LANG == "auto" else (LANG or "auto")
+    try:
+        text, _ = asr_engine.transcribe(audio, timeout=timeout, language=language)
+        return text
+    except asr_engine.EngineError as exc:
+        raise _ASRFailure(str(exc)) from None
+    except Exception:  # noqa: BLE001 —— 任何引擎侧异常都只降级
+        raise _ASRFailure("本地语音引擎调用失败") from None
 
 
 # ── 主入口 ────────────────────────────────────────────────────
@@ -423,6 +485,8 @@ def _transcribe_work(path, deadline, state):
         return hit, True
     if backend == "cloud":
         raw = _transcribe_cloud(audio, timeout=_remaining(deadline))
+    elif backend == "engine":
+        raw = _transcribe_engine(audio, timeout=_remaining(deadline))
     else:
         raw = _transcribe_local(audio)
     # Event.wait() may return at a scheduler boundary slightly before the clock
@@ -498,7 +562,35 @@ def config_summary():
         "detail": a["detail"],
         "lang": LANG,
         "key": "已配置" if API_KEY else "未配置",
+        "engine": _engine_summary(),
     }
+
+
+def _engine_summary():
+    """引擎一句话状态（不带路径，避免把本机目录暴露到界面）。"""
+    try:
+        state = asr_engine.status()
+        return {"ready": state["ready"], "model": state["model"],
+                "detail": state["detail"], "server": asr_engine.server_state()}
+    except Exception:  # noqa: BLE001
+        return {"ready": False, "model": "", "detail": "本地语音引擎状态未知",
+                "server": {"mode": "unknown", "running": False, "detail": "未知"}}
+
+
+def prewarm():
+    """启动时后台准备引擎（下载二进制与模型）。
+
+    只在「auto 且未配云端」或「显式指定 engine」时触发 —— 已经用云端的人
+    不该被顺带下载 230MB。不阻塞启动、不抛异常。
+    """
+    if BACKEND_ENV in ("off", "cloud", "local"):
+        return
+    if BACKEND_ENV == "auto" and _cloud_ready():
+        return
+    try:
+        asr_engine.ensure_async()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 # ── 自检 ──────────────────────────────────────────────────────

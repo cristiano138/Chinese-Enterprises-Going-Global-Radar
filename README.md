@@ -163,7 +163,7 @@
 > **语音输入（10-18）**：M1.5 的输入方式之一，**不是新的一条判定链路**。
 > - **只做「声音 → 文字」** —— 转写文本回填到输入框，用户看得见、改得动，确认后才出判定；转写按钮不会自动查询，点击“发送”时才使用输入框当前文字。
 > - **必须人工核对** —— 转写错误可能改变识别到的品类或市场，不能把识别结果直接当作合规结论。转写失败只返回原因，不覆盖原有输入，也不产出法规结论。
-> - **双后端，零密钥可跑** —— 本地 `faster-whisper` 或云端 `/audio/transcriptions`；两者都不可用时语音入口自动置灰，打字链路完全不受影响。
+> - **双后端，零密钥可跑** —— 本地 sherpa-onnx + SenseVoice（预编译二进制，**不装 Python 库**）或云端 `/audio/transcriptions`；两者都不可用时语音入口自动置灰，打字链路完全不受影响。
 > - **隐私口径** —— 应用不另存录音，转写缓存默认关闭；启用云端 ASR 时录音会发送到配置的服务，不应输入客户敏感信息。
 > - **安全边界** —— 只接受 RIFF/WAVE，音频最大 10 MiB、最长 60 秒；单次转写等待上限 45 秒，最多 2 个并发任务。
 > - **自检** —— `scripts/selftest_voice.py`（23 项，含后端缓存隔离及来源标注）、`scripts/selftest_asr_safety.py`（22 项）和 `scripts/selftest_voice_confirmation.py`（两步确认回归），均已并入 `selftest_all.py` 发布门禁。
@@ -290,24 +290,32 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe scripts\selftest_all.py
 ```
 
-`selftest_all.py` 为16个离线入口的总门禁；它会刷新数据质量检查报告。离线测试不能替代真实模型、语音、正文库、浏览器或魔搭构建的验收，实际状态见[界面优化交付](docs/界面优化交付.md)。
+`selftest_all.py` 为18个离线入口的总门禁；它会刷新数据质量检查报告。离线测试不能替代真实模型、语音、正文库、浏览器或魔搭构建的验收，实际状态见[界面优化交付](docs/界面优化交付.md)。
 
 只有主动更新法规语料时才运行抓取、合并、核对等数据管线；启动应用无需重跑。`run_pipeline.bat` 使用PATH中的 `python`，不会自动选择 `.venv`，应先激活正确环境或按[运行指南](docs/07-运行指南.md)使用明确的解释器执行各脚本。管线会写入CSV和报告，更新前先备份并审查结果。
 
 ### 语音输入（可选，不装也能跑）
 
-语音是**可选入口**：未安装本地依赖且未配置云端 ASR 时，语音入口自动置灰，文字输入仍可使用。
+语音是**可选入口**：本地引擎未准备且未配置云端 ASR 时，语音入口自动置灰，文字输入仍可使用。
+
+**默认引擎：sherpa-onnx + SenseVoice（不装任何 Python 库）**
 
 ```powershell
-# ① 装可选依赖（faster-whisper + 兼容版 av，约 50MB）
-.\.venv\Scripts\python.exe -m pip install -r requirements-asr.txt
+# ① 一条命令准备引擎与模型（sherpa-onnx 预编译二进制 + SenseVoice int8，约 250MB，只需一次）
+.\.venv\Scripts\python.exe scripts\prepare_asr_engine.py
 
-# ② 准备模型（默认走国内镜像 + 实体文件落盘，约 464MB，只需一次）
-.\.venv\Scripts\python.exe scripts\prepare_asr.py
+# ② 检查是否就位（不下载）
+.\.venv\Scripts\python.exe scripts\prepare_asr_engine.py --check
 
 # ③ 起界面，在折叠的语音输入区录音或上传
 .\.venv\Scripts\python.exe app.py
 ```
+
+引擎落在 `models/sherpa-onnx/`（已在 `.gitignore` 中排除，不进仓库）。`core/asr_engine.py` **只用标准库**
+（`subprocess` / `urllib` / `tarfile`）起子进程，不引入 `faster-whisper`、`av`、`torch` 等任何 Python ASR 库。
+
+**为什么换引擎**：中文短句 + 领域词场景下，SenseVoice 是官方实测 CER 7.81% 的候选（Whisper-large-v3 为 20.02%），
+支持中/英/日/韩/粤（中英混说不用切语言），CPU 上更快，且省掉了 `av<19` 那套版本锁。
 
 **想走云端而不下模型**（零新增依赖，配置以下4项；在 `.env` 中填写实际服务）：
 
@@ -318,12 +326,21 @@ ASR_API_KEY=<key>
 ASR_MODEL=<whisper-1 之类的模型名>
 ```
 
+**后端优先级**（`ASR_BACKEND=auto` 时）：云端（显式配置才生效）→ sherpa-onnx 引擎 → 本地 Whisper → 关闭。
+
 **关键约定**：
 
+- **常驻服务**：应用启动时后台拉起 `sherpa-onnx-offline-websocket-server`，模型只加载一次；
+  单句转写从约 3 秒降到约 0.3 秒（本机 Windows / 2 线程实测）。服务起不来时自动退回命令行
+  冷启动，只慢不坏；`ASR_ENGINE_SERVER=off` 可关掉。
+- **预编辑（preedit）**：识别结果先进入输入框做"未提交"的草稿——可直接改字，
+  状态条显示 `预编辑 · 未提交`；点「撤销识别」可回到识别前的文字（改过字则不再覆盖）。
+  只有点「发送」才算提交，转写本身不发起任何查询。
 - 转写文本**只回填到输入框**，不直接出结论，用户检查、修改后再点“发送”。
-- 语音链路失败（没装模型、麦克风没权限、网络断）**只降级提示**，不抛异常、不污染已有输入。
+- 语音链路失败（引擎没准备、麦克风没权限、网络断）**只降级提示**，不抛异常、不污染已有输入。
 - 转写缓存默认关闭；显式启用后仅缓存转写文本和必要元数据，缓存键隔离音频摘要、后端、模型与语言。录音由界面临时存储，本应用不另存音频；云端转写会将录音发送到配置的服务。
-- 媒体依赖 `av` 必须 `<19`：`faster-whisper 1.2.1` 仍在传 `metadata_errors`，PyAV 19 已移除该参数（已锁在 `requirements-asr.txt`）。
+- 引擎下载走 GitHub Releases；国内网络不顺时可换镜像：`--mirror https://gh-proxy.com/https://github.com/k2-fsa/sherpa-onnx/releases/download`。
+- 历史后端 `faster-whisper`（`ASR_BACKEND=local`）仍保留作兜底，但**不再推荐**：需要 pip 依赖且精度更低。
 
 > 📖 **每个 `.py` 文件分别怎么跑、跑了有什么用 —— 见 [`docs/07-运行指南.md`](docs/07-运行指南.md)。**
 
@@ -336,7 +353,7 @@ compliance-radar/
 ├── README.md                   本文件
 ├── LICENSE                     开源许可
 ├── requirements.txt            依赖清单
-├── requirements-asr.txt        语音输入的可选依赖（不装 = 语音入口自动关闭，其余功能不受影响）
+├── requirements-asr.txt        语音说明（引擎为外部二进制，**无需 pip 安装任何 ASR 库**）
 ├── .env.example                环境变量模板
 ├── .gitignore
 ├── run_pipeline.bat            一键重跑数据管线（fetch → merge → check → enrich → overview）
@@ -352,12 +369,13 @@ compliance-radar/
 │   ├── selftest_m1.py          M1 离线自检
 │   ├── selftest_m15.py         M1.5 路由自检（模型桩及降级边界）
 │   ├── selftest_m2_m3.py       M2/M3 自检（固定日期 / 证据链 / CSV / 边界）
-│   ├── selftest_all.py         离线总门禁（16个入口）
+│   ├── selftest_all.py         离线总门禁（18个入口）
 │   ├── selftest_conversation.py 会话隔离、纠正、来源与导出边界
 │   ├── selftest_chat_ui.py     新界面服务调用与渲染边界
 │   ├── check_chat_browser.py  独立真实浏览器验收
 │   ├── prepare_release.py     生成完整源码ZIP，不上传
-│   ├── prepare_asr.py          语音模型一键准备（镜像下载 + 实体文件落盘）
+│   ├── prepare_asr_engine.py   ✅ 语音引擎一键准备（sherpa-onnx 二进制 + SenseVoice 模型，无需 pip）
+│   ├── prepare_asr.py          历史 Whisper 模型准备（仅 ASR_BACKEND=local 时使用）
 │   ├── selftest_voice.py       语音链路自检（ASR 降级 / 路由复用 / 界面回调）
 │   ├── validate_corpus.py      主语料重复键、必填字段、链接和状态体检
 │   ├── build_snapshot.py       生成 data/snapshot.json 发布快照
@@ -371,7 +389,9 @@ compliance-radar/
 │   ├── actions.py              待办动作候选抽取：判定「能落到动作」的条目（M3 用）
 │   ├── llm.py                  大模型接入（只做润色，失败自动降级）
 │   ├── verify.py               ⭐ 引用对齐：无官方链接一律不输出
-│   ├── asr.py                  语音转写：本地 Whisper / 云端 API 双后端，失败只降级不抛异常
+│   ├── asr.py                  语音转写：sherpa-onnx / 云端 / Whisper 四级后端，失败只降级不抛异常
+│   ├── asr_engine.py           sherpa-onnx 外部引擎适配（只用标准库：subprocess/urllib/tarfile）
+│   ├── asr_server.py           常驻识别服务：子进程 + 手写 WebSocket 客户端（模型只加载一次）
 │   ├── snapshot.py             数据快照元数据（PRD D3：版本/截止时间/数据来源）
 │   └── copy_zh.py              PRD 附录 E 节空态文案统一出口（不直写硬编）
 ├── modules/                       ✅ 功能模块
