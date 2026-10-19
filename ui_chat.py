@@ -6,7 +6,6 @@ the model or rerun a query. Every callback carries a result ID, never parsed HTM
 from copy import deepcopy
 import html
 import json
-import os
 from pathlib import Path
 import tempfile
 from urllib.parse import urlsplit
@@ -19,7 +18,7 @@ from modules import m2_timeline
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
 JS = (ROOT / "assets" / "chat.js").read_text(encoding="utf-8")
-BUILD_VERSION = "2026.10.19-chat1"
+BUILD_VERSION = "2026.10.19-chat1.1"
 CAPABILITIES = [
     ("map", "相关法规", "查看品类与市场对应的法规、来源及覆盖范围"),
     ("todo", "合规待办", "整理下一步、后续准备与待确认事项"),
@@ -599,23 +598,6 @@ def build_ui():
         export_btn.click(prepare_export, inputs=[session, active], outputs=[download, status], show_progress="minimal")
         voice_btn.click(transcribe, inputs=[audio, text], outputs=[text, status], concurrency_id="asr", concurrency_limit=1)
         audio.stop_recording(transcribe, inputs=[audio, text], outputs=[text, status], concurrency_id="asr", concurrency_limit=1)
-
-        # 临时诊断端点（chat1 部署验收用，验收通过后移除）：线上 ASR 环境自检。
-        def asr_diag():
-            info = {"available": asr.available(), "cwd": os.getcwd(),
-                    "faster_whisper_importable": asr._local_importable(),
-                    "local_model_setting": asr.LOCAL_MODEL}
-            model_dir = asr.LOCAL_MODEL
-            if model_dir and os.path.isdir(model_dir):
-                info["model_dir_exists"] = True
-                info["model_files"] = {f: os.path.getsize(os.path.join(model_dir, f))
-                                       for f in sorted(os.listdir(model_dir))}
-            else:
-                info["model_dir_exists"] = False
-            return json.dumps(info, ensure_ascii=False)
-
-        diag_btn = gr.Button("语音环境自检", size="sm", elem_id="cr-asr-diag", visible=False)
-        diag_btn.click(asr_diag, outputs=status, api_name="asr_diag")
 
         def update_conditions(current_state, cat, mkt, nation, sales_platform, delivery, preparation, time_window, regions, model):
             updated = deepcopy(current_state or conversation.new_session())

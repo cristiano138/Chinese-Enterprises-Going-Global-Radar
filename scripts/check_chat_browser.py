@@ -6,8 +6,12 @@ enabled by these scenarios, and no production data or external account is used.
 """
 import argparse
 import json
+import os
 from pathlib import Path
+import re
+import subprocess
 import sys
+from urllib.parse import urlsplit
 
 from playwright.sync_api import sync_playwright
 
@@ -17,10 +21,25 @@ ROOT = Path(__file__).resolve().parent.parent
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--url", default="http://127.0.0.1:7861")
+    parser.add_argument("--output", type=Path, help="Separate output directory for an online acceptance run")
+    parser.add_argument("--auth-from-git", action="store_true", help="Read ModelScope credentials from Git's credential manager")
     args = parser.parse_args()
-    output = ROOT / "docs" / "ui-preview"
+    output = args.output or ROOT / "docs" / "ui-preview"
     output.mkdir(parents=True, exist_ok=True)
     checks = []
+    token = None
+    target = urlsplit(args.url)
+    if args.auth_from_git:
+        if target.scheme != "https" or not re.fullmatch(r"studio-[a-z0-9-]+\.api-inference\.modelscope\.net", target.netloc):
+            parser.error("Credential authentication is restricted to ModelScope Studio API runtime hosts")
+        credential = subprocess.run(["git", "credential", "fill"], cwd=ROOT,
+                                    input="protocol=https\nhost=www.modelscope.cn\n\n",
+                                    capture_output=True, text=True, timeout=25,
+                                    env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="Never"))
+        fields = dict(line.split("=", 1) for line in credential.stdout.splitlines() if "=" in line)
+        token = fields.get("password")
+        if not token:
+            parser.error("No stored ModelScope credential is available")
 
     def record(name, condition):
         checks.append({"scenario": name, "passed": bool(condition)})
@@ -30,7 +49,18 @@ def main():
 
     with sync_playwright() as pw:
         browser = pw.chromium.launch()
-        context = browser.new_context(viewport={"width": 1440, "height": 1080})
+        def make_context(**kwargs):
+            context = browser.new_context(**kwargs)
+            if token:
+                def authenticate(route):
+                    if urlsplit(route.request.url).netloc == target.netloc:
+                        route.continue_(headers={**route.request.headers, "Authorization": "Bearer " + token})
+                    else:
+                        route.continue_()
+                context.route("**/*", authenticate)
+            return context
+
+        context = make_context(viewport={"width": 1440, "height": 1080})
         page = context.new_page()
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
@@ -146,14 +176,14 @@ def main():
         page.locator(".cr-item > button").first.click()
         record("mobile expanded result no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
         page.screenshot(path=str(output / "08-mobile-expanded.png"), full_page=True)
-        reduced = browser.new_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
+        reduced = make_context(viewport={"width": 390, "height": 844}, reduced_motion="reduce")
         small = reduced.new_page()
         small.goto(args.url, wait_until="domcontentloaded")
         small.locator("#cr-input textarea").wait_for()
         small.wait_for_function("window.__crChatInitialized === true")
         record("reduced motion bypasses intro", not small.locator(".cr-intro").is_visible())
         for method in ("skip", "focus", "storage failure", "initialization failure"):
-            fallback = browser.new_context()
+            fallback = make_context()
             if method == "storage failure":
                 fallback.add_init_script("Object.defineProperty(window, 'sessionStorage', {get(){throw new Error('storage unavailable')}})")
             if method == "initialization failure":
@@ -180,7 +210,8 @@ def main():
         context.close()
         browser.close()
     report = {"url": args.url, "browser": "Playwright Chromium", "checks": checks,
-              "note": "真实浏览器与本地真实业务数据；未启用模型，不代表ASR或线上部署验收。"}
+              "authenticated_runtime": bool(token),
+              "note": "真实浏览器与业务数据；未启用模型，不代表ASR识别准确率验收。"}
     (output / "browser-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"Browser acceptance: {len(checks)} checks passed")
 

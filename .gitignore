@@ -58,3 +58,10 @@ Thumbs.db
 logs/
 tmp/
 temp/
+
+# 本地模型与操作记录；魔搭已有的 LFS 模型由部署分支保留。
+models/
+outputs/
+docs/ui-preview/acceptance-*.csv
+docs/ui-preview/failure.png
+docs/ui-preview/multi-debug.png

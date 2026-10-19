@@ -101,16 +101,19 @@ def test_asr():
         asr.CACHE_DIR, asr.CACHE_ENABLED = old_dir, old_enabled
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
-    # 静音音频：后端可用则必须不炸；不可用则必须给出原因
+    # Exercise both backend states without loading/downloading a real model.
+    # An installed backend must not turn this offline gate into a network test.
     tmp = os.path.join(tempfile.gettempdir(), "cr_voice_selftest.wav")
     asr._write_silent_wav(tmp)
-    t2, m2 = asr.transcribe(tmp)
-    if m2["backend"]:
-        check("后端可用时静音音频不抛异常", isinstance(t2, str),
-              m2["reason"] or "转写成功")
-    else:
-        check("后端不可用时给出原因（不是静默失败）", bool(m2["reason"]),
-              m2["reason"][:30])
+    with patch.object(asr, "available", return_value={"enabled": True, "backend": "local"}), \
+            patch.object(asr, "CACHE_ENABLED", False), \
+            patch.object(asr, "_transcribe_local", return_value="") as backend:
+        t2, m2 = asr.transcribe(tmp)
+    check("后端返回空转写时给出原因", backend.call_count == 1 and t2 == "" and not m2["ok"] and bool(m2["reason"]), m2["reason"])
+    with patch.object(asr, "available", return_value={"enabled": False, "backend": "", "detail": "离线测试：未配置语音后端"}), \
+            patch.object(asr, "_transcribe_local", side_effect=AssertionError("disabled backend called")):
+        t2, m2 = asr.transcribe(tmp)
+    check("后端不可用时给出原因（不是静默失败）", t2 == "" and not m2["ok"] and bool(m2["reason"]), m2["reason"])
     try:
         os.remove(tmp)
     except Exception:

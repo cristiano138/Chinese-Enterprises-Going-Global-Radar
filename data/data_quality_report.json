@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-19T12:37:18+08:00",
+  "generated_at": "2026-10-19T14:11:54+08:00",
   "source_file": "data\\语料核对表_完整版.csv",
   "total_rows": 86,
   "unique_keys": 86,
@@ -16,10 +16,11 @@
   "invalid_rows": [],
   "missing_urls": [],
   "audit_status_distribution": {
-    "已核对": 29,
-    "待核对": 57
+    "已核对": 28,
+    "待核对": 58
   },
   "pending_audit_rows": [
+    23,
     31,
     32,
     33,
@@ -80,7 +81,7 @@
   ],
   "invalid_audit_status": [],
   "warnings": [
-    "有 57 行尚未人工核对；这些记录不得作为已发布合规依据"
+    "有 58 行尚未人工核对；这些记录不得作为已发布合规依据"
   ],
   "release_eligible": false,
   "valid": true,
