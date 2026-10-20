@@ -362,7 +362,8 @@ class HomeViewTests(unittest.TestCase):
         _Browser.goto("home")
         view = _Browser.page.locator("#view")
         self.assertIn("最近检查", view.inner_text())
-        for label in ["儿童玩具", "德国", "亚马逊"]:
+        # 后端只支持「欧盟 / 美国」两个市场；首页条件条必须显示真实查询市场。
+        for label in ["儿童玩具", "欧盟", "亚马逊"]:
             with self.subTest(label=label):
                 self.assertIn(label, view.inner_text())
 

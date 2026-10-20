@@ -1,19 +1,24 @@
 // 搬运自 prototype.html:1598-1625。函数体逐字未动，仅补头部导入与 export。
 import { ic } from "../icons.js";
 import { toolCard } from "../render.js";
+import { toolData } from "../data.js";
 
   /* ================= 行动 ================= */
   export function actionView(state) {
+    const todo = toolData("todo");
+    const readiness = toolData("readiness");
+    const todoCount = todo ? todo.actions.length : 3;
+    const readinessCount = readiness ? readiness.total_actions : 0;
     return `
       <div class="page-head">
         <h1>行动</h1>
         <p>把法规变成任务、上线计划和市场对比。要做的事和要看清的市场差异都在这里。</p>
       </div>
 
-      <div class="section-head"><b>要做的事</b><span>3 项</span></div>
+      <div class="section-head"><b>要做的事</b><span>${todoCount + readinessCount} 项</span></div>
       <div class="tool-grid">
-        ${toolCard("action", "todo", "list", "合规待办", "按紧迫度整理下一步")}
-        ${toolCard("action", "readiness", "flag", "上线准备", "按阶段和责任排任务")}
+        ${toolCard("action", "todo", "list", "合规待办", `按紧迫度整理下一步${todo ? ` · ${todoCount} 项` : ""}`)}
+        ${toolCard("action", "readiness", "flag", "上线准备", `按阶段和责任排任务${readiness ? ` · ${readinessCount} 项` : ""}`)}
         <button class="tool tool--wide" data-action="open-tool" data-group="action" data-tool="journey">
           <span class="tool__icon">${ic("layers")}</span>
           <span style="flex:1">

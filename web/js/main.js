@@ -27,6 +27,14 @@ import { detailSheet } from "./views/detail.js";
 import { composerDock, bindComposer } from "./ui/composer.js";
 import { showToast } from "./ui/toast.js";
 import { PROFILE_SHEETS } from "./sample.js";
+import { openVoiceSheet } from "./voice.js";
+import {
+  bindRender, conditions, loadBootstrap, loadFreshness,
+  restoreTodoSnapshot, routeData, search as runSearch,
+} from "./data.js";
+import { getHistory } from "./history.js";
+import { markDone } from "./progress.js";
+import { Api } from "./api.js";
 
 // 路由到视图的分派表；工具组与工具名在下方按前缀解析。
 const VIEWS = {
@@ -49,6 +57,24 @@ export const HANDLED_ACTIONS = [
   "mark-done", "copy", "regenerate", "voice", "quick", "help"
 ];
 
+const loadingView = (route) => `
+  <div class="page-head" style="padding-top:16px">
+    <p>正在读取后端数据…</p>
+    <div class="page-head__meta mono">${stateLabel(route)}</div>
+  </div>
+  <div class="list">
+    <div class="row">
+      <span class="row__rail"></span>
+      <span class="row__body"><span class="row__sub">加载中，请稍候</span></span>
+    </div>
+  </div>`;
+
+const stateLabel = (route) => route === "freshness"
+  ? "时效性检查记录"
+  : route.startsWith("regulations") ? "法规库查询"
+    : route.startsWith("action") || route === "result" ? "行动清单查询"
+      : "启动信息";
+
 export const render = () => {
   const state = store.state;
   state.route = routeOf();
@@ -68,6 +94,15 @@ export const render = () => {
 
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
+
+  // 数据未到达时先渲染骨架；data.js 完成后会通过 bindRender 回调重绘。
+  const loaded = routeData(r);
+  if (!loaded.ready) {
+    els.view.className = "view";
+    els.view.innerHTML = loadingView(r);
+    els.dock.innerHTML = "";
+    return;
+  }
 
   // 原型 2068-2071 的未知路由回落：所有路由就位后，未知路由回首页。
   const view = Object.hasOwn(VIEWS, r)
@@ -136,15 +171,20 @@ document.addEventListener("click", (event) => {
   } else if (action === "rerun") {
     showToast("已按当前条件重新生成");
   } else if (action === "example-query") {
-    store.set({ query: el.dataset.query || "", searchDone: true });
+    const query = el.dataset.query || "";
+    store.set({ query, searchDone: true });
+    if (query) runSearch(query);
     render();
   } else if (action === "close-sheet") {
     closeSheet();
   } else if (action === "detail") {
     openSheet(detailSheet(el.dataset.id));
   } else if (action === "sheet") {
-    const builder = PROFILE_SHEETS[el.dataset.sheet];
-    if (builder) openSheet(builder());
+    if (el.dataset.sheet === "voice") openVoiceSheet();
+    else {
+      const builder = PROFILE_SHEETS[el.dataset.sheet];
+      if (builder) openSheet(builder());
+    }
   } else if (action === "open-result") {
     store.state.resultFrom = el.dataset.from
       || (store.state.route === "home" ? "home" : "assistant");
@@ -153,18 +193,28 @@ document.addEventListener("click", (event) => {
     closeSheet();
     store.state.resultFrom = ["home", "assistant", "regulations", "action"]
       .includes(store.state.route) ? store.state.route : "profile";
+    const entry = getHistory(el.dataset.id || "");
+    if (entry) restoreTodoSnapshot(entry);
     go("result");
   } else if (action === "export") {
-    showToast("原型中不生成文件；正式版会导出带查询条件的 CSV");
+    const route = store.state.route;
+    const readiness = route === "action/readiness" || route === "action/journey";
+    const url = readiness
+      ? Api.readinessCsvUrl({ category: conditions.category, markets: conditions.markets })
+      : Api.todoCsvUrl({ category: conditions.category, market: conditions.market });
+    window.location.href = url;
+    showToast("正在导出 CSV");
   } else if (action === "mark-done") {
+    markDone(el.dataset.id || "", el.dataset.title || "");
     showToast("已标记为已完成 · 不会自动视为合规");
     closeSheet();
+    render();
   } else if (action === "copy") {
     showToast("已复制这条回答");
   } else if (action === "regenerate") {
     showToast("原型中不重复调用模型；正式版会基于同一条件重答");
   } else if (action === "voice") {
-    showToast("语音入口：转写后先预编辑，再发送");
+    openVoiceSheet();
   } else if (action === "help") {
     openSheet(PROFILE_SHEETS.help());
   }
@@ -176,7 +226,9 @@ document.addEventListener("submit", (event) => {
   if (form.dataset.form === "search") {
     event.preventDefault();
     const input = form.querySelector("input");
-    store.set({ query: input ? input.value : "", searchDone: true });
+    const query = input ? input.value.trim() : "";
+    store.set({ query, searchDone: true });
+    if (query) runSearch(query);
     render();
   }
 });
@@ -187,5 +239,9 @@ document.addEventListener("keydown", (event) => {
   if (event.key === "Escape" && sheet.classList.contains("is-on")) closeSheet();
 });
 
+bindRender(render);
 store.state.route = routeOf();
 render();
+// 首屏先拿启动信息与时效性结果；失败时视图继续用原型数据兜底，不白屏。
+loadBootstrap();
+loadFreshness();

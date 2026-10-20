@@ -6,9 +6,65 @@ import { store } from "../store.js";
 import { go } from "../router.js";
 import { showToast } from "../ui/toast.js";
 import { render as appRender } from "../main.js";
+import { cache, route as routeQuery, conditions } from "../data.js";
 
 const state = store.state;
-let replyTimer = null;
+let requestSeq = 0;
+
+function chatContext() {
+  return state.messages
+    .filter((message) => message.role === "user")
+    .slice(-4)
+    .map((message) => message.text)
+    .join("；");
+}
+
+function choicesFor(result) {
+  if (!result) return [];
+  if (result.reason === "partial_品类" || result.reason === "bad_category") {
+    return ["儿童玩具", "电子电器", "纺织服装", "美妆个护", "食品接触材料"];
+  }
+  if (result.reason === "partial_市场" || result.reason === "bad_market") {
+    return ["欧盟", "美国"];
+  }
+  return [];
+}
+
+async function reply(value) {
+  const seq = ++requestSeq;
+  const context = chatContext();
+  let result = null;
+  let error = "";
+  try {
+    result = await routeQuery(value, context);
+  } catch (caught) {
+    error = caught.message;
+  }
+  if (seq !== requestSeq) return;   // 新消息已发出，丢弃过期回复
+  state.typing = false;
+  if (error) {
+    state.messages.push({
+      role: "assistant",
+      text: `暂时无法完成识别：${error}`,
+      meta: "请求未完成 · 请确认服务仍在运行",
+    });
+  } else {
+    state.messages.push({
+      role: "assistant",
+      text: result.reply,
+      meta: result.ok
+        ? `依据：法规库 · ${result.category} / ${result.market} · 来源 ${result.route_via || "本地词典解析"}`
+        : `未完成识别 · ${result.route_via || ""}`,
+      deliverable: Boolean(result.ok),
+    });
+    state.choices = choicesFor(result);
+    if (result.ok) {
+      conditions.category = result.category || conditions.category;
+      conditions.market = result.market || conditions.market;
+    }
+  }
+  appRender();
+}
 
   export function assistantWelcomeView(state) {
     return `
@@ -43,8 +99,8 @@ let replyTimer = null;
     const deliverable = m.deliverable ? `
       <div class="deliverable">
         <div class="deliverable__eyebrow">已生成 · 行动清单</div>
-        <div class="deliverable__title">德国市场行动清单</div>
-        <div class="deliverable__meta">3 项优先 · 7 项待办 · 数据截止 10-19</div>
+        <div class="deliverable__title">${esc(conditions.category)} · ${esc(conditions.market)} 行动清单</div>
+        <div class="deliverable__meta">按紧迫度整理 · 数据截止 ${esc((cache.boot && cache.boot.data_cutoff) || "—")}</div>
         <button class="deliverable__btn" data-action="open-result">
           <span>查看完整结果</span>${ic("arrow")}
         </button>
@@ -98,50 +154,15 @@ export function render(state) {
     state.typing = true;
     if (state.route !== "assistant") go("assistant");
     appRender();
-
-    // M1：壳与路由阶段，此处用示例回复；M2 换成 POST /api/route 的返回。
-    replyTimer = window.setTimeout(() => {
-      state.typing = false;
-      const asked = state.messages.filter(m => m.role === "assistant").length;
-      if (asked === 0) {
-        state.messages.push({
-          role: "assistant",
-          text: "先确认一个条件：这个产品带电吗？这会影响是否还要看 WEEE 和电池法规。",
-          meta: "依据：法规库 86 部 · 结论来自核对语料"
-        });
-        state.choices = ["不带电", "带电", "暂不确定"];
-      } else {
-        state.messages.push({
-          role: "assistant",
-          text: "好，条件记下了。先按不带电处理，给你一份可以马上开始的清单。",
-          meta: "依据：法规库 86 部 · 数据截止 2026-10-19",
-          deliverable: true
-        });
-      }
-      appRender();
-    }, 720);
+    reply(value);
   }
 
   export function choose(value) {
-    state.messages.push({ role: "user", text: value });
-    state.choices = [];
-    state.typing = true;
-    appRender();
-    replyTimer = window.setTimeout(() => {
-      state.typing = false;
-      state.messages.push({
-        role: "assistant",
-        text: "好，条件记下了。先按" + value + "处理，给你一份可以马上开始的清单。",
-        meta: "依据：法规库 86 部 · 数据截止 2026-10-19",
-        deliverable: true
-      });
-      appRender();
-    }, 720);
+    send(value);
   }
 
   export function newChat() {
-    // 模块化增量：取消待发的演示回复计时器（与 Task 5 的 toast 计时器处理一致）。
-    if (replyTimer) { clearTimeout(replyTimer); replyTimer = null; }
+    requestSeq += 1;                 // 让在途回复失效
     state.chatStarted = false;
     state.messages = [];
     state.typing = false;
