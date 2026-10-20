@@ -727,6 +727,60 @@ class DelegationCompletenessTests(unittest.TestCase):
                 self.assertIn(action, got, f"action「{action}」尚未接入")
 
 
+class ResponsiveTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        # 共享 page 的视口必须恢复，否则字母序在其后的浏览器测试会在桌面宽度下运行。
+        _Browser.page.set_viewport_size({"width": 390, "height": 844})
+
+    def _at(self, width, prop):
+        _Browser.page.set_viewport_size({"width": width, "height": 900})
+        _Browser.page.goto(f"{BASE}#/home", wait_until="load")
+        _Browser.page.wait_for_timeout(350)
+        return _Browser.page.evaluate(
+            "() => { const el = document.querySelector('.app-shell'); const cs = getComputedStyle(el);"
+            "return { prop: cs.getPropertyValue(%r), rect: el.getBoundingClientRect().toJSON() }; }"
+            % prop)
+
+    def test_wide_viewport_has_no_phone_shell_decoration(self):
+        for prop in ["border-top-width", "box-shadow"]:
+            with self.subTest(prop=prop):
+                got = self._at(1440, prop)
+                self.assertIn(got["prop"], ["0px", "none"],
+                              f"桌面端不应保留手机壳装饰：{prop}={got['prop']}")
+
+    def test_wide_viewport_keeps_the_phone_proportions_and_centering(self):
+        rect = self._at(1440, "width")["rect"]
+        self.assertLessEqual(rect["width"], 481, "桌面端内容栏不得超过 480px")
+        self.assertAlmostEqual(rect["x"] + rect["width"] / 2, 720, delta=2, msg="内容栏必须居中")
+
+    def test_narrow_viewport_keeps_the_full_width_shell(self):
+        _Browser.page.set_viewport_size({"width": 390, "height": 844})
+        _Browser.page.goto(f"{BASE}#/home", wait_until="load")
+        _Browser.page.wait_for_timeout(350)
+        rect = _Browser.page.evaluate(
+            "() => document.querySelector('.app-shell').getBoundingClientRect().toJSON()")
+        self.assertEqual(rect["width"], 390)
+        self.assertEqual(rect["x"], 0)
+
+    def test_tabbar_stays_at_the_bottom_across_the_breakpoint(self):
+        """Review Focus 5：跨断点来回缩放不得错乱。"""
+        for width in [390, 1440, 390, 1440]:
+            with self.subTest(width=width):
+                _Browser.page.set_viewport_size({"width": width, "height": 900})
+                _Browser.page.goto(f"{BASE}#/home", wait_until="load")
+                _Browser.page.wait_for_timeout(300)
+                box = _Browser.page.evaluate(
+                    "() => { const r = document.querySelector('.tabbar').getBoundingClientRect();"
+                    "return { bottom: r.bottom, vh: window.innerHeight, w: r.width }; }")
+                self.assertLessEqual(abs(box["bottom"] - box["vh"]), 2, "标签栏必须贴在视口底部")
+                self.assertGreater(box["w"], 300, "标签栏不得塌陷")
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

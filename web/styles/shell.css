@@ -266,3 +266,24 @@
   @media (prefers-reduced-motion: reduce) {
     * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   }
+
+/* ============================================================
+   桌面端去壳（规格第 7 节）
+   原型在 ≥700px 渲染居中手机壳；本项目保留手机比例与排布，
+   但去掉边框、圆角、阴影与桌面底纹。
+   与原型规则同为 @media (min-width: 700px)，特异性相同，
+   靠"后声明胜出"生效——因此本块必须在文件末尾。
+   ============================================================ */
+@media (min-width: 700px) {
+  body {
+    display: block;
+    padding: 0;
+    background: var(--paper);
+  }
+  .app-shell {
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
