@@ -188,6 +188,103 @@ def _stop_browser():
     _Browser.stop()
 
 
+class ShellTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_tabbar_has_the_five_prototype_tabs(self):
+        labels = _Browser.page.locator("#tabbar .tab").all_inner_texts()
+        self.assertEqual([t.strip() for t in labels],
+                         ["首页", "法规", "助手", "行动", "我的"])
+
+    def test_assistant_tab_uses_the_raised_pill(self):
+        self.assertEqual(_Browser.page.locator("#tabbar .tab--main").count(), 1)
+        self.assertIn("助手", _Browser.page.locator("#tabbar .tab--main").inner_text())
+
+    def test_active_tab_matches_the_prototype_mapping(self):
+        """原型的映射：regulations/action/profile 前缀归各自标签，freshness 归首页。"""
+        cases = [("home", "首页"), ("freshness", "首页"),
+                 ("regulations", "法规"), ("regulations/map", "法规"),
+                 ("action", "行动"), ("action/journey", "行动"),
+                 ("profile", "我的"), ("profile/tutorial", "我的"),
+                 ("assistant", "助手")]
+        for route, expected in cases:
+            with self.subTest(route=route):
+                _Browser.goto(route)
+                current = _Browser.page.locator('#tabbar [aria-current="page"]')
+                self.assertEqual(current.count(), 1)
+                self.assertIn(expected, current.inner_text())
+
+    def test_result_route_highlights_no_tab(self):
+        """原型对 result 不做归并，因此没有任何标签被标为当前页。"""
+        _Browser.goto("result")
+        self.assertEqual(_Browser.page.locator('#tabbar [aria-current="page"]').count(), 0)
+
+    def test_appbar_gives_back_buttons_a_nav_action(self):
+        """原型没有 back 这个 action；返回一律走 data-action="nav" data-to=父路由。"""
+        _Browser.goto("regulations/map")
+        back = _Browser.page.locator("#appbar button[aria-label='返回']")
+        self.assertEqual(back.count(), 1)
+        self.assertEqual(back.get_attribute("data-action"), "nav")
+        self.assertEqual(back.get_attribute("data-to"), "regulations")
+
+    def test_unknown_route_falls_back_to_home(self):
+        """Review Focus 2：畸形/未知 hash 不得白屏。"""
+        for bad in ["regulations/不存在", "action/zzz", "完全瞎写"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
+                                "未知路由必须回落到首页而不是白屏")
+
+    def test_shell_mount_points_match_the_prototype(self):
+        for node_id in ["shell", "appbar", "view", "dock", "tabbar",
+                        "backdrop", "sheet", "toast"]:
+            with self.subTest(node_id=node_id):
+                self.assertEqual(_Browser.page.locator(f"#{node_id}").count(), 1)
+
+
+class StoreTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_state_shape_matches_the_prototype(self):
+        got = _Browser.page.evaluate("""async () => {
+          const { store } = await import('/web/js/store.js');
+          return Object.keys(store.state).sort();
+        }""")
+        self.assertEqual(got, sorted(["route", "chatStarted", "messages", "typing",
+                                      "choices", "filter", "freshFilter", "tool",
+                                      "toolGroup", "resultFrom", "searchDone",
+                                      "query", "hasFreshness"]))
+
+    def test_set_conditions_resets_the_result_origin(self):
+        """Review Focus 4：换条件后不得沿用上一次的结果来源。"""
+        got = _Browser.page.evaluate("""async () => {
+          const { store } = await import('/web/js/store.js');
+          store.reset();
+          store.set({ resultFrom: 'home' });
+          const before = store.state.resultFrom;
+          store.setConditions({ freshFilter: '需处理' });
+          return { before, after: store.state.resultFrom };
+        }""")
+        self.assertEqual(got["before"], "home")
+        self.assertEqual(got["after"], "assistant")
+
+    def test_subscribers_are_notified_and_can_unsubscribe(self):
+        got = _Browser.page.evaluate("""async () => {
+          const { store } = await import('/web/js/store.js');
+          let hits = 0;
+          const off = store.subscribe(() => { hits += 1; });
+          store.set({ filter: '全部' });
+          off();
+          store.set({ filter: '需处理' });
+          return hits;
+        }""")
+        self.assertEqual(got, 1)
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
