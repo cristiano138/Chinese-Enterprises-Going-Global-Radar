@@ -37,6 +37,8 @@ SCRIPTS = [
     "scripts/selftest_journey.py",
     "scripts/selftest_conversation.py",
     "scripts/selftest_chat_ui.py",
+    # SPA 静态托管与 /api/* 契约：Gradio 的根路由被接管后必须仍然可用。
+    "scripts/selftest_web_api.py",
 ]
 
 
