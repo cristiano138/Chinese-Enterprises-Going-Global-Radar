@@ -1482,13 +1482,20 @@ def build_ui():
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", os.getenv("SERVER_PORT", "7860")))
-    # 魔搭创空间通过 PORT 注入服务端口；本地运行也绑定全网卡，便于容器探活。
     host = "0.0.0.0"
     from ui_chat import CSS
+    import web_app
     # 语音引擎预热：只在会用本地引擎时后台准备（不阻塞启动、不抛异常）。
-    # 界面在 build_ui() 时读一次可用性，所以先起线程，让下载与建界面并行。
     asr.prewarm()
     launch_kwargs = {"server_name": host, "server_port": port, "css": CSS,
                      "theme": gr.themes.Soft(), "footer_links": [],
                      "show_error": False, "max_file_size": "20mb"}
-    build_ui().launch(**launch_kwargs)
+    demo = build_ui()
+    if web_app.ui_mode() == "spa":
+        # 非阻塞启动，以便接管根路由；随后显式阻塞主线程。
+        demo.launch(prevent_thread_lock=True, quiet=True, **launch_kwargs)
+        if not web_app.install(demo):
+            print("[UI] SPA mount failed; falling back to the Gradio shell", flush=True)
+        demo.block_thread()
+    else:
+        demo.launch(**launch_kwargs)
