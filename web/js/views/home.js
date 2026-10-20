@@ -111,7 +111,7 @@ export function homeView(state) {
           <div class="fresh-card__title">法规时效 <span class="monitor-pill"><i></i>监控中</span></div>
           <div class="fresh-card__time">${checkedAt}</div>
         </div>
-        <div class="fresh-card__sub">${total} 条官方链接 · 数据截止 ${escText(cutoff || "—")} · 每天 09:00 / 21:00 自动核验</div>
+        <div class="fresh-card__sub">${total} 条官方链接 · 数据截止 ${escText(cutoff || "—")} · 每天 19:00 / 22:00 自动核验</div>
 
         <div class="fresh-counts">
           <div class="fresh-count"><b>${total}</b><span>核验链接</span></div>

@@ -82,6 +82,7 @@ def _to_record(event, row, summary=None, seq=1, total=1, today=None):
         "变化摘要": change,
         "影响说明": impact,
         "摘要来源": "模型润色" if model_used else "确定性抽取",
+        "影响来源": "模型润色" if model_used else "确定性抽取",
         "距今": dates.humanize_gap(event["date_obj"], reference_today),
         "同类序号": seq,
         "同类计数": total,

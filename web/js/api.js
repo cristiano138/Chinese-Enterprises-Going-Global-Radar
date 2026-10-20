@@ -76,7 +76,7 @@ export const Api = {
     return upload("/api/transcribe", form);
   },
   tool: (name, params = {}) => api(`/api/tool/${name}`, { method: "POST", body: params }),
-  route: (text, context = "", useLLM = false) =>
+  route: (text, context = "", useLLM = true) =>
     api("/api/route", { method: "POST", body: { text, context, use_llm: useLLM } }),
   search: (identifier, heading = "") =>
     api("/api/search", { params: { identifier, heading } }),

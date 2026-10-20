@@ -138,6 +138,7 @@ def _normalize_action(action: dict) -> dict:
         "url": action.get("来源条款链接") or (links[0] if links else ""),
         "excerpt": action.get("证据摘录") or "",
         "status": action.get("状态") or action.get("现行效力") or "",
+        "source": action.get("动作来源") or "",
     }
 
 
@@ -156,6 +157,8 @@ def _normalize_event(event: dict) -> dict:
         "seq": event.get("同类序号") or 1,
         "total": event.get("同类计数") or 1,
         "validity": event.get("现行效力") or "",
+        "summary_source": event.get("摘要来源") or "",
+        "impact_source": event.get("影响来源") or "",
     }
 
 
@@ -176,6 +179,7 @@ def _records_from_map(result: dict) -> dict:
         "cross": cross,
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 
@@ -347,6 +351,7 @@ def _tool_todo(body: dict) -> dict:
         "history": result.get("历史关联") or [],
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 
@@ -367,6 +372,7 @@ def _tool_timeline(body: dict) -> dict:
         "upcoming": [_normalize_event(e) for e in result.get("即将发生", [])],
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 

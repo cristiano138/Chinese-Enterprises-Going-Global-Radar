@@ -61,7 +61,10 @@ export function toolParams(name) {
   if (name === "compare" || name === "multi" || name === "readiness") {
     return { category: conditions.category, markets: conditions.markets };
   }
-  return { category: conditions.category, market: conditions.market };
+  // M1/M2/M3 支持模型润色；后端在未配置模型时会立即降级到确定性结果。
+  const params = { category: conditions.category, market: conditions.market };
+  if (name === "map" || name === "todo" || name === "timeline") params.use_llm = true;
+  return params;
 }
 
 export function toolKey(name, params = toolParams(name)) {

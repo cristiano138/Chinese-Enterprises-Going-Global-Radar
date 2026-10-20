@@ -24,6 +24,7 @@ SCRIPTS = [
     "scripts/selftest_freshness.py",
     "scripts/selftest_discovery.py",
     "scripts/selftest_llm_reliability.py",
+    "scripts/selftest_llm_layers.py",
     "scripts/selftest_voice.py",
     "scripts/selftest_asr_safety.py",
     "scripts/selftest_asr_engine.py",

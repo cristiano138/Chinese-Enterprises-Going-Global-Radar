@@ -37,6 +37,17 @@ KIND = {"law": "法律法规", "legal": "法律法规", "platform": "平台规�
         "platform_rule": "平台规则", "recommendation": "操作建议"}
 
 
+def _new_session():
+    """新会话：模型已配置时默认启用输入理解与结果润色。
+
+    ``conversation.new_session()`` 本身保持确定性默认值，供离线测试和
+    直接调用方使用；只有交互界面在这里按模型就绪状态打开开关。
+    """
+    state = conversation.new_session()
+    state["context"]["use_llm"] = bool(llm.is_ready())
+    return state
+
+
 def _e(value):
     return html.escape(str(value or ""), quote=True)
 
@@ -98,7 +109,7 @@ def _result_map(state):
 
 
 def submit_message(text, state, action=None):
-    state = state or conversation.new_session()
+    state = state or _new_session()
     if not (text or "").strip() and not action:
         return _unpack(state, _result_map(state).get(state.get("active_result_id")),
                        "先写下你的产品和问题，或选择一个示例。")
@@ -118,7 +129,7 @@ def submit_message(text, state, action=None):
 
 
 def reset_session():
-    return _unpack(conversation.new_session(), None, "新对话已开始。")
+    return _unpack(_new_session(), None, "新对话已开始。")
 
 
 def prepare_export(state, result):
@@ -471,7 +482,7 @@ def _appbar_sub():
 def build_ui():
     with gr.Blocks(title="出海合规雷达 · 从问题到下一步", analytics_enabled=False,
                    delete_cache=(3600, 3600)) as demo:
-        session = gr.State(value=conversation.new_session, time_to_live=7200)
+        session = gr.State(value=_new_session, time_to_live=7200)
         active = gr.State(value=None)
         gr.HTML('<div class="cr-intro" aria-hidden="true"><div class="cr-intro-card">'
                 '<div class="cr-intro-logo" aria-hidden="true">合</div>'
@@ -653,7 +664,10 @@ def build_ui():
             with gr.Row():
                 window = gr.Radio(m2_timeline.WINDOW_CHOICES, value=m2_timeline.DEFAULT_WINDOW, label="时间线窗口")
                 markets = gr.CheckboxGroup(list(corpus.SUPPORTED_MARKETS), value=list(corpus.SUPPORTED_MARKETS), label="对比／汇总／上线准备市场")
-                use_model = gr.Checkbox(value=False, label="使用已配置模型理解输入", interactive=llm.config_summary()["ready"])
+                use_model = gr.Checkbox(
+                    value=bool(llm.config_summary()["ready"]),
+                    label="使用已配置模型理解输入与润色结果",
+                    interactive=llm.config_summary()["ready"])
             apply_context = gr.Button("应用条件并更新当前结果", size="sm")
 
         with gr.Accordion("查看历史结果 · 保留当时条件", open=False, visible=False, elem_id="cr-history") as history_panel:
@@ -742,7 +756,7 @@ def build_ui():
                        concurrency_id="asr", concurrency_limit=1)
 
         def update_conditions(current_state, cat, mkt, nation, sales_platform, delivery, preparation, time_window, regions, model):
-            updated = deepcopy(current_state or conversation.new_session())
+            updated = deepcopy(current_state or _new_session())
             ctx = updated["context"]
             if cat and cat != ctx.get("category"):
                 # Product-specific evidence cannot carry into another category.

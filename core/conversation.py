@@ -494,13 +494,16 @@ def _intent(text):
 def _call(action, context):
     category, market = context["category"], context["market"]
     today = date.fromisoformat(snapshot.now_bjt())
+    # 三类结果都支持可选的模型润色；没有配置模型时模块层会立即降级，
+    # 不会因为这里传 True 而阻塞确定性结果。
+    use_llm = bool(context.get("use_llm")) and llm.is_ready()
     if action == "map":
-        return m1_map.query(category, market, use_llm=False)
+        return m1_map.query(category, market, use_llm=use_llm)
     if action == "todo":
-        return m3_todo.query(category, market, use_llm=False, today=today)
+        return m3_todo.query(category, market, use_llm=use_llm, today=today)
     if action == "timeline":
         return m2_timeline.query(category, market, window=context.get("window", "近 12 个月"),
-                                 use_llm=False, today=today)
+                                 use_llm=use_llm, today=today)
     markets = context.get("markets") or ([market] if market else [])
     if action == "compare":
         if len(markets) < 2:
