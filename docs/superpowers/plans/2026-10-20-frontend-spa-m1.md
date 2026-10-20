@@ -2173,6 +2173,13 @@ class ProfileViewTests(unittest.TestCase):
         current = _Browser.page.locator('#tabbar [aria-current="page"]')
         self.assertIn("我的", current.inner_text())
 
+    def test_profile_shows_the_radar_mark_once(self):
+        """我的页同时有顶栏 brand 与 hero 两处雷达标记，视觉上重复。
+        产品决定：保留 hero 的品牌标记，顶栏在 profile 路由不画标记。"""
+        _Browser.goto("profile")
+        self.assertEqual(_Browser.page.locator("#appbar .brand__mark").count(), 0)
+        self.assertEqual(_Browser.page.locator("#view .profile__mark").count(), 1)
+
 
 class DetailSheetTests(unittest.TestCase):
     @classmethod
@@ -2350,7 +2357,7 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（ProfileViewTests 2 + DetailSheetTests 4 + UnknownRouteTests 2 + DelegationCompletenessTests 1 全通过，既有类无回归）
+Expected: PASS（ProfileViewTests 3 + DetailSheetTests 4 + UnknownRouteTests 2 + DelegationCompletenessTests 1 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
