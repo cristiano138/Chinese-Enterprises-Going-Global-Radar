@@ -837,7 +837,7 @@ Expected: `4`；`3`
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（TokenTests 4 + SampleDataTests 1 + RenderHelperTests 5）
+Expected: PASS（TokenTests 4 + SampleDataTests 2 + RenderHelperTests 5 = 11）
 
 - [ ] **Step 6: 提交**
 
