@@ -1029,13 +1029,17 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(back.get_attribute("data-action"), "nav")
         self.assertEqual(back.get_attribute("data-to"), "regulations")
 
-    def test_unknown_route_falls_back_to_home(self):
-        """Review Focus 2：畸形/未知 hash 不得白屏。"""
-        for bad in ["regulations/不存在", "action/zzz", "完全瞎写"]:
+    def test_unknown_route_redirects_home(self):
+        """原型 2068-2071：未知路由 go("home")。
+
+        本任务还没有任何视图，所以这里只能断言**路由回落**（hash 变为 #/home）；
+        "视图非空"由 Task 6 在首页视图存在后补断言。
+        """
+        for bad in ["完全瞎写", "zzz", "foo/bar"]:
             with self.subTest(bad=bad):
                 _Browser.goto(bad)
-                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
-                                "未知路由必须回落到首页而不是白屏")
+                self.assertTrue(_Browser.page.url.endswith("#/home"),
+                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
 
     def test_shell_mount_points_match_the_prototype(self):
         for node_id in ["shell", "appbar", "view", "dock", "tabbar",
@@ -1125,9 +1129,14 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  const view = VIEWS[r] || VIEWS.default;
+  // 原型 2068-2071：未知路由 go("home") 并返回，而不是渲染空白。
+  const view = VIEWS[r];
+  if (!view) {
+    go("home");
+    return;
+  }
   els.view.className = "view";
-  els.view.innerHTML = view ? view(state) : "";
+  els.view.innerHTML = view(state);
   els.view.scrollTop = 0;
   els.dock.innerHTML = "";
 };
@@ -1481,6 +1490,14 @@ class HomeViewTests(unittest.TestCase):
         self.assertIn("无需手动操作", text)
         self.assertIn("不等于法规条文变更", text)
 
+    def test_unknown_route_now_renders_the_home_view(self):
+        """Task 4 只断言了路由回落；首页视图存在后，这里补断言它确实渲染出内容。"""
+        for bad in ["完全瞎写", "foo/bar"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
+                                "未知路由回落到首页后必须渲染出内容，而不是白屏")
+
     def test_first_run_toggle_is_not_shipped(self):
         _Browser.goto("home")
         self.assertEqual(_Browser.page.locator("#view .proto-toggle").count(), 0)
@@ -1770,7 +1787,13 @@ import { PROFILE_SHEETS } from "./sample.js";
 
 `VIEWS` 里加 `assistant: assistantRender`。
 
-`render()` 里，视图渲染后按路由挂输入区（与原型 2031 行一致，只有 assistant 有 dock）：
+`render()` 里，先把视图的 className 按路由设置（原型 2030 行只给对话页加 `view--chat`，其余都是 `view`）：：
+
+```js
+  els.view.className = r === "assistant" ? "view view--chat" : "view";
+```
+
+再按路由挂输入区（与原型 2031 行一致，只有 assistant 有 dock）：
 
 ```js
   els.dock.innerHTML = r === "assistant" ? composerDock(state) : "";
@@ -1961,8 +1984,8 @@ import { searchView } from "./views/search.js";
 
 ```js
   const view = VIEWS[r]
-    || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null)
-    || VIEWS.default;
+    || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
+  if (!view) { go("home"); return; }        // 与原型 2068-2071 一致
 ```
 
 事件委托补三个分支（逐字对应原型 2372–2374、2380–2381、2385–2388）：
