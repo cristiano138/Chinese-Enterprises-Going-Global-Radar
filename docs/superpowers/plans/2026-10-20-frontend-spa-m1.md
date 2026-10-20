@@ -119,10 +119,10 @@ print('sha256:', hashlib.sha256(data).hexdigest())
 "
 ```
 
-Expected:
+Expected（**归一化后**的值——原文件是均匀 CRLF，归一化会去掉 2452 个 ）：
 ```
-bytes: 127534
-sha256: c7dc84ce5fd1f365764bfa3e39aa46fcb01a151fcef76acf9e8f818b2440af16
+bytes: 125082
+sha256: 43ef8e474d330c99d5e65bdcfe42648c492299587ab19fde713a1744f05104f5
 ```
 
 （先归一化 `\r\n` → `\n` 再取哈希：这条断言在 `core.autocrlf` 打开时也必须成立，否则换一台机器检出后测试会假失败。）
@@ -221,10 +221,10 @@ class ReferenceAssetTests(unittest.TestCase):
         self.assertTrue(path.is_file(), "原型参考资产必须入库")
         # 先归一化行尾，使断言在 core.autocrlf 打开时同样成立。
         data = path.read_bytes().replace(b"\r\n", b"\n")
-        self.assertEqual(len(data), 127534, "原型字节数必须与拆解基线一致")
+        self.assertEqual(len(data), 125082, "原型归一化后字节数必须与拆解基线一致")
         self.assertEqual(
             hashlib.sha256(data).hexdigest(),
-            "c7dc84ce5fd1f365764bfa3e39aa46fcb01a151fcef76acf9e8f818b2440af16",
+            "43ef8e474d330c99d5e65bdcfe42648c492299587ab19fde713a1744f05104f5",
             "像素比对基准被改动：请确认 docs/ui-preview/prototype-v2.html 未被编辑")
 
 
@@ -393,7 +393,11 @@ sleep 12
 curl -s -o /dev/null -w "root=%{http_code}\n" http://127.0.0.1:7897/
 curl -s -o /dev/null -w "static=%{http_code}\n" http://127.0.0.1:7897/web/js/main.js
 curl -s -o /dev/null -w "gradio=%{http_code}\n" http://127.0.0.1:7897/gradio_api/info
-kill "$APP_PID"
+# Windows 上 `kill` 不终止 python.exe（Git Bash 作业 ≠ Windows 进程），须 taskkill 按 PID 结束，
+# 否则服务会一直占着 7897。
+taskkill //F //PID "$APP_PID" 2>/dev/null || kill "$APP_PID" 2>/dev/null
+sleep 1
+curl -s -o /dev/null -m 2 http://127.0.0.1:7897/ && echo "警告：7897 仍在监听" || echo "7897 已释放"
 ```
 
 Expected: `root=200`、`static=200`、`gradio=200`
