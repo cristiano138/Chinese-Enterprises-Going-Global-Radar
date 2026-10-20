@@ -3,7 +3,7 @@ import { esc } from "../dom.js";
 import { ic } from "../icons.js";
 import { cache } from "../data.js";
 
-const EXAMPLES = ["32009L0048", "16 CFR Part 1250", "32023R0988"];
+const EXAMPLES = ["32009L0048", "16 CFR Part 1250", "毛绒玩具出口欧盟要做哪些安全测试"];
 
 function unitBody(text) {
   const value = String(text || "").trim();
@@ -28,8 +28,13 @@ export function searchView(state) {
     body = `<div class="section-head"><b>检索结果</b><span>未完成</span></div>
       <div class="list"><div class="row"><span class="row__rail row__rail--warn"></span><span class="row__body"><span class="row__sub">${esc(error)}</span></span></div></div>`;
   } else if (result && result.units.length) {
+    const modeLabel = result.mode === "recall" ? "智能检索" : "条款检索";
+    const modeNote = result.mode === "recall"
+      ? `<div class="clause__foot">${esc(result.route_via || "两层召回")}${result.coverage ? " · 覆盖 " + esc(result.coverage) : ""}</div>`
+      : "";
     body = `
-      <div class="section-head"><b>检索结果</b><span>${result.units.length} 条 · ${esc(result.identifier)}</span></div>
+      <div class="section-head"><b>${modeLabel}结果</b><span>${result.units.length} 条 · ${esc(result.identifier)}</span></div>
+      ${modeNote}
       ${result.units.map((unit) => `
         <article class="clause">
           <div class="clause__head">
@@ -50,11 +55,11 @@ export function searchView(state) {
 
   return `
       <div class="page-head" style="padding-top:14px">
-        <p>按法规编号精确定位，再按条款标题筛选。正文保留来源、版本和解析状态。</p>
+        <p>输入法规编号精确定位，或直接描述问题走两层召回（先选法规，再选条文片段）。正文保留来源、版本和解析状态。</p>
       </div>
       <form class="searchbox" data-form="search">
-        <input name="q" value="${esc(state.query)}" placeholder="例如 32009L0048 或 16 CFR Part 1250"
-               aria-label="法规编号" autocomplete="off" />
+        <input name="q" value="${esc(state.query)}" placeholder="例如 32009L0048，或「毛绒玩具出口欧盟要做哪些安全测试」"
+               aria-label="法规编号或自然语言问题" autocomplete="off" />
         <button class="btn btn--primary" type="submit">${ic("search")}检索</button>
       </form>
       <div class="example-row">

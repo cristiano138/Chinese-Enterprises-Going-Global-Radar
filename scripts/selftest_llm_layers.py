@@ -175,6 +175,65 @@ def check_ui_and_api_forwarding():
     check("SPA /api/route 透传 use_llm", route.call_args.kwargs.get("use_llm") is True)
 
 
+def _fake_recall():
+    return {
+        "ok": True,
+        "reason": "",
+        "route": {
+            "ok": True, "laws": ["EU:32025R2509"], "facets": ["CE marking"],
+            "route_via": "模型路由", "catalog_gaps": [], "invalid_refs": [],
+        },
+        "retrieval": {
+            "ok": True, "coverage": "partial", "gaps": [], "invalid_refs": [],
+            "selected": [{
+                "citation_id": "c1", "node_id": "rc|EU:32025R2509|u16",
+                "law_id": "EU:32025R2509", "heading": "Article 17 — CE marking",
+                "path": "EU:32025R2509 > Article 17",
+                "locator": "https://eur-lex.europa.eu/eli/reg/2025/2509/oj",
+                "body": "The CE marking shall be affixed visibly, legibly and indelibly.",
+                "facet": "CE marking", "why": "",
+            }],
+        },
+        "tree_version": "test-tree",
+        "latency_ms": 1,
+        "cached": False,
+    }
+
+
+def check_recall_in_conversation():
+    check("条文问题被识别为 recall 意图",
+          conversation._intent("这条法规原文第 17 条怎么规定？") == "recall")
+    check("普通法规目录问题仍走 map",
+          conversation._intent("儿童玩具卖到欧盟有哪些法规要求？") == "map")
+
+    context = {"category": "", "market": "", "product": "毛绒玩具",
+               "markets": [], "window": "近 12 个月", "use_llm": True}
+    with patch.object(conversation.llm, "is_ready", return_value=True), \
+            patch("modules.recall_flow.run", return_value=_fake_recall()) as run:
+        conversation._call("recall", dict(context), query="毛绒玩具欧盟安全测试原文")
+    check("conversation recall 调用两层召回并透传 use_llm",
+          run.called and run.call_args.kwargs.get("use_llm") is True)
+
+    result = conversation._normalize("recall", dict(context), _fake_recall())
+    check("recall 结果生成条文条目",
+          result["kind"] == "recall" and len(result["items"]) == 1)
+    check("recall 片段保留官方定位",
+          result["items"][0]["sources"][0]["url"].startswith("https://eur-lex.europa.eu"))
+    check("recall 不把片段说成适用性审核",
+          any("适用性" in gap for gap in result["gaps"]))
+
+
+def check_spa_search_recall():
+    with patch("core.law_store.retrieve", return_value={
+            "ok": False, "reason": "请输入完整 CELEX", "units": []}), \
+            patch("modules.recall_flow.run", return_value=_fake_recall()):
+        data = web_app._search_payload("毛绒玩具出口欧盟要做哪些安全测试", "")
+    check("SPA 编号查询失败后自动走两层召回",
+          data["ok"] and data["mode"] == "recall" and len(data["units"]) == 1)
+    check("SPA 召回片段带官方原文定位",
+          data["units"][0]["source_url"].startswith("https://eur-lex.europa.eu"))
+
+
 def check_spa_requests():
     api_js = (PROJECT / "web" / "js" / "api.js").read_text(encoding="utf-8")
     data_js = (PROJECT / "web" / "js" / "data.js").read_text(encoding="utf-8")
@@ -189,6 +248,8 @@ def main():
     check_module_defaults_and_calls()
     check_conversation_forwarding()
     check_ui_and_api_forwarding()
+    check_recall_in_conversation()
+    check_spa_search_recall()
     check_spa_requests()
     print("LLM layers: PASS")
     return 0

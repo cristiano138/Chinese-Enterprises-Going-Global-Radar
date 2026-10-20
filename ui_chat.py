@@ -536,7 +536,8 @@ def build_ui():
             kind = current.get("kind", "question")
             gr.HTML('<div class="cr-result-header" data-result-id="' + _e(rid) + '"><span class="cr-eyebrow">' + _e(
                 {"map": "法规清单", "todo": "行动清单", "timeline": "日期节点", "compare": "区域对照",
-                 "multi": "分市场汇总", "readiness": "上线准备", "model": "方法对照", "journey": "六阶段行动路线"}.get(kind, "继续梳理")) +
+                 "multi": "分市场汇总", "readiness": "上线准备", "recall": "条文依据",
+                 "model": "方法对照", "journey": "六阶段行动路线"}.get(kind, "继续梳理")) +
                 '</span><h2>' + _e(current.get("title", "你的查询结果")) + '</h2><p>' +
                 _e(current.get("summary", "")) + '</p></div>')
             gr.HTML(context_html(current.get("context", {}), label="本次查询条件"))
@@ -722,9 +723,10 @@ def build_ui():
                         "会话业务状态默认保存在服务内存，不写入原始对话日志；网页录音与导出使用临时文件。模型理解可能发送输入文字，云端语音会发送录音。请勿输入客户敏感资料。")
             gr.Markdown("数据快照：" + _md(snapshot.SNAPSHOT_VERSION) + " · 截止：" + _md(snapshot.DATA_CUTOFF) +
                         "\n\n条款检索状态：" + _md(law_store.status().get("reason")))
-            clause_id = gr.Textbox(label="按法规编号检索条款", placeholder="如 16 CFR Part 1250")
+            clause_id = gr.Textbox(label="法规编号或自然语言问题",
+                                   placeholder="如 16 CFR Part 1250，或「毛绒玩具出口欧盟要做哪些安全测试」")
             clause_heading = gr.Textbox(label="条款标题关键词（可选）")
-            clause_btn = gr.Button("检索已有条款", size="sm")
+            clause_btn = gr.Button("检索条文（编号或智能检索）", size="sm")
             clause_out = gr.Markdown(elem_id="cr-clause-result")
         gr.HTML('<div class="cr-footer">有来源，有边界。帮助你准备下一步，不构成法律意见。 · ' + BUILD_VERSION + '</div>')
 
@@ -823,6 +825,39 @@ def build_ui():
 
         def search_clauses(identifier, heading):
             result = law_store.retrieve(identifier or "", heading or "")
+            if not result.get("ok") or not result.get("units"):
+                # 编号定位失败时按自然语言问题走两层召回：路由 LLM 选法规，
+                # 检索 LLM 在候选目录树里选片段；任一层失败都有确定性兜底。
+                text = (identifier or "").strip()
+                if len(text) >= 4:
+                    try:
+                        from modules import recall_flow
+                        recalled = recall_flow.run(text, use_llm=True)
+                    except Exception as exc:  # noqa: BLE001
+                        recalled = {"ok": False, "reason": f"智能检索不可用：{exc}"}
+                    retrieval = recalled.get("retrieval") or {}
+                    selected = retrieval.get("selected") or []
+                    if recalled.get("ok") and selected:
+                        route = recalled.get("route") or {}
+                        return clause_markdown({
+                            "ok": True,
+                            "reason": ("智能检索（" + str(route.get("route_via") or "两层召回") +
+                                       "）找到以下条文片段；请按产品条件核对适用性。"),
+                            "law_id": text,
+                            "units": [{
+                                "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
+                                "body": snippet.get("body") or "",
+                                "locator": snippet.get("locator") or "",
+                                "source_url": snippet.get("locator") or "",
+                                "version_date": "",
+                                "parse_status": "智能检索",
+                            } for snippet in selected],
+                        })
+                    reason = recalled.get("reason") or retrieval.get("reason") or ""
+                    if reason:
+                        result = dict(result)
+                        result["reason"] = ((result.get("reason") or "没有检索到条款") +
+                                            "；智能检索：" + reason)
             return clause_markdown(result)
 
         clause_btn.click(search_clauses, inputs=[clause_id, clause_heading], outputs=clause_out)

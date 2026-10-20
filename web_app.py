@@ -559,9 +559,61 @@ def _search_payload(identifier: str, heading: str) -> dict:
             "kind": unit.get("kind") or "",
             "source_url": unit.get("source_url") or "",
         })
+    if result.get("ok") and units:
+        return {
+            "ok": True,
+            "reason": "",
+            "mode": "identifier",
+            "identifier": result.get("law_id") or identifier,
+            "units": units,
+        }
+
+    # 编号定位失败时，把输入当作自然语言问题走两层召回
+    # （路由 LLM 选法规 → 检索 LLM 选片段），与 Gradio 会话的「检索条文依据」同一条链路。
+    identifier = (identifier or "").strip()
+    if len(identifier) >= 4:
+        try:
+            from modules import recall_flow
+            recalled = recall_flow.run(identifier, use_llm=True)
+        except Exception as exc:  # noqa: BLE001
+            recalled = {"ok": False, "reason": f"智能检索不可用：{exc}"}
+        retrieval = (recalled.get("retrieval") or {})
+        selected = retrieval.get("selected") or []
+        if recalled.get("ok") and selected:
+            route = recalled.get("route") or {}
+            return {
+                "ok": True,
+                "reason": "",
+                "mode": "recall",
+                "identifier": identifier,
+                "route_via": route.get("route_via") or "",
+                "coverage": retrieval.get("coverage") or "",
+                "units": [{
+                    "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
+                    "locator": snippet.get("locator") or "",
+                    "document_id": snippet.get("law_id") or "",
+                    "parse_status": "智能检索",
+                    "body": snippet.get("body") or "",
+                    "truncated": False,
+                    "version_date": "",
+                    "kind": "recall",
+                    "source_url": snippet.get("locator") or "",
+                } for snippet in selected],
+            }
+        recall_reason = recalled.get("reason") or retrieval.get("reason") or ""
+        if recall_reason:
+            return {
+                "ok": False,
+                "reason": (result.get("reason") or "没有检索到条款") + "；智能检索：" + recall_reason,
+                "mode": "recall",
+                "identifier": identifier,
+                "units": [],
+            }
+
     return {
         "ok": bool(result.get("ok")),
         "reason": result.get("reason") or "",
+        "mode": "identifier",
         "identifier": result.get("law_id") or identifier,
         "units": units,
     }
