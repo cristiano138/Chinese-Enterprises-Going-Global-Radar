@@ -1352,6 +1352,22 @@ import { closeSheet } from "./ui/sheet.js";
     closeSheet();
 ```
 
+**同时给已有的 `nav` 分支补上 `closeSheet();`**——原型 2356-2358 是：
+
+```js
+    if (action === "nav") {
+      closeSheet();
+      go(el.dataset.to || "assistant");
+    }
+```
+
+Task 4 只写了 `go(...)`，漏了 `closeSheet()`。**这一句是有实际作用的**：`PROFILE_SHEETS.conditions()` 的抽屉里渲染了一个 `data-action="nav" data-to="assistant"` 按钮（原型 2226），而抽屉（z-index 70）盖在背景层（60）之上，所以那次点击进的是 `nav` 分支而不是背景层的 `close-sheet`。少了这句，点「回对话修改」会导航到助手页，**而抽屉仍盖在新页面上面**。把 `nav` 分支改成：
+
+```js
+  } else if (action === "nav") {
+    closeSheet();
+    go(el.dataset.to || "assistant");
+
 文件底部 `render();` 之前加：
 
 ```js
