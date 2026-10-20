@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import hashlib
+from html.parser import HTMLParser
 import json
 import os
 from pathlib import Path
@@ -54,6 +55,28 @@ class _Server:
             return exc.code, exc.read().decode("utf-8", "replace")
 
 
+class _ElementParents(HTMLParser):
+    """记录每个带 id 的元素的直接父元素 id。"""
+
+    _VOID = {"area", "base", "br", "col", "hr", "img", "input", "link", "meta", "source"}
+
+    def __init__(self):
+        super().__init__()
+        self._stack = []
+        self.parents = {}
+
+    def handle_starttag(self, tag, attrs):
+        element_id = dict(attrs).get("id")
+        if element_id:
+            self.parents[element_id] = self._stack[-1] if self._stack else None
+        if tag not in self._VOID:
+            self._stack.append(element_id)
+
+    def handle_endtag(self, tag):
+        if tag not in self._VOID and self._stack:
+            self._stack.pop()
+
+
 class StaticHostTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -64,6 +87,20 @@ class StaticHostTests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertIn('id="shell"', body)
         self.assertIn("/web/js/main.js", body)
+
+    def test_floating_layers_are_nested_inside_the_app_shell(self):
+        # 三者都是 position:absolute，需相对 .app-shell（position:relative）解析。
+        # 若退化成 .app-shell 的兄弟，最近已定位祖先变为视口，桌面端（≥700px）
+        # 抽屉会横跨整个视口、Toast 居中于整屏。钉住嵌套以免静默回归。
+        status, body = _Server.get("/")
+        self.assertEqual(status, 200)
+        parser = _ElementParents()
+        parser.feed(body)
+        parser.close()
+        for element in ("backdrop", "sheet", "toast"):
+            self.assertEqual(
+                parser.parents.get(element), "shell",
+                f"#{element} 必须是 #shell 的直接子元素")
 
     def test_static_assets_are_served(self):
         status, body = _Server.get("/web/js/main.js")
