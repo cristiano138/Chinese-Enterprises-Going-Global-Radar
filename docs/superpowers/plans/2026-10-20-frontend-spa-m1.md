@@ -1593,27 +1593,51 @@ class FreshnessViewTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    def test_filters_are_the_prototype_ones(self):
+    def test_page_head_and_meta_match_the_prototype(self):
         _Browser.goto("freshness")
-        labels = _Browser.page.locator("#view button[data-action='fresh-filter']").all_inner_texts()
-        self.assertEqual([t.strip() for t in labels], ["全部", "需处理", "已最新", "无法确认"])
+        view = _Browser.page.locator("#view")
+        self.assertIn("09:00 / 21:00", view.inner_text())
+        self.assertEqual(_Browser.page.locator("#view .page-head__meta.mono").count(), 1)
 
-    def test_filter_actually_filters_by_rail(self):
+    def test_fresh_card_uses_the_prototype_classes(self):
         _Browser.goto("freshness")
-        before = _Browser.page.locator("#view .row").count()
-        _Browser.page.locator("#view button[data-action='fresh-filter']",
-                              has_text="无法确认").click()
-        _Browser.page.wait_for_timeout(250)
-        after = _Browser.page.locator("#view .row").count()
-        self.assertLess(after, before, "筛选必须真的改变条目数")
-        self.assertGreaterEqual(after, 1)
+        for sel in [".fresh-card", ".fresh-card__head", ".fresh-card__title",
+                    ".monitor-pill", ".fresh-card__time", ".fresh-card__sub"]:
+            with self.subTest(sel=sel):
+                self.assertEqual(_Browser.page.locator(f"#view {sel}").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .fresh-count").count(), 4)
+        self.assertEqual(_Browser.page.locator("#view .fresh-count--warn").count(), 1)
 
-    def test_filter_reads_data_filter_not_data_value(self):
-        """原型读的是 data-filter（2376 行），不是 data-value。"""
+    def test_check_history_rows_are_plain_not_buttons(self):
+        """这两行是只读的检查记录，原型用 div.row，不是可点的 button.row。"""
         _Browser.goto("freshness")
-        button = _Browser.page.locator("#view button[data-action='fresh-filter']").first
-        self.assertIsNotNone(button.get_attribute("data-filter"))
-        self.assertIsNone(button.get_attribute("data-value"))
+        self.assertGreaterEqual(_Browser.page.locator("#view div.row").count(), 2)
+
+    def test_pending_links_are_real_anchors_with_external_icons(self):
+        _Browser.goto("freshness")
+        links = _Browser.page.locator("#view a.row")
+        self.assertGreaterEqual(links.count(), 1)
+        for i in range(links.count()):
+            with self.subTest(i=i):
+                self.assertTrue(links.nth(i).get_attribute("href"))
+                self.assertEqual(links.nth(i).get_attribute("target"), "_blank")
+
+    def test_scope_note_is_present(self):
+        _Browser.goto("freshness")
+        self.assertEqual(_Browser.page.locator("#view .fresh-note").count(), 1)
+
+    def test_this_route_has_no_filter_buttons(self):
+        """筛选属于 toolView 的 freshness 定制页（原型里无可达入口），不在本路由。"""
+        _Browser.goto("freshness")
+        self.assertEqual(
+            _Browser.page.locator("#view button[data-action='fresh-filter']").count(), 0,
+            "freshnessView 是静态页，不应有筛选按钮")
+
+    def test_invented_classes_are_absent(self):
+        _Browser.goto("freshness")
+        for wrong in [".fresh-card__top", ".fresh-card__at", ".pill", ".row__copy"]:
+            with self.subTest(wrong=wrong):
+                self.assertEqual(_Browser.page.locator(f"#view {wrong}").count(), 0)
 ```
 
 - [ ] **Step 3: 运行测试确认失败**
@@ -1670,7 +1694,7 @@ const VIEWS = {
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（HomeViewTests 7 + ResultViewTests 2 + FreshnessViewTests 3 全通过，既有类无回归）
+Expected: PASS（HomeViewTests 7 + ResultViewTests 2 + FreshnessViewTests 7 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
