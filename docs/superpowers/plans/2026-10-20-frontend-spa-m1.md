@@ -2058,8 +2058,10 @@ import { searchView } from "./views/search.js";
 ```js
   const view = VIEWS[r]
     || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
-  if (!view) { go("home"); return; }        // 与原型 2068-2071 一致
 ```
+
+**未知路由的 `go("home")` 回落不在这里**：本任务时 `profile` / `profile/tutorial` 仍无视图，
+回落会把它们也送去首页并打回归 `ShellTests`。回落落在 Task 9（届时全部路由都有视图）。
 
 事件委托补三个分支（逐字对应原型 2372–2374、2380–2381、2385–2388）：
 
@@ -2177,7 +2179,9 @@ class DetailSheetTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    PROFILE_KEYS = ["conditions", "history", "voice", "coverage", "privacy", "about", "help"]
+    # help 在原型里没有 UI 入口（PROFILE_SHEETS.help 仍保留、handler 仍接线），
+    # 故不放进"从 profile 可打开"的键列表——否则点击定位器没有目标。
+    PROFILE_KEYS = ["conditions", "history", "voice", "coverage", "privacy", "about"]
 
     def _open_key(self, key):
         _Browser.goto("profile")
@@ -2286,18 +2290,21 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 **本任务装上未知路由回落**（原型 2068-2071）——到这一步所有路由都已有视图，回落才首次可观测：
 
 ```js
-  const view = VIEWS[r];
+  const view = VIEWS[r]
+    || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
   if (!view) {
     go("home");
     return;
   }
-  els.view.className = "view";
+  els.view.className = r === "assistant" ? "view view--chat" : "view";
   els.view.innerHTML = view(state);
 ```
 
+工具路由的分派必须保留（Task 8 加的 `|| … toolView`）；`view--chat` 的条件也必须保留（Task 7 加的）。
+
 并在导入区确认有 `import { go } from "./router.js";`。
 
-导入：`import { detailSheet } from "./views/detail.js";` 与 `import { toggleFreshness } from "./views/home.js";`（`toggle-freshness` 若你想要该开关；**M1 默认不接**，见下）。
+导入：`import { detailSheet } from "./views/detail.js";`。**不要**导入 `toggleFreshness`——`toggle-freshness` 在 M1 不接入（见下），未使用的导入是死代码。
 
 补齐剩下六个分支，逐字对应原型 2363–2371、2392–2423：
 
