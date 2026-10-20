@@ -229,18 +229,6 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(back.get_attribute("data-action"), "nav")
         self.assertEqual(back.get_attribute("data-to"), "regulations")
 
-    def test_unknown_route_redirects_home(self):
-        """原型 2068-2071：未知路由 go("home")。
-
-        本任务还没有任何视图，所以这里只能断言**路由回落**（hash 变为 #/home）；
-        "视图非空"由 Task 6 在首页视图存在后补断言。
-        """
-        for bad in ["完全瞎写", "zzz", "foo/bar"]:
-            with self.subTest(bad=bad):
-                _Browser.goto(bad)
-                self.assertTrue(_Browser.page.url.endswith("#/home"),
-                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
-
     def test_shell_mount_points_match_the_prototype(self):
         for node_id in ["shell", "appbar", "view", "dock", "tabbar",
                         "backdrop", "sheet", "toast"]:

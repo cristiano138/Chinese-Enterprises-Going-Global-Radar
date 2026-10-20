@@ -35,14 +35,12 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  // 原型 2068-2071：未知路由 go("home") 并返回，而不是渲染空白。
+  // 本任务还没有任何视图，未知或无视图的路由渲染空白即可。
+  // 原型 2068-2071 的未知路由回落（go("home")）**不在这里**：它要等首页视图存在
+  // 才有可观测性，且若在此处生效，每条路由都会回落，外壳行为全部失真。见 Task 6。
   const view = VIEWS[r];
-  if (!view) {
-    go("home");
-    return;
-  }
   els.view.className = "view";
-  els.view.innerHTML = view(state);
+  els.view.innerHTML = view ? view(state) : "";
   els.view.scrollTop = 0;
   els.dock.innerHTML = "";
 };
