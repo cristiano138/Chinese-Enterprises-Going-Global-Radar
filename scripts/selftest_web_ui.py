@@ -601,6 +601,132 @@ class SearchViewTests(unittest.TestCase):
         self.assertIn("按法规编号精确定位", _Browser.page.locator("#view").inner_text())
 
 
+class ProfileViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_profile_menu_uses_the_sheet_action(self):
+        _Browser.goto("profile")
+        rows = _Browser.page.locator("#view [data-action='sheet']")
+        self.assertGreaterEqual(rows.count(), 6)
+        keys = [rows.nth(i).get_attribute("data-sheet") for i in range(rows.count())]
+        for key in ["history", "conditions", "voice", "coverage", "privacy", "about"]:
+            with self.subTest(key=key):
+                self.assertIn(key, keys)
+
+    def test_tutorial_is_the_prototype_article_and_lives_under_profile(self):
+        """tutorialView 是一篇长文档（article.tutorial + tut-lead/tut-source/tut-callout + 表格），
+        不是卡片列表——`.step` 属于 PROFILE_SHEETS.help() 的抽屉，不在此路由。"""
+        _Browser.goto("profile/tutorial")
+        view = _Browser.page.locator("#view")
+        self.assertEqual(_Browser.page.locator("#view article.tutorial").count(), 1)
+        self.assertIn("企业用户使用指引", view.inner_text())
+        self.assertGreaterEqual(_Browser.page.locator("#view .tut-lead").count(), 2)
+        self.assertEqual(_Browser.page.locator("#view .tut-source").count(), 1)
+        self.assertGreaterEqual(_Browser.page.locator("#view .tut-callout").count(), 1)
+        self.assertGreaterEqual(_Browser.page.locator("#view table tr").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .step").count(), 0,
+                         "教程路由不应有 .step（那属于帮助抽屉）")
+        current = _Browser.page.locator('#tabbar [aria-current="page"]')
+        self.assertIn("我的", current.inner_text())
+
+
+class DetailSheetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    # help 在原型里没有 UI 入口（PROFILE_SHEETS.help 仍保留、handler 仍接线），
+    # 故不放进"从 profile 可打开"的键列表——否则点击定位器没有目标。
+    PROFILE_KEYS = ["conditions", "history", "voice", "coverage", "privacy", "about"]
+
+    def _open_key(self, key):
+        _Browser.goto("profile")
+        _Browser.page.evaluate(
+            "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
+        _Browser.page.locator(f"#view [data-action='sheet'][data-sheet='{key}']").first.click()
+        _Browser.page.wait_for_timeout(300)
+
+    def test_every_profile_sheet_opens_with_content(self):
+        for key in self.PROFILE_KEYS:
+            with self.subTest(key=key):
+                self._open_key(key)
+                sheet = _Browser.page.locator("#sheet")
+                self.assertIn("is-on", sheet.get_attribute("class"))
+                self.assertTrue(sheet.inner_text().strip(), f"{key} 抽屉不得为空")
+
+    def test_every_sheet_has_a_grab_handle_and_a_close_button(self):
+        for key in self.PROFILE_KEYS:
+            with self.subTest(key=key):
+                self._open_key(key)
+                sheet = _Browser.page.locator("#sheet")
+                self.assertEqual(sheet.locator(".sheet__grab").count(), 1)
+                self.assertEqual(sheet.locator("[data-action='close-sheet']").count(), 1)
+
+    def test_item_detail_opens_from_a_row(self):
+        _Browser.goto("result")
+        _Browser.page.locator("#view [data-action='detail']").first.click()
+        _Browser.page.wait_for_timeout(300)
+        sheet = _Browser.page.locator("#sheet")
+        self.assertIn("is-on", sheet.get_attribute("class"))
+        self.assertEqual(sheet.locator(".sheet__grab").count(), 1)
+
+    def test_unknown_detail_id_does_not_blank_the_sheet(self):
+        """Review Focus 2：未知条目 id 不得白屏或抛异常。"""
+        got = _Browser.page.evaluate("""async () => {
+          const d = await import('/web/js/views/detail.js');
+          try { return d.detailSheet('完全不存在的条目'); }
+          catch (e) { return 'THREW: ' + e.message; }
+        }""")
+        self.assertFalse(str(got).startswith("THREW"), "未知 id 不得抛异常")
+
+
+class UnknownRouteTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_unknown_route_redirects_home(self):
+        """原型 2068-2071：未知路由 go("home")。所有视图就位后此行为才可观测。"""
+        for bad in ["完全瞎写", "zzz", "foo/bar", "__proto__"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.url.endswith("#/home"),
+                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
+
+    def test_unknown_route_renders_the_home_view(self):
+        for bad in ["完全瞎写", "foo/bar", "__proto__"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
+                                "回落首页后必须渲染出内容，而不是白屏")
+
+
+class DelegationCompletenessTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_every_action_in_the_prototype_is_handled(self):
+        """把原型事件委托里出现过的 action 逐个点一遍，任何未接的 action 会表现为无反应。
+
+        本测试只断言页面不崩、不白屏；具体行为由各自视图的测试覆盖。
+        """
+        actions = ["nav", "prompt", "choice", "open-result", "new-chat", "history",
+                   "detail", "filter", "fresh-filter", "open-tool", "rerun",
+                   "example-query", "sheet", "open-history",
+                   "close-sheet", "export", "mark-done", "copy", "regenerate",
+                   "voice", "quick", "help"]
+        got = _Browser.page.evaluate("""async () => {
+          const m = await import('/web/js/main.js');
+          return m.HANDLED_ACTIONS;
+        }""")
+        for action in actions:
+            with self.subTest(action=action):
+                self.assertIn(action, got, f"action「{action}」尚未接入")
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

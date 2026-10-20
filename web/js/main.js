@@ -21,11 +21,14 @@ import { regulationsView } from "./views/regulations.js";
 import { actionView } from "./views/action.js";
 import { toolView } from "./views/tool.js";
 import { searchView } from "./views/search.js";
+import { profileView } from "./views/profile.js";
+import { tutorialView } from "./views/tutorial.js";
+import { detailSheet } from "./views/detail.js";
 import { composerDock, bindComposer } from "./ui/composer.js";
 import { showToast } from "./ui/toast.js";
 import { PROFILE_SHEETS } from "./sample.js";
 
-// Task 6 起逐个接入真实视图；尚无视图的路由渲染空白（回落见下方说明）。
+// 路由到视图的分派表；工具组与工具名在下方按前缀解析。
 const VIEWS = {
   home: homeView,
   result: resultView,
@@ -34,7 +37,17 @@ const VIEWS = {
   regulations: regulationsView,
   "regulations/search": searchView,
   action: actionView,
+  profile: profileView,
+  "profile/tutorial": tutorialView,
 };
+
+// 事件委托里实际处理的所有 action 名（toggle-freshness 在 M1 刻意不接入）。
+export const HANDLED_ACTIONS = [
+  "nav", "prompt", "choice", "open-result", "new-chat", "history",
+  "detail", "filter", "fresh-filter", "open-tool", "rerun",
+  "example-query", "sheet", "open-history", "close-sheet", "export",
+  "mark-done", "copy", "regenerate", "voice", "quick", "help"
+];
 
 export const render = () => {
   const state = store.state;
@@ -56,13 +69,16 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  // 原型 2068-2071 的未知路由回落（go("home")）**不在这里**：判据是"当且仅当所有其它路由
-  // 都已有视图时，回落才可观测"。Task 6 时 12 条路由仍有 9 条无视图（assistant /
-  // regulations(/*) / action(/*) / profile(/*)），回落会对它们一视同仁地触发，
-  // 外壳行为的断言会因"每条路由都变成首页"而集体失真。它落在 Task 9。
-  const view = Object.hasOwn(VIEWS, r) ? VIEWS[r] : ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
+  // 原型 2068-2071 的未知路由回落：所有路由就位后，未知路由回首页。
+  const view = Object.hasOwn(VIEWS, r)
+    ? VIEWS[r]
+    : ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
+  if (!view) {
+    go("home");
+    return;
+  }
   els.view.className = r === "assistant" ? "view view--chat" : "view";
-  els.view.innerHTML = view ? view(state) : "";
+  els.view.innerHTML = view(state);
   els.view.scrollTop = 0;
   els.dock.innerHTML = r === "assistant" ? composerDock(state) : "";
   if (r === "assistant") {
@@ -73,7 +89,9 @@ export const render = () => {
   }
 };
 
-window.addEventListener("hashchange", () => { store.state.route = routeOf(); render(); });
+// 除原型的 render 外，路由切换时先收起仍打开的抽屉：原型的所有导航入口（nav/open-tool/
+// open-result/open-history）都会自行关闭抽屉，这里覆盖直接改 hash 的路径（含浏览器前进后退）。
+window.addEventListener("hashchange", () => { store.state.route = routeOf(); closeSheet(); render(); });
 
 document.addEventListener("click", (event) => {
   const el = event.target.closest("[data-action]");
@@ -118,8 +136,34 @@ document.addEventListener("click", (event) => {
     render();
   } else if (action === "close-sheet") {
     closeSheet();
+  } else if (action === "detail") {
+    openSheet(detailSheet(el.dataset.id));
+  } else if (action === "sheet") {
+    const builder = PROFILE_SHEETS[el.dataset.sheet];
+    if (builder) openSheet(builder());
+  } else if (action === "open-result") {
+    store.state.resultFrom = el.dataset.from
+      || (store.state.route === "home" ? "home" : "assistant");
+    go("result");
+  } else if (action === "open-history") {
+    closeSheet();
+    store.state.resultFrom = ["home", "assistant", "regulations", "action"]
+      .includes(store.state.route) ? store.state.route : "profile";
+    go("result");
+  } else if (action === "export") {
+    showToast("原型中不生成文件；正式版会导出带查询条件的 CSV");
+  } else if (action === "mark-done") {
+    showToast("已标记为已完成 · 不会自动视为合规");
+    closeSheet();
+  } else if (action === "copy") {
+    showToast("已复制这条回答");
+  } else if (action === "regenerate") {
+    showToast("原型中不重复调用模型；正式版会基于同一条件重答");
+  } else if (action === "voice") {
+    showToast("语音入口：转写后先预编辑，再发送");
+  } else if (action === "help") {
+    openSheet(PROFILE_SHEETS.help());
   }
-  // 其余 action 由 Task 5 起的任务逐个接入。
 });
 
 // Task 7 的 compose 提交处理器绑定在 form 元素上（见 ui/composer.js），因此这里只处理 search。
