@@ -91,8 +91,12 @@ def main():
     print("=" * 74)
     version = recall.tree_version()
     if not version:
-        print("  ❌ 目录树未构建；请先运行 scripts/build_recall_tree.py")
-        return 1
+        # 正式库（2.2GB）不随源码包分发，干净克隆里必然没有目录树。
+        # 本项依赖真实库，因此按「跳过」处理（退出码 2），不计入失败 ——
+        # 否则 selftest_all 在干净仓库上永远报 1 项失败。
+        print("  ⏭ 跳过：目录树未构建（缺 SQLite 库）。")
+        print("     需要跑本项时先执行 scripts/build_recall_tree.py 并配好 COMPLIANCE_DB_PATH。")
+        return 2
     print("  目录树版本：%s" % version)
     print()
 

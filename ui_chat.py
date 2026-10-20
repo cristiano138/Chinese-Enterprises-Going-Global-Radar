@@ -455,6 +455,19 @@ def _stages(current, state, result, notice, selection="全部"):
             gr.Markdown("当前范围尚无可核验的阶段任务。相关覆盖缺口见上方说明。")
 
 
+def _appbar_sub():
+    """顶栏副标题：按条款库真实状态渲染，缺库时不谎称「已接入」。
+
+    早期这里写死「在线 · 法规库已接入 86 部」，而正式库并不随源码包分发，
+    干净克隆里 law_store.status() 明确返回「条款库未配置」，顶栏却仍宣称已接入。
+    """
+    status = law_store.status()
+    if status.get("ok"):
+        return f"在线 · 条款库已接入 {status.get('laws', 0)} 部"
+    return (f"在线 · 法规清单 {snapshot.CORPUS_ROWS_TOTAL} 条"
+            "（条款库未配置，CSV 查询可用）")
+
+
 def build_ui():
     with gr.Blocks(title="出海合规雷达 · 从问题到下一步", analytics_enabled=False,
                    delete_cache=(3600, 3600)) as demo:
@@ -469,7 +482,7 @@ def build_ui():
         with gr.Row(elem_id="cr-topbar"):
             gr.HTML('<div class="cr-appbar-user"><span class="cr-appbar-avatar" aria-hidden="true">合</span>'
                     '<div><div class="cr-appbar-name">合规雷达 · 出海助手</div>'
-                    '<div class="cr-appbar-sub"><span class="cr-dot"></span>在线 · 法规库已接入 86 部</div></div></div>')
+                    '<div class="cr-appbar-sub"><span class="cr-dot"></span>' + html.escape(_appbar_sub()) + '</div></div></div>')
             reset = gr.Button("＋ 新建对话", scale=0, elem_id="cr-reset")
         with gr.Column(visible=True, elem_id="cr-welcome-wrap") as welcome:
             gr.HTML('<div class="cr-hero"><div class="cr-hero-avatar" aria-hidden="true">合</div>'

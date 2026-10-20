@@ -19,7 +19,9 @@ from core import corpus, verify, snapshot  # noqa: E402
 def _records(category, market):
     res = corpus.search(category, market, include_cross_cutting=True)
     if not res.get("ok"):
-        return res, []
+        # 必须返回 3 元组：调用方按 (res, rows, pending) 解包，
+        # 早期这里只返回 2 个值，一旦走到就是 ValueError。
+        return res, [], 0
     kept, dropped = verify.filter_rows(res["primary"] + res["cross"])
     pending_audit = sum(
         1 for row in (res["primary"] + res["cross"])

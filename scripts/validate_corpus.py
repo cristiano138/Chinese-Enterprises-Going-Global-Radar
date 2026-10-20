@@ -114,6 +114,22 @@ def main() -> int:
         "valid": not errors,
         "errors": errors,
     }
+    # 只在内容真变化时落盘：generated_at 每次都会变，若无条件覆盖，
+    # 跑一次离线门禁就把工作区弄脏（git 里只剩时间戳的 diff）。
+    previous = None
+    try:
+        with open(REPORT, encoding="utf-8") as f:
+            previous = json.load(f)
+    except (OSError, ValueError):
+        previous = None
+    unchanged = False
+    if isinstance(previous, dict):
+        same = {k: v for k, v in report.items() if k != "generated_at"}
+        old = {k: v for k, v in previous.items() if k != "generated_at"}
+        unchanged = same == old
+    if unchanged:
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0 if not errors else 1
     with open(REPORT, "w", encoding="utf-8") as f:
         json.dump(report, f, ensure_ascii=False, indent=2)
     print(json.dumps(report, ensure_ascii=False, indent=2))
