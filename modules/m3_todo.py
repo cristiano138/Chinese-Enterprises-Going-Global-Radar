@@ -99,6 +99,7 @@ def query(category, market, use_llm=True, today=None):
         动作       —— 动作记录列表（已排序、已分组信息齐全）
         分组       —— [(动作类型, [动作, ...]), ...]
         未产出     —— 落不到动作、因此不上清单的条目（如实上报）
+        历史关联   —— 已废止法规（只留来源，不进动作、不进导出）
         待确认     —— PRD D5-2：本次查询先落盘的待确认事项（暂用规格条目）
         dropped   —— 被引用对齐拦下的条目
         llm       —— 模型元信息
@@ -119,7 +120,8 @@ def query(category, market, use_llm=True, today=None):
             reason = msg_category_out_of_scope(cat) if cat else msg_no_input()
         return {"ok": False, "reason": reason, "品类": category,
                 "市场": market, "动作": [], "分组": [], "未产出": [],
-                "待确认": [], "dropped": [], "llm": None, "stats": {},
+                "历史关联": [], "待确认": [], "dropped": [], "llm": None,
+                "stats": {},
                 "header": snapshot.header(cat or "（空）", mkt or "（空）",
                                           m3_status=snapshot.MODULE_ERROR)}
 
@@ -135,8 +137,30 @@ def query(category, market, use_llm=True, today=None):
         if (r.get("核对状态") or "").strip() != "已核对"
     )
 
+    # 已废止法规不得作为当前待办（PRD B-20「现行效力」、界面优化交付「旧 GPSD
+    # 不继续生成当前执行任务」）。这里在模块层就切开，而不是只靠会话层过滤 ——
+    # m3_todo.py --export 是 README 列出的可用命令，不能把废止义务导成"持续义务"。
+    current_rows, repealed_rows = [], []
+    for r in kept:
+        (repealed_rows if (r.get("现行效力") or "").strip() == "已废止"
+         else current_rows).append(r)
+    kept = current_rows
+
     # ── ③ 动作候选抽取（确定性）───────────────────────────
     cands, skipped = core_actions.collect(kept, today=today)
+
+    # 历史关联：只作来源留档，不进动作、不进导出。
+    history = []
+    for r in repealed_rows:
+        history.append({
+            "官方编号": r.get("官方编号", ""),
+            "法规中文名": r.get("法规中文名", ""),
+            "类目": r.get("类目", ""),
+            "市场": r.get("机构", ""),
+            "现行效力": "已废止",
+            "官方链接": r.get("官方链接", ""),
+            "说明": "已废止：仅作历史关联，不进入当前执行清单；请核对替代法规。",
+        })
 
     # ── ④ 送 LLM 改写成可执行动作（可选，失败自动降级）──────
     rewritten, meta = ({}, {"ok": True, "reason": "未启用", "cached": False})
@@ -197,6 +221,7 @@ def query(category, market, use_llm=True, today=None):
         "动作": cands,
         "分组": grouped,
         "未产出": skipped,
+        "历史关联": history,
         "待确认": pending_items,
         "dropped": dropped,
         "llm": meta,
@@ -204,6 +229,7 @@ def query(category, market, use_llm=True, today=None):
             "动作条数": len(cands),
             "涉及法规数": len({c["官方编号"] for c in cands}),
             "未产出条数": len(skipped),
+            "历史关联条数": len(history),
             "候选法规条数": len(kept),
             "待核对法规条数": pending_audit_count,
             "紧迫度分布": urgency_count,
@@ -317,7 +343,8 @@ def render_text(result):
     dist = "　".join(f"{k} {v} 条" for k, v in sorted(s["紧迫度分布"].items(),
                                                     key=lambda x: "高中低".index(x[0])))
     lines.append(f"  动作 {s['动作条数']} 条 · 涉及法规 {s['涉及法规数']} 部"
-                 f" · 未产出动作 {s['未产出条数']} 条")
+                 f" · 未产出动作 {s['未产出条数']} 条"
+                 f" · 历史关联 {s.get('历史关联条数', 0)} 条（已废止，不执行）")
     if dist:
         lines.append(f"  紧迫度：{dist}")
     lines.append(f"  快照 {snapshot.SNAPSHOT_VERSION}　数据截止时间 {snapshot.DATA_CUTOFF}")
@@ -344,6 +371,14 @@ def render_text(result):
         for r in result["未产出"]:
             seg0 = (r.get("备注／问题", "") or "").split("｜")[0]
             lines.append(f"      - {r.get('官方编号','')}　{seg0[:56]}")
+        lines.append("")
+
+    if result.get("历史关联"):
+        lines.append("─" * 78)
+        lines.append(f"  🕘 历史关联 {len(result['历史关联'])} 条"
+                     f"（已废止，仅留来源，不作为当前待办）")
+        for r in result["历史关联"]:
+            lines.append(f"      - {r.get('官方编号','')}　{r.get('法规中文名','')}")
         lines.append("")
 
     if result["dropped"]:

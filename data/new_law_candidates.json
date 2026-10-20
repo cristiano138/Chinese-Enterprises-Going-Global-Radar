@@ -6,7 +6,7 @@
   "until": "2026-10-20"
  },
  "database": {
-  "path": "D:\\Desktop\\出海合规\\sqlite\\regulations.sqlite3",
+  "path": "sqlite/regulations.sqlite3",
   "laws": 86,
   "eu": 29,
   "us": 57

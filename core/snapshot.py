@@ -77,14 +77,23 @@ RELEASE_ELIGIBLE = bool(_RELEASE.get("release_eligible"))
 
 
 def audit_note():
-    """给界面用的一句话：机器逐条记录 + 团队声明。不夸大成"逐条证据齐全"。"""
+    """给界面用的一句话：机器逐条记录 + 团队声明。不夸大成"逐条证据齐全"。
+
+    ``RELEASE_ELIGIBLE`` 由声明文件算出（声明覆盖了待核对行时为 True），但
+    **执行层仍按逐条记录放行** —— 所以声明为真时也要把这句限定说出来，
+    否则读者会以为 M3/M7 已经放开了那 58 条。
+    """
     recorded = CORPUS_ROWS_BY_AUDIT_STATUS.get("已核对", 0)
     pending = CORPUS_ROWS_BY_AUDIT_STATUS.get("待核对", 0)
     if AUDIT_ATTESTATION and not (_RELEASE.get("uncovered_audit_rows") or []):
-        return (f"逐条记录 {recorded} 条已核对、{pending} 条由"
+        note = (f"逐条记录 {recorded} 条已核对、{pending} 条由"
                 f"{AUDIT_ATTESTATION.get('attested_by', '负责人')}于 "
                 f"{AUDIT_ATTESTATION.get('attested_at', '')} 声明确认已完成核对")
+        if RELEASE_ELIGIBLE and pending:
+            note += "；执行层仍按逐条记录放行，M3/M7 不对未记录行生成动作"
+        return note
     return f"逐条记录 {recorded} 条已核对、{pending} 条待核对"
+
 
 # 官方来源（PRD 附录 C3 允许集合）
 DATA_SOURCES = (

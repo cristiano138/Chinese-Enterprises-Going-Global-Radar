@@ -526,6 +526,9 @@ def _safety_policy(action, context, original):
     changed, and historical dates remain available in the timeline.
     """
     raw = copy.deepcopy(original)
+    # M3 把已废止法规单列在「历史关联」：模块层与 CLI 留档要用，但它不是
+    # 当前候选集，会话视图与导出都不应带上（完整原响应仍在 source_raw）。
+    raw.pop("历史关联", None)
     excluded = []
     corrected = []
 
@@ -842,6 +845,9 @@ def _normalize(action, context, raw):
     elif action == "todo":
         items = [_item(row, context, kind="task", group=row.get("动作类型", "准备事项"), index=i)
                  for i, row in enumerate(raw.get("动作", []))]
+        # 已废止法规由 M3 单列在「历史关联」：不生成动作，也不进当前待办视图
+        # （契约见 selftest_conversation「known mismatches are quarantined」）。
+        # 需要看历史来源时走「查看相关法规」，那里会以 historical 状态展示。
         result["summary"] = "先核对以下准备候选，再按适用条件执行。可以展开依据、记录自述进度或导出这份清单。"
         result["gaps"].extend(item.get("需确认", "") for item in raw.get("待确认", []))
         pilot = _pilot_todo(context, raw, items)

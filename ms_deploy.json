@@ -3,5 +3,5 @@
   "sdk_type": "gradio",
   "sdk_version": "6.2.0",
   "base_image": "ubuntu22.04-py311-torch2.9.1-modelscope1.35.0",
-  "resource_configuration": "platform/2v-cpu-16g-mem"
+  "resource_configuration": "platform/2v-cpu-8g-mem"
 }

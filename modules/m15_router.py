@@ -68,7 +68,10 @@ OOS = "范围外"
 #   ② _PARSE_CACHE：解析结果**内存**缓存，key 是 sha256(规范化文本) ——
 #      缓存里连原文都没有，只有哈希 → 槽位，满足「不落盘不缓存原文」；
 #   ③ prewarm()：应用启动时后台线程把演示常用输入先解析进缓存，
-#      演示首点即毫秒级命中（见 app_main.py 启动处的 start_prewarm）。
+#      演示首点即毫秒级命中。
+#      注意：2026-10-19 起默认入口改为聊天界面，app_main 不再调用
+#      start_prewarm()（用户要求取消启动查询与模型预热）；本函数保留给
+#      CLI / 自检与未来的显式预热使用。
 MODEL_TIMEOUT = 12
 _PARSE_CACHE = {}
 _PARSE_CACHE_MAX = 128

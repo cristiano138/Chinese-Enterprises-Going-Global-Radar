@@ -72,12 +72,35 @@ def _preview(text, head=400, tail=200):
     return text[:head] + " … " + text[-tail:]
 
 
+def _target():
+    """实际要读的库文件路径（配置优先，其次约定位置）。"""
+    return DB_PATH if os.path.exists(DB_PATH) else db_path()
+
+
+def available():
+    """条款库是否就位。返回 (bool, 原因)。
+
+    只查文件是否存在，**不建库、不连库** —— 与 core/law_store.status() 同口径：
+    缺库时保留 CSV 主链路，明确告知，而不是让调用方撞上 sqlite 的
+    `unable to open database file`。
+    """
+    if os.path.isfile(_target()):
+        return True, ""
+    return False, "条款库未配置；CSV 法规清单仍可使用"
+
+
 def _connect():
+    """返回只读连接；库文件不存在时返回 None（由调用方降级为空结果）。
+
+    早期实现无论库在不在都直接 sqlite3.connect，缺库时抛
+    OperationalError 而不是走"未构建"分支 —— 离线门禁在干净仓库上因此必失败。
+    """
     global _CON
     if _CON is not None:
         return _CON
-    target = DB_PATH if os.path.exists(DB_PATH) else db_path()
-    uri = "file:%s?mode=ro" % target.replace("\\", "/")
+    if not os.path.isfile(_target()):
+        return None
+    uri = "file:%s?mode=ro" % _target().replace("\\", "/")
     con = sqlite3.connect(uri, uri=True, timeout=5)
     con.row_factory = sqlite3.Row
     try:
@@ -113,9 +136,9 @@ def _table_exists(con, name):
 
 
 def tree_version():
-    """返回当前树版本；表不存在时返回 None。"""
+    """返回当前树版本；库或表不存在时返回 None。"""
     con = _connect()
-    if not _table_exists(con, "recall_build_meta"):
+    if con is None or not _table_exists(con, "recall_build_meta"):
         return None
     row = con.execute(
         "SELECT value FROM recall_build_meta WHERE key='tree_version'"
@@ -142,6 +165,8 @@ def law_catalog(as_numbered=True):
     if _CATALOG_CACHE is not None and _CATALOG_VERSION == version:
         return list(_CATALOG_CACHE)
     con = _connect()
+    if con is None:
+        return []
     if _table_exists(con, "recall_law_docs"):
         rows = con.execute(
             """SELECT l.id, l.jurisdiction, l.official_title, l.in_force,
@@ -219,7 +244,7 @@ def _node_dict(row, include_body=True):
 def load_tree(law_ids=None, include_body=False):
     """返回 dict[law_id] -> list[node]，按树顺序排列。"""
     con = _connect()
-    if not _table_exists(con, "recall_nodes"):
+    if con is None or not _table_exists(con, "recall_nodes"):
         return {}
     sql = ("SELECT * FROM recall_nodes")
     params = []
@@ -270,7 +295,7 @@ def candidate_nodes(law_ids=None, keywords=None, limit_per_law=20):
     keywords: str 或 list[str]。只保留 ASCII token；中文输入会走回退。
     """
     con = _connect()
-    if not _table_exists(con, "recall_nodes"):
+    if con is None or not _table_exists(con, "recall_nodes"):
         return []
     if isinstance(keywords, str):
         raw = [keywords]
@@ -370,7 +395,7 @@ def resolve_refs(refs, candidates):
 def get_nodes(node_ids, include_body=True):
     """按 node_id 批量取节点，保持输入顺序。"""
     con = _connect()
-    if not _table_exists(con, "recall_nodes"):
+    if con is None or not _table_exists(con, "recall_nodes"):
         return []
     ids = [x for x in dict.fromkeys(node_ids or [])]
     out = []
