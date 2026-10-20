@@ -2179,9 +2179,19 @@ class ProfileViewTests(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertIn(key, keys)
 
-    def test_tutorial_has_four_steps_and_lives_under_profile(self):
+    def test_tutorial_is_the_prototype_article_and_lives_under_profile(self):
+        """tutorialView 是一篇长文档（article.tutorial + tut-lead/tut-source/tut-callout + 表格），
+        不是卡片列表——`.step` 属于 PROFILE_SHEETS.help() 的抽屉，不在此路由。"""
         _Browser.goto("profile/tutorial")
-        self.assertEqual(_Browser.page.locator("#view .step").count(), 4)
+        view = _Browser.page.locator("#view")
+        self.assertEqual(_Browser.page.locator("#view article.tutorial").count(), 1)
+        self.assertIn("企业用户使用指引", view.inner_text())
+        self.assertGreaterEqual(_Browser.page.locator("#view .tut-lead").count(), 2)
+        self.assertEqual(_Browser.page.locator("#view .tut-source").count(), 1)
+        self.assertGreaterEqual(_Browser.page.locator("#view .tut-callout").count(), 1)
+        self.assertGreaterEqual(_Browser.page.locator("#view table tr").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .step").count(), 0,
+                         "教程路由不应有 .step（那属于帮助抽屉）")
         current = _Browser.page.locator('#tabbar [aria-current="page"]')
         self.assertIn("我的", current.inner_text())
 
