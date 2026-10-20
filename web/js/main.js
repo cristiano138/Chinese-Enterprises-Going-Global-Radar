@@ -60,7 +60,7 @@ export const render = () => {
   // 都已有视图时，回落才可观测"。Task 6 时 12 条路由仍有 9 条无视图（assistant /
   // regulations(/*) / action(/*) / profile(/*)），回落会对它们一视同仁地触发，
   // 外壳行为的断言会因"每条路由都变成首页"而集体失真。它落在 Task 9。
-  const view = VIEWS[r] || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
+  const view = Object.hasOwn(VIEWS, r) ? VIEWS[r] : ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
   els.view.className = r === "assistant" ? "view view--chat" : "view";
   els.view.innerHTML = view ? view(state) : "";
   els.view.scrollTop = 0;

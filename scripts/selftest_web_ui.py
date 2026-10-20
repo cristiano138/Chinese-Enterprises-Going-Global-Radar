@@ -580,11 +580,13 @@ class ToolViewTests(unittest.TestCase):
                 self.assertEqual(current.count(), 1)
 
     def test_unknown_tool_name_falls_back_without_blanking(self):
-        """Review Focus 2：未知工具名必须回落到该组的中心页。"""
-        _Browser.goto("regulations/不存在")
-        text = _Browser.page.locator("#view").inner_text()
-        self.assertTrue(text.strip())
-        self.assertIn("法规中心", text)
+        """Review Focus 2：未知/畸形工具名必须回落到该组的中心页。"""
+        for bad in ["不存在", "__proto__", "constructor"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(f"regulations/{bad}")
+                text = _Browser.page.locator("#view").inner_text()
+                self.assertTrue(text.strip())
+                self.assertIn("法规中心", text)
 
 
 class SearchViewTests(unittest.TestCase):

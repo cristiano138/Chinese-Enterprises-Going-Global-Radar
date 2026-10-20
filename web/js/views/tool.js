@@ -10,7 +10,7 @@ import { actionView } from "./action.js";
   export function toolView(state) {
     const id = state.tool;
     const t = TOOL_PAGES[id];
-    if (!t) return state.toolGroup === "regulations" ? regulationsView() : actionView();
+    if (!Object.hasOwn(TOOL_PAGES, id)) return state.toolGroup === "regulations" ? regulationsView(state) : actionView(state);
     const filters = `<div class="filterbar">${t.filters.map((f, i) => `
       <label class="select"><select aria-label="${esc(f)}"><option>${esc(f)}</option></select></label>`).join("")}
       <button class="chip" data-action="rerun">${ic("search")}重新生成</button></div>`;
