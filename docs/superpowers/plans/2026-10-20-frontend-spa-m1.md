@@ -2174,11 +2174,10 @@ class ProfileViewTests(unittest.TestCase):
         self.assertIn("我的", current.inner_text())
 
     def test_profile_shows_the_radar_mark_once(self):
-        """我的页同时有顶栏 brand 与 hero 两处雷达标记，视觉上重复。
-        产品决定：保留 hero 的品牌标记，顶栏在 profile 路由不画标记。"""
+        """我的页顶栏应与其他页面一致保留小标记；hero 不再重复大标记。"""
         _Browser.goto("profile")
-        self.assertEqual(_Browser.page.locator("#appbar .brand__mark").count(), 0)
-        self.assertEqual(_Browser.page.locator("#view .profile__mark").count(), 1)
+        self.assertEqual(_Browser.page.locator("#appbar .brand__mark").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .profile__mark").count(), 0)
 
 
 class DetailSheetTests(unittest.TestCase):
