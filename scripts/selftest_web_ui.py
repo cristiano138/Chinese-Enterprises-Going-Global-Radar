@@ -524,6 +524,81 @@ class AssistantViewTests(unittest.TestCase):
         self.assertIn("<b>粗体</b> 卖到德国", view.inner_text())
 
 
+class RegulationsHubTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_hub_has_a_search_entry_and_two_tools(self):
+        _Browser.goto("regulations")
+        self.assertIn("法规中心", _Browser.page.locator("#view").inner_text())
+        self.assertEqual(_Browser.page.locator("#view .search-entry").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .tool").count(), 2)
+
+    def test_search_entry_navigates_to_the_search_route(self):
+        _Browser.goto("regulations")
+        _Browser.page.locator("#view .search-entry").click()
+        _Browser.page.wait_for_timeout(300)
+        self.assertIn("regulations/search", _Browser.page.url)
+
+
+class ActionHubTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_hub_groups_tasks_and_markets(self):
+        _Browser.goto("action")
+        self.assertIn("要做的事", _Browser.page.locator("#view").inner_text())
+        self.assertIn("看市场", _Browser.page.locator("#view").inner_text())
+        self.assertEqual(_Browser.page.locator("#view [data-action='open-tool']").count(), 5)
+
+
+class ToolViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    TOOLS = [("regulations", "map", "法规地图"), ("regulations", "timeline", "变化时间线"),
+             ("action", "todo", "合规待办"), ("action", "readiness", "上线准备"),
+             ("action", "journey", "六阶段路线"), ("action", "compare", "区域对比"),
+             ("action", "multi", "多市场汇总")]
+
+    def test_each_tool_renders_its_own_content(self):
+        for group, tool, title in self.TOOLS:
+            with self.subTest(tool=tool):
+                _Browser.goto(f"{group}/{tool}")
+                # 原型的工具标题在顶栏（1226-1233）；视图内是副标题与工具内容。
+                self.assertIn(title, _Browser.page.locator("#appbar").inner_text())
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip())
+
+    def test_tool_pages_keep_the_bottom_tabbar_active(self):
+        for group, tool, _ in self.TOOLS:
+            with self.subTest(tool=tool):
+                _Browser.goto(f"{group}/{tool}")
+                current = _Browser.page.locator('#tabbar [aria-current="page"]')
+                self.assertEqual(current.count(), 1)
+
+    def test_unknown_tool_name_falls_back_without_blanking(self):
+        """Review Focus 2：未知工具名必须回落到该组的中心页。"""
+        _Browser.goto("regulations/不存在")
+        text = _Browser.page.locator("#view").inner_text()
+        self.assertTrue(text.strip())
+        self.assertIn("法规中心", text)
+
+
+class SearchViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_search_route_renders_the_prototype_clauses(self):
+        _Browser.goto("regulations/search")
+        # 标题在顶栏（原型 1225）；视图内是检索表单与正文指引。
+        self.assertIn("条款检索", _Browser.page.locator("#appbar").inner_text())
+        self.assertIn("按法规编号精确定位", _Browser.page.locator("#view").inner_text())
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
