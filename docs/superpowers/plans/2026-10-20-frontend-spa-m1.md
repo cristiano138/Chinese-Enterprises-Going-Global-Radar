@@ -1179,7 +1179,52 @@ git commit -m "feat(web): state, routing, appbar and tabbar ported from the prot
 
 **原型对照**：抽屉 `prototype.html:2322-2333`；轻提示 `2147-2152`。动画全在 CSS（`.sheet` 默认 `translateY(103%)`、`.is-on` 归零），JS 只管类名与 aria——与原型一致，本任务不写动画。
 
-- [ ] **Step 1: 写失败的测试**
+- [ ] **Step 1: 搬运样式层（shell / components / views）**
+
+**这一步是上一版计划的重大遗漏**：File Structure 表里写着这三个文件是【搬运】，但**没有任何任务步真的去搬**，于是它们一直停在 Task 1 的 33 字节占位，整个视觉层缺失——Tasks 6–9 会渲染出没样式的页面，Task 10 的覆盖没有可覆盖的对象，Task 11 的像素比对会大面积失败。
+
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/styles/shell.css` | 71–148 | 手机壳（含 `@media (min-width: 700px)`）、顶栏、主滚动区 |
+| `web/styles/shell.css` | 552–639 | 输入区、底部导航 |
+| `web/styles/shell.css` | 781–881 | 抽屉、轻提示、可访问性（**881 为终点**，882 是 `</style>`） |
+| `web/styles/components.css` | 434–445 | 通用页头 |
+| `web/styles/components.css` | 527–551 | 按钮 |
+| `web/styles/views.css` | 149–433 | 首页、工作台首页、首次使用态、教程、法规中心/行动入口、时效性检查、对话 |
+| `web/styles/views.css` | 446–526 | 结果页 |
+| `web/styles/views.css` | 640–780 | 法规库、检索、我的 |
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+Path("web/styles/shell.css").write_text(
+    "/* 搬运自 prototype.html:71-148, 552-639, 781-881。未做改动。 */\n"
+    + take(71, 148) + take(552, 639) + take(781, 881), encoding="utf-8")
+Path("web/styles/components.css").write_text(
+    "/* 搬运自 prototype.html:434-445, 527-551。未做改动。 */\n"
+    + take(434, 445) + take(527, 551), encoding="utf-8")
+Path("web/styles/views.css").write_text(
+    "/* 搬运自 prototype.html:149-433, 446-526, 640-780。未做改动。 */\n"
+    + take(149, 433) + take(446, 526) + take(640, 780), encoding="utf-8")
+PY
+```
+
+【搬运】校验（每节都要留下可辨识的规则；**不要锚定行首**，原型 CSS 带两空格缩进）：
+
+```bash
+grep -c "\.app-shell\|\.appbar\|\.tabbar\|\.tab--main" web/styles/shell.css
+grep -c "\.composer\|\.dock\|\.sheet\|\.backdrop\|\.toast" web/styles/shell.css
+grep -c "\.page-head\|\.btn" web/styles/components.css
+grep -c "\.wb-head\|\.fresh-card\|\.reco\|\.row\|\.tool" web/styles/views.css
+```
+
+Expected: 四行均 ≥ 3。
+
+**这一步做完后，本任务那条 `test_backdrop_click_closes_the_sheet` 才会通过**——`#backdrop` 需要原型 782-799 的 `position:absolute; inset:0`。
+
+- [ ] **Step 2: 写失败的测试**
 
 在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。追加到末尾会让新测试类定义晚于 `unittest.main()`，用例被**静默跳过**（输出仍显 PASS）。追加后确认运行输出里出现了本任务新增的用例名。
 
@@ -1260,7 +1305,7 @@ class ToastTests(unittest.TestCase):
         self.assertTrue(got, "第二次提示必须重新计时，而不是沿用第一次留下的定时器")
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 3: 运行测试确认失败**
 
 ```bash
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SheetTests ToastTests
@@ -1268,7 +1313,7 @@ PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/pyt
 
 Expected: FAIL —— `/web/js/ui/sheet.js` 尚不存在
 
-- [ ] **Step 3: 搬运抽屉与轻提示**
+- [ ] **Step 4: 搬运抽屉与轻提示**
 
 | 目标 | 原型行号（含） |
 |---|---|
@@ -1342,7 +1387,7 @@ export function showToast(text) {
 
 **关键**：改写时必须保持原型那三行**赋值顺序**（先 `backdrop` 后 `sheet`）与 `aria-hidden` 的取值，测试会核对。
 
-- [ ] **Step 4: 在 `main.js` 接入 `close-sheet` 与 Escape**
+- [ ] **Step 5: 在 `main.js` 接入 `close-sheet` 与 Escape**
 
 导入区加：
 
@@ -1384,7 +1429,7 @@ document.addEventListener("keydown", (event) => {
 
 **注意**：Escape 必须带 `classList.contains("is-on")` 判断——与原型 2443 行一致，否则无关的 Escape 也会触发关闭。
 
-- [ ] **Step 5: 运行测试确认通过**
+- [ ] **Step 6: 运行测试确认通过**
 
 ```bash
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
@@ -1392,7 +1437,7 @@ PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/pyt
 
 Expected: PASS（SheetTests 5 + ToastTests 2 全通过，既有类无回归）
 
-- [ ] **Step 6: 提交**
+- [ ] **Step 7: 提交**
 
 ```bash
 git add web/js/ui/sheet.js web/js/ui/toast.js web/js/main.js scripts/selftest_web_ui.py
@@ -2270,7 +2315,7 @@ git commit -m "feat(web): profile, tutorial and the seven sheets ported from the
 - Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: Task 3 搬运进 `shell.css` 的原型 `71-148`（含 `@media (min-width: 700px)` 的手机壳规则）
+- Consumes: Task 5 搬运进 `shell.css` 的原型 `71-148`（含 `@media (min-width: 700px)` 的手机壳规则）
 - Produces: 无导出；行为约束——≥700px 时无手机壳装饰，窄栏仍居中且为手机比例
 
 **规格第 7 节**：桌面端去掉边框、圆角、阴影、桌面底纹；内容窄栏居中 `max-width: 480px`；标签栏保持底部。
