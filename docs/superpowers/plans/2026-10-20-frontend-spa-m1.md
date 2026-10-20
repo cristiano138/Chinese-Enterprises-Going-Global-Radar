@@ -1029,18 +1029,6 @@ class ShellTests(unittest.TestCase):
         self.assertEqual(back.get_attribute("data-action"), "nav")
         self.assertEqual(back.get_attribute("data-to"), "regulations")
 
-    def test_unknown_route_redirects_home(self):
-        """原型 2068-2071：未知路由 go("home")。
-
-        本任务还没有任何视图，所以这里只能断言**路由回落**（hash 变为 #/home）；
-        "视图非空"由 Task 6 在首页视图存在后补断言。
-        """
-        for bad in ["完全瞎写", "zzz", "foo/bar"]:
-            with self.subTest(bad=bad):
-                _Browser.goto(bad)
-                self.assertTrue(_Browser.page.url.endswith("#/home"),
-                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
-
     def test_shell_mount_points_match_the_prototype(self):
         for node_id in ["shell", "appbar", "view", "dock", "tabbar",
                         "backdrop", "sheet", "toast"]:
@@ -1129,14 +1117,12 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  // 原型 2068-2071：未知路由 go("home") 并返回，而不是渲染空白。
+  // 本任务还没有任何视图，未知或无视图的路由渲染空白即可。
+  // 原型 2068-2071 的未知路由回落（go("home")）**不在这里**：它要等首页视图存在
+  // 才有可观测性，且若在此处生效，每条路由都会回落，外壳行为全部失真。见 Task 6。
   const view = VIEWS[r];
-  if (!view) {
-    go("home");
-    return;
-  }
   els.view.className = "view";
-  els.view.innerHTML = view(state);
+  els.view.innerHTML = view ? view(state) : "";
   els.view.scrollTop = 0;
   els.dock.innerHTML = "";
 };
@@ -1490,13 +1476,20 @@ class HomeViewTests(unittest.TestCase):
         self.assertIn("无需手动操作", text)
         self.assertIn("不等于法规条文变更", text)
 
-    def test_unknown_route_now_renders_the_home_view(self):
-        """Task 4 只断言了路由回落；首页视图存在后，这里补断言它确实渲染出内容。"""
+    def test_unknown_route_redirects_home(self):
+        """原型 2068-2071：未知路由 go("home")。首页视图存在后此行为才可观测。"""
+        for bad in ["完全瞎写", "zzz", "foo/bar"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.url.endswith("#/home"),
+                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
+
+    def test_unknown_route_renders_the_home_view(self):
         for bad in ["完全瞎写", "foo/bar"]:
             with self.subTest(bad=bad):
                 _Browser.goto(bad)
                 self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
-                                "未知路由回落到首页后必须渲染出内容，而不是白屏")
+                                "回落首页后必须渲染出内容，而不是白屏")
 
     def test_first_run_toggle_is_not_shipped(self):
         _Browser.goto("home")
@@ -1580,6 +1573,20 @@ const VIEWS = {
   freshness: freshnessView,
 };
 ```
+
+**同时装上原型 2068-2071 的未知路由回落**——首页视图现在存在，它才有可观测性：
+
+```js
+  const view = VIEWS[r];
+  if (!view) {
+    go("home");
+    return;
+  }
+  els.view.className = "view";
+  els.view.innerHTML = view(state);
+```
+
+并在导入区确认有 `import { go } from "./router.js";`。
 
 事件委托里，在 `open-tool` 分支之后加：
 
