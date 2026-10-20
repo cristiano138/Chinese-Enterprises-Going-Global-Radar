@@ -4,7 +4,7 @@ import { ic } from "./icons.js";
 import { store } from "./store.js";
 import { routeOf, go } from "./router.js";
 import { renderAppbar, renderTabbar } from "./shell.js";
-import { closeSheet } from "./ui/sheet.js";
+import { closeSheet, openSheet } from "./ui/sheet.js";
 
 const els = {
   appbar: document.getElementById("appbar"),
@@ -16,12 +16,17 @@ const els = {
 import { homeView } from "./views/home.js";
 import { resultView } from "./views/result.js";
 import { freshnessView } from "./views/freshness.js";
+import { render as assistantRender, send, choose, newChat } from "./views/assistant.js";
+import { composerDock, bindComposer } from "./ui/composer.js";
+import { showToast } from "./ui/toast.js";
+import { PROFILE_SHEETS } from "./sample.js";
 
 // Task 6 起逐个接入真实视图；尚无视图的路由渲染空白（回落见下方说明）。
 const VIEWS = {
   home: homeView,
   result: resultView,
   freshness: freshnessView,
+  assistant: assistantRender,
 };
 
 export const render = () => {
@@ -49,10 +54,16 @@ export const render = () => {
   // regulations(/*) / action(/*) / profile(/*)），回落会对它们一视同仁地触发，
   // 外壳行为的断言会因"每条路由都变成首页"而集体失真。它落在 Task 9。
   const view = VIEWS[r];
-  els.view.className = "view";
+  els.view.className = r === "assistant" ? "view view--chat" : "view";
   els.view.innerHTML = view ? view(state) : "";
   els.view.scrollTop = 0;
-  els.dock.innerHTML = "";
+  els.dock.innerHTML = r === "assistant" ? composerDock(state) : "";
+  if (r === "assistant") {
+    bindComposer((text) => {
+      send(text);
+      render();
+    });
+  }
 };
 
 window.addEventListener("hashchange", () => { store.state.route = routeOf(); render(); });
@@ -64,6 +75,27 @@ document.addEventListener("click", (event) => {
   if (action === "nav") {
     closeSheet();                              // 原型 2357：抽屉里的 nav 也要先关抽屉
     go(el.dataset.to || "assistant");          // 原型 2358：nav 默认去 assistant
+  } else if (action === "prompt") {
+    send(el.dataset.prompt || "");
+    render();
+  } else if (action === "choice") {
+    choose(el.dataset.choice || "");
+    render();
+  } else if (action === "new-chat") {
+    newChat();
+    render();
+  } else if (action === "history") {
+    openSheet(PROFILE_SHEETS.history());
+  } else if (action === "quick") {
+    const label = el.dataset.label;
+    const prompts = {
+      "多市场": "多个市场汇总，一次看清主要差异",
+      "时间线": "查看法规变化时间线，最近有什么新要求",
+      "对比": "比较欧盟和美国的儿童玩具法规目录",
+      "导出": "导出当前结果",
+    };
+    if (label === "导出") showToast("原型中不生成文件；正式版会导出当前结果");
+    else { send(prompts[label] || label); render(); }
   } else if (action === "open-tool") {
     go((el.dataset.group || "regulations") + "/" + el.dataset.tool);
   } else if (action === "fresh-filter") {

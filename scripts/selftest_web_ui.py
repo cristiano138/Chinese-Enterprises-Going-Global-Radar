@@ -460,6 +460,70 @@ class FreshnessViewTests(unittest.TestCase):
                 self.assertEqual(_Browser.page.locator(f"#view {wrong}").count(), 0)
 
 
+class AssistantViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def setUp(self):
+        _Browser.goto("assistant")
+        _Browser.page.evaluate("""async () => {
+          const a = await import('/web/js/views/assistant.js');
+          if (a.newChat) a.newChat();
+        }""")
+
+    def test_welcome_page_matches_the_prototype(self):
+        _Browser.goto("assistant")
+        text = _Browser.page.locator("#view").inner_text()
+        self.assertIn("我是合规雷达", text)
+        self.assertIn("告诉我你卖什么、卖到哪里。", text)
+        self.assertIn("可以这样开始", text)
+        self.assertIn("教程在「我的」里。", text)
+
+    def test_welcome_offers_four_prompts_with_the_lead_ones_tinted(self):
+        _Browser.goto("assistant")
+        self.assertEqual(_Browser.page.locator("#view .reco").count(), 4)
+        self.assertEqual(_Browser.page.locator("#view .reco--lead").count(), 2)
+        first = _Browser.page.locator("#view .reco").first
+        self.assertEqual(first.get_attribute("data-action"), "prompt")
+        self.assertTrue(first.get_attribute("data-prompt"))
+
+    def test_composer_is_a_form_with_tool_and_submit(self):
+        _Browser.goto("assistant")
+        self.assertEqual(_Browser.page.locator("#dock form.composer").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock form.composer").get_attribute("data-form"),
+                         "compose")
+        self.assertEqual(_Browser.page.locator("#dock .composer__tool").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock button[type='submit']").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock .composer__mic").count(), 0,
+                         "composer__mic 是自创类名，必须不存在")
+
+    def test_submitting_the_form_sends_and_switches_to_the_thread(self):
+        _Browser.goto("assistant")
+        _Browser.page.locator("#dock textarea").fill("毛绒玩具卖到德国亚马逊")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        self.assertIn("毛绒玩具卖到德国亚马逊", _Browser.page.locator("#view").inner_text())
+
+    def test_quickbar_appears_only_once_a_conversation_started(self):
+        _Browser.goto("assistant")
+        self.assertEqual(_Browser.page.locator("#dock .quickbar").count(), 0)
+        _Browser.page.locator("#dock textarea").fill("测试")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        self.assertEqual(_Browser.page.locator("#dock .quickbar").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock .quickbar .chip").count(), 4)
+
+    def test_message_text_with_html_is_shown_literally(self):
+        """Review Focus 1：消息含 HTML 时必须原样显示为文本。"""
+        _Browser.goto("assistant")
+        _Browser.page.locator("#dock textarea").fill("<b>粗体</b> 卖到德国")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        view = _Browser.page.locator("#view")
+        self.assertIn("<b>粗体</b> 卖到德国", view.inner_text())
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)
