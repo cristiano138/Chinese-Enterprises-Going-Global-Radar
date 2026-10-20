@@ -222,6 +222,19 @@ def check_recall_in_conversation():
     check("recall 不把片段说成适用性审核",
           any("适用性" in gap for gap in result["gaps"]))
 
+    unsafe = _fake_recall()
+    unsafe["retrieval"]["selected"][0]["locator"] = "javascript:alert(1)"
+    unsafe_result = conversation._normalize("recall", dict(context), unsafe)
+    check("recall 丢弃非 http(s) locator",
+          unsafe_result["items"][0]["sources"][0]["url"] == "")
+
+
+def check_recall_cache_modes():
+    from modules import recall_flow
+    check("两层召回缓存区分 use_llm 开关",
+          recall_flow._cache_key("q", "", "v", True)
+          != recall_flow._cache_key("q", "", "v", False))
+
 
 def check_spa_search_recall():
     with patch("core.law_store.retrieve", return_value={
@@ -249,6 +262,7 @@ def main():
     check_conversation_forwarding()
     check_ui_and_api_forwarding()
     check_recall_in_conversation()
+    check_recall_cache_modes()
     check_spa_search_recall()
     check_spa_requests()
     print("LLM layers: PASS")

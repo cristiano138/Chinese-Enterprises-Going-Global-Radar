@@ -97,6 +97,17 @@ def _link_title(url: str) -> str:
     return host or "官方链接"
 
 
+def _safe_url(url) -> str:
+    """Only allow absolute http(s) URLs without embedded credentials."""
+    try:
+        parsed = urlparse(str(url))
+        if parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username:
+            return str(url)
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
 def _normalize_record(row: dict) -> dict:
     """M1 记录 → 前端稳定字段。"""
     key = row.get("key") or row.get("官方编号") or ""
@@ -575,8 +586,9 @@ def _search_payload(identifier: str, heading: str) -> dict:
         try:
             from modules import recall_flow
             recalled = recall_flow.run(identifier, use_llm=True)
-        except Exception as exc:  # noqa: BLE001
-            recalled = {"ok": False, "reason": f"智能检索不可用：{exc}"}
+        except Exception:  # noqa: BLE001
+            LOG.exception("recall fallback failed")
+            recalled = {"ok": False, "reason": "智能检索暂不可用，请稍后重试"}
         retrieval = (recalled.get("retrieval") or {})
         selected = retrieval.get("selected") or []
         if recalled.get("ok") and selected:
@@ -590,14 +602,14 @@ def _search_payload(identifier: str, heading: str) -> dict:
                 "coverage": retrieval.get("coverage") or "",
                 "units": [{
                     "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
-                    "locator": snippet.get("locator") or "",
+                    "locator": _safe_url(snippet.get("locator") or ""),
                     "document_id": snippet.get("law_id") or "",
                     "parse_status": "智能检索",
                     "body": snippet.get("body") or "",
                     "truncated": False,
                     "version_date": "",
                     "kind": "recall",
-                    "source_url": snippet.get("locator") or "",
+                    "source_url": _safe_url(snippet.get("locator") or ""),
                 } for snippet in selected],
             }
         recall_reason = recalled.get("reason") or retrieval.get("reason") or ""

@@ -6,6 +6,7 @@ the model or rerun a query. Every callback carries a result ID, never parsed HTM
 from copy import deepcopy
 import html
 import json
+import logging
 from pathlib import Path
 import tempfile
 from urllib.parse import urlsplit
@@ -14,6 +15,8 @@ import gradio as gr
 
 from core import asr, conversation, corpus, law_store, llm, snapshot
 from modules import m2_timeline
+
+LOG = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
@@ -833,8 +836,9 @@ def build_ui():
                     try:
                         from modules import recall_flow
                         recalled = recall_flow.run(text, use_llm=True)
-                    except Exception as exc:  # noqa: BLE001
-                        recalled = {"ok": False, "reason": f"智能检索不可用：{exc}"}
+                    except Exception:  # noqa: BLE001
+                        LOG.exception("recall fallback failed")
+                        recalled = {"ok": False, "reason": "智能检索暂不可用，请稍后重试"}
                     retrieval = recalled.get("retrieval") or {}
                     selected = retrieval.get("selected") or []
                     if recalled.get("ok") and selected:
@@ -847,8 +851,8 @@ def build_ui():
                             "units": [{
                                 "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
                                 "body": snippet.get("body") or "",
-                                "locator": snippet.get("locator") or "",
-                                "source_url": snippet.get("locator") or "",
+                                "locator": conversation._safe_url(snippet.get("locator") or ""),
+                                "source_url": conversation._safe_url(snippet.get("locator") or ""),
                                 "version_date": "",
                                 "parse_status": "智能检索",
                             } for snippet in selected],

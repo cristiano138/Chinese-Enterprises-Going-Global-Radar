@@ -148,8 +148,13 @@ RETRIEVAL_PROMPT = """你是“法规切片选择器”。根据用户问题和�
 
 
 # ── 缓存 ────────────────────────────────────────────────────────────
-def _cache_key(query, context, version):
-    raw = (query or "").strip() + "\x00" + (context or "").strip() + "\x00" + (version or "")
+def _cache_key(query, context, version, use_llm):
+    raw = ("\x00".join((
+        (query or "").strip(),
+        (context or "").strip(),
+        (version or ""),
+        "llm" if use_llm else "deterministic",
+    )))
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -569,7 +574,7 @@ def run(query, context="", use_llm=True):
     """路由 + 检索。返回结构化结果；任何失败都不抛异常。"""
     t0 = time.time()
     version = recall.tree_version()
-    key = _cache_key(query, context, version)
+    key = _cache_key(query, context, version, use_llm)
     hit = _cache_get(key)
     if hit is not None:
         result = dict(hit)

@@ -856,13 +856,14 @@ def _normalize(action, context, raw):
         for index, snippet in enumerate(selected):
             body = str(snippet.get("body") or "")
             heading = snippet.get("heading") or snippet.get("path") or snippet.get("law_id") or "条文片段"
+            source_url = _safe_url(snippet.get("locator") or "")
             row = {
                 "key": snippet.get("node_id") or snippet.get("citation_id") or str(index),
                 "法规中文名": heading,
                 "官方编号": snippet.get("law_id") or "",
                 "证据摘录": body[:1200] + ("…" if len(body) > 1200 else ""),
-                "官方链接": snippet.get("locator") or "",
-                "locator": snippet.get("locator") or snippet.get("node_id") or "",
+                "官方链接": source_url,
+                "locator": source_url or snippet.get("node_id") or "",
                 "核验状态": "条款片段，未逐条审核适用性",
             }
             item = _item(row, context, group="相关条文片段", index=index)
@@ -872,9 +873,9 @@ def _normalize(action, context, raw):
                                    证据说明="条款正文片段；适用性仍需按产品条件核对。")
             item["sources"] = [{
                 "title": heading,
-                "url": _safe_url(snippet.get("locator") or ""),
+                "url": source_url,
                 "excerpt": body[:600],
-                "locator": snippet.get("locator") or snippet.get("node_id") or "",
+                "locator": source_url or snippet.get("node_id") or "",
                 "status": "条款片段，未逐条审核适用性",
             }]
             items.append(item)
