@@ -35,9 +35,14 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  const view = VIEWS[r] || VIEWS.default;
+  // 原型 2068-2071：未知路由 go("home") 并返回，而不是渲染空白。
+  const view = VIEWS[r];
+  if (!view) {
+    go("home");
+    return;
+  }
   els.view.className = "view";
-  els.view.innerHTML = view ? view(state) : "";
+  els.view.innerHTML = view(state);
   els.view.scrollTop = 0;
   els.dock.innerHTML = "";
 };
