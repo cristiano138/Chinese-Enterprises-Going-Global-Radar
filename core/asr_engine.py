@@ -395,6 +395,20 @@ def transcribe(audio, timeout=TRANSCRIBE_TIMEOUT, language="auto"):
     return text, info
 
 
+def _cli_path(path):
+    """命令行参数尽量用项目内相对路径。
+
+    sherpa-onnx 的 C++ 参数解析按本地代码页读取 argv；项目路径含中文时，
+    绝对路径会被读成乱码并报 "does not exist"。相对路径不含非 ASCII 段，
+    配合 cwd=PROJECT 可以稳定打开模型。路径在项目外时只能退回绝对路径。
+    """
+    try:
+        relative = os.path.relpath(path, PROJECT)
+        return relative if not relative.startswith("..") else path
+    except ValueError:
+        return path
+
+
 def _transcribe_cli(audio, timeout=TRANSCRIBE_TIMEOUT, language="auto"):
     """命令行兜底：每次一个进程、每次重新加载模型。"""
     state = status()
@@ -403,8 +417,8 @@ def _transcribe_cli(audio, timeout=TRANSCRIBE_TIMEOUT, language="auto"):
     language = (language or "auto").strip() or "auto"
 
     command = [binary,
-               f"--tokens={tokens}",
-               f"--sense-voice-model={onnx}",
+               f"--tokens={_cli_path(tokens)}",
+               f"--sense-voice-model={_cli_path(onnx)}",
                f"--sense-voice-language={language}",
                "--sense-voice-use-itn=1",
                f"--num-threads={THREADS}",
@@ -421,7 +435,7 @@ def _transcribe_cli(audio, timeout=TRANSCRIBE_TIMEOUT, language="auto"):
         env.setdefault("ORT_NUM_THREADS", THREADS)
         try:
             done = subprocess.run(command, capture_output=True, timeout=timeout,
-                                  cwd=os.path.dirname(binary), env=env,
+                                  cwd=PROJECT, env=env,
                                   check=False)
         except subprocess.TimeoutExpired:
             raise EngineError("语音转写超时，请稍后重试") from None

@@ -362,7 +362,8 @@ class HomeViewTests(unittest.TestCase):
         _Browser.goto("home")
         view = _Browser.page.locator("#view")
         self.assertIn("最近检查", view.inner_text())
-        for label in ["儿童玩具", "德国", "亚马逊"]:
+        # 后端只支持「欧盟 / 美国」两个市场；首页条件条必须显示真实查询市场。
+        for label in ["儿童玩具", "欧盟", "亚马逊"]:
             with self.subTest(label=label):
                 self.assertIn(label, view.inner_text())
 
@@ -505,6 +506,18 @@ class AssistantViewTests(unittest.TestCase):
         _Browser.page.wait_for_timeout(400)
         self.assertIn("毛绒玩具卖到德国亚马逊", _Browser.page.locator("#view").inner_text())
 
+    def test_conversation_renders_backend_result_cards(self):
+        """助手走 /api/conversation/*，结果卡与追问都必须来自后端会话。"""
+        _Browser.goto("assistant")
+        _Browser.page.locator("#dock textarea").fill("毛绒玩具卖到欧盟，需要做什么")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.locator("#view .conv-result").first.wait_for(timeout=20000)
+        self.assertGreaterEqual(_Browser.page.locator("#view .conv-result .row").count(), 1)
+        self.assertGreaterEqual(_Browser.page.locator("#view .conv-result .choice-row .chip").count(), 1)
+        self.assertEqual(
+            _Browser.page.locator("#view [data-action='conv-export']").count(), 1,
+            "业务结果必须提供真实导出入口")
+
     def test_quickbar_appears_only_once_a_conversation_started(self):
         _Browser.goto("assistant")
         self.assertEqual(_Browser.page.locator("#dock .quickbar").count(), 0)
@@ -598,7 +611,7 @@ class SearchViewTests(unittest.TestCase):
         _Browser.goto("regulations/search")
         # 标题在顶栏（原型 1225）；视图内是检索表单与正文指引。
         self.assertIn("条款检索", _Browser.page.locator("#appbar").inner_text())
-        self.assertIn("按法规编号精确定位", _Browser.page.locator("#view").inner_text())
+        self.assertIn("法规编号精确定位", _Browser.page.locator("#view").inner_text())
 
 
 class ProfileViewTests(unittest.TestCase):

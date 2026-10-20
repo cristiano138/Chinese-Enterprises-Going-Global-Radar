@@ -36,7 +36,32 @@ CAPABILITIES = [
 _TITLES = {item["action"]: item["label"] for item in CAPABILITIES}
 _TITLES.update(journey="从选品到售后的行动路线", question="补充一个条件",
                capabilities="你可以这样使用合规雷达", message="已更新业务情况",
-               unsupported="当前资料覆盖范围", error="本次查询未完成")
+               about="关于合规雷达", greeting="你好", thanks="不客气", chat="合规雷达",
+               unsupported="当前资料覆盖范围", error="本次查询未完成",
+               recall="检索条文依据")
+
+_ABOUT_TEXT = (
+    "我是合规雷达，一个出海合规助手。你告诉我「卖什么 + 卖到哪个市场」，"
+    "我会从已核对的法规目录里整理适用法规、关键日期和下一步准备事项；"
+    "每条结论都带官方来源，拿不到来源的内容不会输出。"
+    "我不替你判断「一定合规」，也不构成法律意见。"
+)
+_GREETING_TEXT = (
+    "你好，我是合规雷达。告诉我你卖什么、卖到哪个市场，"
+    "我可以帮你查适用法规、看关键日期、整理下一步。"
+)
+_THANKS_TEXT = "不客气。需要继续查法规、看时间线或整理待办，直接说产品和市场就行。"
+_CHAT_SYSTEM = (
+    "你是「合规雷达」，面向中国出海卖家的合规助手。"
+    "你只介绍自己能做什么、引导用户补充产品或品类与目标市场；"
+    "不得编造法规名称、编号、日期或合规结论，涉及具体法规时提示用户使用查询功能。"
+    "用简体中文回答 2-4 句，语气自然，不要输出 Markdown 列表。"
+)
+_ABOUT_ACTIONS = [
+    {"label": "查看相关法规", "action": "map"},
+    {"label": "整理下一步", "action": "todo"},
+    {"label": "看全流程", "action": "journey"},
+]
 _CONTEXT_DEFAULTS = {
     "category": "", "product": "", "market": "", "country": "",
     "platform": "", "site": "", "fulfillment": "", "stage": "",
@@ -51,7 +76,21 @@ _FINGERPRINT_FIELDS = ("category", "product", "market", "country", "platform",
                        "markets", "window", "product_revision")
 _TASK_SCOPE_FIELDS = ("category", "product", "market", "country", "platform", "site",
                       "product_revision")
-_BUSINESS_ACTIONS = set(_TITLES) - {"question", "message", "unsupported", "error", "capabilities"}
+_CONVERSATIONAL = {"about", "greeting", "thanks", "chat"}
+
+
+def _conversational_reply(kind, text, context):
+    """闲聊/自我介绍交给模型生成；失败时由调用方回落到固定文案。"""
+    if not llm.is_ready():
+        return "", {"ok": False, "reason": "模型链路未配置", "cached": False}
+    prompt = f"{_CHAT_SYSTEM}\n\n用户：{text.strip()[:500]}\n助手："
+    reply, meta = llm.chat(prompt, max_tokens=220, temperature=0.4,
+                           timeout=12, thinking=False, use_cache=False)
+    if not meta.get("ok") or not (reply or "").strip():
+        return "", meta
+    return reply.strip()[:600], meta
+_BUSINESS_ACTIONS = set(_TITLES) - {"question", "message", "unsupported", "error",
+                                    "capabilities"} - _CONVERSATIONAL
 _NEW_PRODUCT_RE = re.compile(r"另一(?:个|款|种)?(?:产品|商品)|另一个(?:是|为)|换(?:一款|个|一种)(?:产品|商品)|新产品|产品改成")
 _REPORT_RE = re.compile(r"(?:已经|已有|有了?|拿到|做过|完成).{0,8}(?:检测报告|测试报告|认证报告|标签稿|包装稿|技术文件|符合性声明|CE证书)")
 _NEGATIVE_REPORT_RE = re.compile(r"(?:还没|没有|尚未|未做|没做|暂时没有).{0,8}(?:报告|标签|包装|文件|声明|证书)")
@@ -472,6 +511,12 @@ def _update_context(state, text, action, use_model=None):
 def _intent(text):
     if re.search(r"你(?:能|会|可以)做什么|全部功能|所有功能|更多功能|功能目录|能帮我什么", text):
         return "capabilities"
+    if re.search(r"你是谁|你叫什么|你是什么(?:助手|工具|产品)?|关于你|介绍.{0,4}你自己?|自我介绍", text):
+        return "about"
+    if re.fullmatch(r"\s*(?:你好|您好|hi|hello|hey|嗨|在吗)[!！。.？?\s]*", text, re.I):
+        return "greeting"
+    if re.fullmatch(r"\s*(?:谢谢|感谢|多谢|thanks|thank you)[!！。.\s]*", text, re.I):
+        return "thanks"
     if re.search(r"模型对照|模型比较|回答方法|可信|幻觉|为什么相信|来源差异", text):
         return "model"
     if re.search(r"对比|比较|差异|区别", text) and re.search(r"市场|区域|欧盟|德国|美国", text):
@@ -484,6 +529,9 @@ def _intent(text):
         return "readiness"
     if re.search(r"待办|下一步|做什么|怎么做|需要做|准备什么|准备哪些|缺什么|行动清单|材料清单", text):
         return "todo"
+    # 条文级问题走两层召回（路由 LLM + 检索 LLM），不要退化成目录清单。
+    if re.search(r"原文|条文|条款|第\s*[0-9一二三四五六七八九十百]+\s*条|具体规定|怎么规定|法条", text):
+        return "recall"
     if re.search(r"法规|法律|依据|准入|相关要求|哪些要求|什么要求|适用(?!年龄)|标签|标识|警告语", text):
         return "map"
     if re.search(r"全流程|全过程|从.*到|六个阶段|路线|开始做|怎么开始|如何开始|从哪(?:里)?开始", text):
@@ -491,16 +539,23 @@ def _intent(text):
     return None
 
 
-def _call(action, context):
+def _call(action, context, query=""):
     category, market = context["category"], context["market"]
     today = date.fromisoformat(snapshot.now_bjt())
+    # 三类结果都支持可选的模型润色；没有配置模型时模块层会立即降级，
+    # 不会因为这里传 True 而阻塞确定性结果。
+    use_llm = bool(context.get("use_llm")) and llm.is_ready()
+    if action == "recall":
+        from modules import recall_flow
+        text = (query or context.get("product") or "").strip()
+        return recall_flow.run(text, context.get("product", ""), use_llm=use_llm)
     if action == "map":
-        return m1_map.query(category, market, use_llm=False)
+        return m1_map.query(category, market, use_llm=use_llm)
     if action == "todo":
-        return m3_todo.query(category, market, use_llm=False, today=today)
+        return m3_todo.query(category, market, use_llm=use_llm, today=today)
     if action == "timeline":
         return m2_timeline.query(category, market, window=context.get("window", "近 12 个月"),
-                                 use_llm=False, today=today)
+                                 use_llm=use_llm, today=today)
     markets = context.get("markets") or ([market] if market else [])
     if action == "compare":
         if len(markets) < 2:
@@ -838,7 +893,51 @@ def _normalize(action, context, raw):
                       gaps=[raw.get("reason", "当前范围未覆盖")])
         return result
     items = []
-    if action == "map":
+    if action == "recall":
+        route = raw.get("route") or {}
+        retrieval = raw.get("retrieval") or {}
+        selected = retrieval.get("selected") or []
+        for index, snippet in enumerate(selected):
+            body = str(snippet.get("body") or "")
+            heading = snippet.get("heading") or snippet.get("path") or snippet.get("law_id") or "条文片段"
+            source_url = _safe_url(snippet.get("locator") or "")
+            row = {
+                "key": snippet.get("node_id") or snippet.get("citation_id") or str(index),
+                "法规中文名": heading,
+                "官方编号": snippet.get("law_id") or "",
+                "证据摘录": body[:1200] + ("…" if len(body) > 1200 else ""),
+                "官方链接": source_url,
+                "locator": source_url or snippet.get("node_id") or "",
+                "核验状态": "条款片段，未逐条审核适用性",
+            }
+            item = _item(row, context, group="相关条文片段", index=index)
+            item["title"] = heading
+            item["summary"] = (body[:280] + "…") if len(body) > 280 else body
+            item["details"] = dict(copy.deepcopy(snippet),
+                                   证据说明="条款正文片段；适用性仍需按产品条件核对。")
+            item["sources"] = [{
+                "title": heading,
+                "url": source_url,
+                "excerpt": body[:600],
+                "locator": source_url or snippet.get("node_id") or "",
+                "status": "条款片段，未逐条审核适用性",
+            }]
+            items.append(item)
+        laws = route.get("laws") or []
+        result["summary"] = (
+            f"从条款库检索到 {len(items)} 个相关片段（路由 {len(laws)} 部法规）。"
+            "先核对条文与产品条件，再决定是否落到待办；片段不等于逐条适用性审核。")
+        result["gaps"].append("条文检索只负责找依据；片段不等于逐条适用性审核，不判断你的具体产品是否满足义务。")
+        for gap in (route.get("catalog_gaps") or []) + (retrieval.get("gaps") or []):
+            if gap:
+                result["gaps"].append(str(gap))
+        coverage = retrieval.get("coverage")
+        if coverage:
+            result["gaps"].append("检索覆盖状态：" + str(coverage))
+        if route.get("invalid_refs") or retrieval.get("invalid_refs"):
+            result["gaps"].append("模型返回的部分引用超出候选范围，已丢弃，未作为依据。")
+        result["data_version"]["recall_tree"] = raw.get("tree_version")
+    elif action == "map":
         for field, group in (("primary", "产品法规候选"), ("cross", "关联法规，需核对适用条件")):
             items.extend(_item(row, context, group=group, index=i) for i, row in enumerate(raw.get(field, [])))
         result["summary"] = "已整理相关法规目录。点击条目查看原始信息与官方来源；目录命中不等于每条要求均适用。"
@@ -981,6 +1080,26 @@ def respond(text, state=None, action=None):
         return _record(state, _result("capabilities", state["context"],
                                       "选择一项即可使用，也可以直接输入问题。已有条件会继续沿用。",
                                       actions=copy.deepcopy(CAPABILITIES)))
+    if intent in _CONVERSATIONAL:
+        fallback = {"about": _ABOUT_TEXT, "greeting": _GREETING_TEXT,
+                    "thanks": _THANKS_TEXT, "chat": _GREETING_TEXT}[intent]
+        generated, model_meta = _conversational_reply(intent, text, state["context"])
+        summary = generated or fallback
+        options = ([] if intent == "thanks" else [
+            {"label": "毛绒玩具卖到欧盟", "text": "我想把毛绒玩具卖到欧盟"},
+            {"label": "电子电器卖到美国", "text": "我想把电子电器卖到美国"},
+        ])
+        # 闲聊不抢占当前业务结果：只追加消息，不改变 active_result_id。
+        result = _result(intent, state["context"], summary,
+                         actions=([] if intent == "thanks"
+                                  else copy.deepcopy(_ABOUT_ACTIONS)),
+                         options=options, raw={"llm": model_meta})
+        if generated:
+            result["understanding"] = {"via": "模型", "model_used": True}
+        state["results"].append(result)
+        state["messages"].append({"role": "assistant", "content": result["summary"],
+                                  "result_id": result["id"]})
+        return state, result
     if intent and intent not in _BUSINESS_ACTIONS:
         return _record(state, _result("error", state["context"], "未识别这个操作，可从更多功能选择。"))
     active = _active(state)
@@ -1032,6 +1151,19 @@ def respond(text, state=None, action=None):
         elif active and context_fingerprint(context) != active.get("context_fingerprint"):
             intent = state.get("last_action") or "journey"
         else:
+            generated, model_meta = _conversational_reply("chat", text, context)
+            if generated:
+                result = _result("chat", context, generated,
+                                 actions=copy.deepcopy(_ABOUT_ACTIONS),
+                                 options=[{"label": "毛绒玩具卖到欧盟", "text": "我想把毛绒玩具卖到欧盟"},
+                                          {"label": "电子电器卖到美国", "text": "我想把电子电器卖到美国"}],
+                                 raw={"llm": model_meta})
+                result["understanding"] = {"via": "模型", "model_used": True}
+                state["results"].append(result)
+                state["messages"].append({"role": "assistant",
+                                          "content": result["summary"],
+                                          "result_id": result["id"]})
+                return state, result
             return _question(state, None, "你现在想了解相关法规、整理下一步，还是查看全流程？可以直接说，也可以点下面的入口。",
                              options=[{"label": "相关法规", "action": "map"},
                                       {"label": "下一步", "action": "todo"},
@@ -1041,6 +1173,26 @@ def respond(text, state=None, action=None):
         # confirmation that this is the user's product or current sales market.
         result = _normalize("model", context, m4_compare.query())
         result["gaps"].append("模型对照的固定样本背景为儿童玩具×欧盟；未修改你的业务条件。")
+        return _record(state, result)
+    if intent == "recall":
+        if not text.strip():
+            return _question(state, "recall",
+                             "请用一句话描述要查的法规问题，例如「毛绒玩具出口欧盟要做哪些安全测试」；我会先找法规，再取相关原文片段。")
+        state["pending_action"] = None
+        state["last_action"] = "recall"
+        try:
+            raw = _call("recall", context, query=text)
+            result = _normalize("recall", context, raw)
+        except Exception:
+            result = _result("error", context,
+                             "条文检索暂时没有完成。已保留你的问题，可以重试，或改为查看法规目录。",
+                             gaps=["未生成新的法律结论。"],
+                             actions=[{"label": "重试", "action": "recall"},
+                                      {"label": "查看相关法规", "action": "map"}])
+        if parse_meta:
+            result["understanding"] = parse_meta
+            if parse_meta.get("note"):
+                result["gaps"].append(parse_meta["note"])
         return _record(state, result)
     if not context.get("category"):
         return _question(state, intent, "你准备卖什么产品？例如毛绒玩具、蓝牙耳机或儿童服装。")
@@ -1058,7 +1210,7 @@ def respond(text, state=None, action=None):
     state["pending_action"] = None
     state["last_action"] = intent
     try:
-        raw = _call(intent, context)
+        raw = _call(intent, context, query=text)
         result = _normalize(intent, context, raw)
     except Exception:
         # No stack traces, credentials, endpoints or business input in UI/errors.
@@ -1160,9 +1312,16 @@ def export_result(state, result_id):
         raise ValueError("请选择当前结果导出。历史结果需先重新打开并确认条件。")
     if result.get("context_fingerprint") != context_fingerprint(state.get("context", {})):
         raise ValueError("业务条件已变化，不能静默导出旧结果。请先重新查询。")
-    if result.get("kind") in ("question", "capabilities", "unsupported", "message", "error"):
+    if result.get("kind") in ("question", "capabilities", "unsupported", "message", "error",
+                              "about", "greeting", "thanks", "chat"):
         raise ValueError("当前回答没有可导出的业务结果。")
     raw = copy.deepcopy(result.get("raw", {}))
+    # SPA 会话会经 JSON 往返，date 会变成 ISO 字符串；导出层仍要求 date。
+    if isinstance(raw.get("today"), str):
+        try:
+            raw["today"] = date.fromisoformat(raw["today"][:10])
+        except ValueError:
+            raw.pop("today", None)
     tasks = list(_all_tasks(result))
     if result["kind"] == "todo":
         allowed = {task["id"]: task for task in tasks if task.get("status") not in ("excluded", "historical")}

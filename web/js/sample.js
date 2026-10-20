@@ -2,6 +2,9 @@
 // 增量：顶层 const → export const；并补 ic 导入（见下）。数据内容逐字未动。
 // M2 接入真数据时只改本文件的取值处，视图模板不动。
 import { ic } from "./icons.js";
+// M2：抽屉里少数会随真实数据变化的值在这里读取后端缓存；其余仍是原型文案。
+import { cache, conditions } from "./data.js";
+import { historySheet } from "./history.js";
 
   export const ITEMS = {
     toy: {
@@ -233,28 +236,7 @@ import { ic } from "./icons.js";
   ];
 
   export const PROFILE_SHEETS = {
-    history: () => `
-      <div class="sheet__grab"></div>
-      <div class="sheet__body">
-        <div class="sheet__top">
-          <span class="sheet__lead" style="margin:0">历史结果</span>
-          <button class="sheet__close" data-action="close-sheet" aria-label="关闭">${ic("close")}</button>
-        </div>
-        <h2>保留当时条件的 3 份结果</h2>
-        <div style="margin-top:12px">
-          ${[
-            ["德国市场行动清单", "今天 14:32 · 儿童玩具 / 德国 / 亚马逊"],
-            ["欧盟玩具法规清单", "今天 11:08 · 儿童玩具 / 欧盟"],
-            ["欧美玩具目录对比", "昨天 18:45 · 儿童玩具"]
-          ].map(([t, m], i) => `
-            <button class="history-item" data-action="open-history" data-idx="${i}">
-              <span class="menu-row__icon">${ic("doc")}</span>
-              <span class="history-item__copy"><b>${t}</b><span>${m}</span></span>
-              ${ic("chevron")}
-            </button>`).join("")}
-        </div>
-        <p class="fine" style="margin-top:14px">历史结果会校验当时条件；条件变化后需要重新查询。</p>
-      </div>`,
+    history: (conversations) => historySheet(conversations),
     conditions: () => `
       <div class="sheet__grab"></div>
       <div class="sheet__body">
@@ -264,7 +246,7 @@ import { ic } from "./icons.js";
         </div>
         <h2>助手目前的理解</h2>
         <div class="context" style="margin-top:12px">
-          <span>儿童玩具</span><span>德国</span><span>欧盟</span><span>亚马逊</span><span>FBA</span><span>不带电</span>
+          <span>${conditions.category}</span><span>${conditions.market}</span><span>${conditions.platform}</span><span>${conditions.powered}</span>
         </div>
         <div class="sheet__section">
           <h3>只改需要改变的条件</h3>
@@ -298,14 +280,14 @@ import { ic } from "./icons.js";
         </div>
         <h2>目录、核对与截止日期</h2>
         <div class="stat-row">
-          <div class="stat"><b>86</b><span>部法规</span></div>
-          <div class="stat"><b>5</b><span>类商品</span></div>
-          <div class="stat"><b>28</b><span>条逐条核对</span></div>
-          <div class="stat"><b>58</b><span>条负责人声明确认</span></div>
+          <div class="stat"><b>${(cache.boot && cache.boot.coverage && cache.boot.coverage.laws) || 86}</b><span>部法规</span></div>
+          <div class="stat"><b>${(cache.boot && cache.boot.coverage && cache.boot.coverage.categories) || 5}</b><span>类商品</span></div>
+          <div class="stat"><b>${(cache.boot && cache.boot.coverage && cache.boot.coverage.audited) || 0}</b><span>条逐条核对</span></div>
+          <div class="stat"><b>${(cache.boot && cache.boot.coverage && cache.boot.coverage.pending_audit) || 0}</b><span>条负责人声明确认</span></div>
         </div>
         <div class="sheet__section">
           <h3>数据快照</h3>
-          <p>截止 2026-10-19。目录标记、机器读取与用户自述均不等于商品已合规；请逐条查看适用条件与证据状态。</p>
+          <p>截止 ${(cache.boot && cache.boot.data_cutoff) || "2026-10-14"}。目录标记、机器读取与用户自述均不等于商品已合规；请逐条查看适用条件与证据状态。</p>
         </div>
       </div>`,
     privacy: () => `

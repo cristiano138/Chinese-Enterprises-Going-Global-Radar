@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import hashlib
 from html.parser import HTMLParser
+import io
 import json
 import os
 from pathlib import Path
@@ -16,6 +17,7 @@ import time
 import unittest
 from unittest import mock
 import urllib.request
+import wave
 
 PROJECT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT))
@@ -52,6 +54,62 @@ class _Server:
         url = f"http://127.0.0.1:{cls.port}{path}"
         try:
             with urllib.request.urlopen(url, timeout=10) as resp:
+                return resp.status, resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read().decode("utf-8", "replace")
+
+    @classmethod
+    def get_bytes(cls, path):
+        url = f"http://127.0.0.1:{cls.port}{path}"
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:
+                return resp.status, resp.read(), dict(resp.headers)
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read(), dict(exc.headers)
+
+    @classmethod
+    def post(cls, path, payload):
+        url = f"http://127.0.0.1:{cls.port}{path}"
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=30) as resp:
+                return resp.status, resp.read().decode("utf-8", "replace")
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read().decode("utf-8", "replace")
+
+    @classmethod
+    def post_bytes(cls, path, payload):
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{cls.port}{path}",
+            data=json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=60) as resp:
+                return resp.status, resp.read(), dict(resp.headers)
+        except urllib.error.HTTPError as exc:
+            return exc.code, exc.read(), dict(exc.headers)
+
+    @classmethod
+    def post_multipart(cls, path, field, filename, content, content_type):
+        boundary = "----CRTest" + str(time.time_ns())
+        head = (f"--{boundary}\r\n"
+                f'Content-Disposition: form-data; name="{field}"; filename="{filename}"\r\n'
+                f"Content-Type: {content_type}\r\n\r\n").encode("utf-8")
+        body = head + content + f"\r\n--{boundary}--\r\n".encode("utf-8")
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{cls.port}{path}", data=body,
+            headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=90) as resp:
                 return resp.status, resp.read().decode("utf-8", "replace")
         except urllib.error.HTTPError as exc:
             return exc.code, exc.read().decode("utf-8", "replace")
@@ -171,6 +229,185 @@ class StaticHostTests(unittest.TestCase):
         status, body = _Server.get("/gradio_api/info")
         self.assertEqual(status, 200)
         self.assertIn("named_endpoints", json.loads(body))
+
+
+class ApiContractTests(unittest.TestCase):
+    """M2 契约：/api/* 必须返回统一信封与稳定的英文键。"""
+
+    @classmethod
+    def setUpClass(cls):
+        _Server.start()
+
+    def _data(self, status, body):
+        self.assertEqual(status, 200, body[:400])
+        payload = json.loads(body)
+        self.assertIs(payload["ok"], True, payload)
+        self.assertEqual(set(payload), {"ok", "reason", "data", "meta"})
+        return payload["data"]
+
+    def test_bootstrap_reports_real_coverage(self):
+        data = self._data(*_Server.get("/api/bootstrap"))
+        self.assertIn("儿童玩具", data["categories"])
+        self.assertEqual([m["name"] for m in data["markets"]], ["欧盟", "美国"])
+        self.assertGreater(data["coverage"]["laws"], 0)
+        self.assertTrue(data["data_cutoff"])
+        self.assertEqual(data["timeline_windows"], ["近 12 个月", "近 6 个月"])
+        self.assertGreater(data["coverage"]["audited"], 0)
+        self.assertGreater(data["coverage"]["total_rows"], 0)
+
+    def test_freshness_reports_counts_and_recent_runs(self):
+        data = self._data(*_Server.get("/api/freshness"))
+        self.assertTrue(data["available"])
+        counts = data["counts"]
+        self.assertGreater(counts["total"], 0)
+        self.assertLessEqual(counts["total"], counts["http_ok"] + counts["pending"])
+        self.assertLessEqual(len(data["runs"]), 2)
+
+    def test_tool_endpoints_return_normalized_english_keys(self):
+        cases = {
+            "map": ("records", "primary", "cross"),
+            "todo": ("actions", "groups", "pending"),
+            "timeline": ("recent", "upcoming", "window"),
+            "compare": ("regions", "shared", "shared_count"),
+            "multi": ("regions", "total"),
+            "readiness": ("regions", "total_actions"),
+        }
+        body = {"category": "儿童玩具", "market": "欧盟"}
+        for name, keys in cases.items():
+            with self.subTest(tool=name):
+                data = self._data(*_Server.post(f"/api/tool/{name}", body))
+                for key in keys:
+                    self.assertIn(key, data, f"{name} 缺少 {key}")
+
+    def test_map_records_carry_source_links(self):
+        data = self._data(*_Server.post("/api/tool/map",
+                                        {"category": "儿童玩具", "market": "欧盟"}))
+        self.assertGreater(len(data["records"]), 0)
+        record = data["records"][0]
+        self.assertTrue(record["title"])
+        self.assertTrue(record["url"].startswith("http"))
+
+    def test_route_returns_a_user_facing_reply(self):
+        data = self._data(*_Server.post("/api/route",
+                                        {"text": "毛绒玩具卖到欧盟"}))
+        self.assertIs(data["ok"], True, data)
+        self.assertEqual(data["category"], "儿童玩具")
+        self.assertEqual(data["market"], "欧盟")
+        self.assertIn("已识别", data["reply"])
+        self.assertIsNotNone(data["m1"])
+        self.assertGreater(len(data["m1"]["records"]), 0)
+
+    def test_route_partial_request_is_explained_not_crashed(self):
+        data = self._data(*_Server.post("/api/route", {"text": "毛绒玩具"}))
+        self.assertIs(data["ok"], False)
+        self.assertIn("市场", data["reply"])
+
+    def test_search_returns_clause_units(self):
+        data = self._data(*_Server.get("/api/search?identifier=32009L0048"))
+        self.assertTrue(data["units"])
+        unit = data["units"][0]
+        for key in ("heading", "locator", "document_id", "parse_status", "body"):
+            self.assertIn(key, unit)
+
+    def test_readiness_keeps_all_six_phases(self):
+        data = self._data(*_Server.post("/api/tool/readiness",
+                                        {"category": "儿童玩具", "markets": ["欧盟", "美国"]}))
+        self.assertEqual(len(data["phase_names"]), 6)
+        region = data["regions"][0]
+        self.assertEqual([phase["name"] for phase in region["phases"]], data["phase_names"])
+        self.assertTrue(any(phase["count"] > 0 for phase in region["phases"]))
+
+    def test_transcribe_rejects_missing_audio(self):
+        status, body = _Server.post("/api/transcribe", {"text": "no audio"})
+        self.assertEqual(status, 400)
+        payload = json.loads(body)
+        self.assertIs(payload["ok"], False)
+        self.assertTrue(payload["reason"])
+
+    def test_transcribe_returns_a_stable_envelope(self):
+        buffer = io.BytesIO()
+        with wave.open(buffer, "wb") as handle:
+            handle.setnchannels(1)
+            handle.setsampwidth(2)
+            handle.setframerate(16000)
+            handle.writeframes(b"\x00\x00" * 8000)
+        status, body = _Server.post_multipart(
+            "/api/transcribe", "audio", "probe.wav", buffer.getvalue(), "audio/wav")
+        self.assertEqual(status, 200, body[:300])
+        payload = json.loads(body)
+        self.assertEqual(set(payload), {"ok", "reason", "data", "meta"})
+        if payload["ok"]:
+            self.assertTrue(payload["data"]["text"])
+            self.assertIn("backend", payload["data"]["meta"])
+        else:
+            # 本机未配置语音引擎时必须给出可读的原因，而不是 500。
+            self.assertTrue(payload["reason"])
+
+    def test_conversation_keeps_slots_across_turns(self):
+        status, body = _Server.post("/api/conversation/message",
+                                    {"session": None, "text": "毛绒玩具"})
+        payload = json.loads(body)
+        self.assertEqual(status, 200, body[:300])
+        self.assertIs(payload["ok"], True)
+        first = payload["data"]
+        self.assertEqual(first["result"]["kind"], "question")
+        self.assertTrue(first["result"]["options"])
+        self.assertEqual(first["session"]["messages"][0]["content"], "毛绒玩具")
+
+        status, body = _Server.post("/api/conversation/message",
+                                    {"session": first["session"], "text": "欧盟"})
+        second = json.loads(body)["data"]
+        self.assertEqual(second["session"]["id"], first["session"]["id"])
+        self.assertEqual(second["result"]["context"]["category"], "儿童玩具")
+        self.assertEqual(second["result"]["context"]["market"], "欧盟")
+        self.assertIn(second["result"]["kind"], {"map", "todo", "journey"})
+
+    def test_conversation_action_complete_and_export(self):
+        status, body = _Server.post("/api/conversation/message",
+                                    {"session": None, "text": "毛绒玩具卖到欧盟", "action": "todo"})
+        data = json.loads(body)["data"]
+        result = data["result"]
+        self.assertEqual(result["kind"], "todo")
+        self.assertTrue(result["items"])
+        task = next(item for item in result["items"] if item.get("can_complete"))
+        self.assertTrue(task["id"])
+
+        status, body = _Server.post("/api/conversation/complete",
+                                    {"session": data["session"],
+                                     "result_id": result["id"], "item_id": task["id"]})
+        completed = json.loads(body)["data"]
+        self.assertEqual(status, 200, body[:300])
+        updated = next(item for item in completed["result"]["items"] if item["id"] == task["id"])
+        self.assertEqual(updated["status"], "user_reported_done")
+
+        status, payload, headers = _Server.post_bytes(
+            "/api/conversation/export",
+            {"session": completed["session"], "result_id": result["id"]})
+        self.assertEqual(status, 200, payload[:200])
+        self.assertIn("attachment", headers.get("content-disposition", ""))
+        self.assertGreater(len(payload), 100)
+
+    def test_conversation_rejects_stale_progress(self):
+        status, body = _Server.post("/api/conversation/message",
+                                    {"session": None, "text": "毛绒玩具卖到欧盟", "action": "todo"})
+        data = json.loads(body)["data"]
+        result = data["result"]
+        status, body = _Server.post("/api/conversation/complete",
+                                    {"session": data["session"],
+                                     "result_id": "not-the-active-result", "item_id": "x"})
+        self.assertEqual(status, 400)
+        payload = json.loads(body)
+        self.assertIs(payload["ok"], False)
+        self.assertTrue(payload["reason"])
+
+    def test_todo_export_is_csv_with_bom(self):
+        status, payload, headers = _Server.get_bytes(
+            "/api/export/todo.csv?category=%E5%84%BF%E7%AB%A5%E7%8E%A9%E5%85%B7"
+            "&market=%E6%AC%A7%E7%9B%9F")
+        self.assertEqual(status, 200, payload[:200])
+        self.assertIn("text/csv", headers.get("content-type", ""))
+        self.assertTrue(payload.startswith(b"\xef\xbb\xbf"), "CSV 必须带 UTF-8 BOM")
+        self.assertIn("商品类目".encode("utf-8"), payload)
 
 
 class ReferenceAssetTests(unittest.TestCase):

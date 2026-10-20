@@ -31,6 +31,7 @@
     background: linear-gradient(150deg, #177a57, #0b3d2e);
     box-shadow: 0 12px 26px rgba(14, 77, 58, .24);
   }
+  .radar-avatar .ic { width: 30px; height: 30px; }
   @keyframes sweep { to { transform: rotate(360deg); } }
 
   .home h1 { font-size: 25px; line-height: 1.35; font-weight: 600; letter-spacing: -.02em; }

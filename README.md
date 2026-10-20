@@ -312,7 +312,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe app.py
 ```
 
-浏览器打开 `http://127.0.0.1:7860`。没有 `py` 或使用 `uv` 时，见[部署与上传](docs/部署与上传.md)的完整安装方法。新安装请从实际GitHub仓库地址克隆，不使用本文虚构仓库名。
+浏览器打开 `http://127.0.0.1:7860`。默认加载 `web/` 的原生 SPA，页面数据全部来自同一进程的 `/api/*`（`web_app.py`）：`/api/bootstrap`、`/api/freshness`、`/api/route`、`/api/tool/{map,todo,timeline,compare,multi,readiness}`、`/api/search`、`/api/transcribe`（语音）、`/api/conversation/{message,complete,export}`（完整会话）与两个 CSV 导出端点。需要退回旧 Gradio 界面时设 `CR_UI=gradio` 再启动。没有 `py` 或使用 `uv` 时，见[部署与上传](docs/部署与上传.md)的完整安装方法。新安装请从实际GitHub仓库地址克隆，不使用本文虚构仓库名。
 
 首屏输入产品和市场，或点“更多功能”打开法规地图、变化时间线、待办、模型对照、区域对比、多市场汇总、OPC准备。明确条件使用本地规则，结果保留来源、快照和待核对提示；来源与任务按需展开，M3/M7可导出CSV。新建对话清空当前业务，历史结果保留其原始条件。
 

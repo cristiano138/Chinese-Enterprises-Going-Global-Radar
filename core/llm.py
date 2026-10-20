@@ -93,6 +93,33 @@ TOKEN = os.getenv("MODEL_API_TOKEN", "").strip()
 BASE = os.getenv("MODEL_API_BASE", "").strip().rstrip("/")
 MODEL = os.getenv("MODEL_NAME", "").strip()
 
+
+def _ensure_model_host_bypasses_proxy():
+    """让模型 API 直连，不继承开发机上指向本地代理的 HTTP(S)_PROXY。
+
+    启动脚本只保证 localhost 绕过代理；若 shell 里有全局 HTTPS_PROXY（例如
+    Clash 未启动时的 127.0.0.1:7897），模型请求会走已失效的代理并报
+    APIConnectionError。这里把 MODEL_API_BASE 的 host 补进 NO_PROXY。
+    """
+    if not BASE:
+        return
+    try:
+        from urllib.parse import urlsplit
+        host = urlsplit(BASE).hostname or ""
+    except ValueError:
+        host = ""
+    if not host:
+        return
+    for key in ("NO_PROXY", "no_proxy"):
+        entries = [part.strip() for part in os.getenv(key, "").split(",") if part.strip()]
+        if "*" in entries or host in entries:
+            continue
+        entries.append(host)
+        os.environ[key] = ",".join(entries)
+
+
+_ensure_model_host_bypasses_proxy()
+
 # 明确的「未就绪」标记，供上层做降级判断
 READY = bool(TOKEN and BASE and MODEL) and TOKEN != "your_token_here"
 
@@ -117,6 +144,7 @@ def config_summary():
         "base": BASE or "（未配置）",
         "model": MODEL or "（未配置）",
         "token": "已配置" if (TOKEN and TOKEN != "your_token_here") else "未配置",
+        "reason": "" if READY else "缺 Token / Base / Model 中的至少一项",
     }
 
 
@@ -448,6 +476,9 @@ M2_PROMPT = """你是跨境电商合规助理。下面是**已经从官方数据
 严格每条一行，用 ||| 分隔，不要 markdown 表格，不要加解释：
 事件键|||变化摘要|||影响说明
 
+**事件键必须逐字照抄输入的第一列**，包含“法规键|日期|事件类型”三段；
+不得只写法规键，也不得改写日期或事件类型。
+
 事件列表：
 {items}
 """
@@ -468,6 +499,60 @@ def build_m2_items(events):
     return "\n".join(lines)
 
 
+def parse_event_summaries(text, events):
+    """解析 M2 输出，并容忍模型把完整事件键缩写为法规键。
+
+    模型实测会返回 ``32025R0040|||摘要``，而调用方按
+    ``32025R0040|2026-08-12|适用`` 查找。这里依次尝试：
+      1. 完整 event_key 精确匹配；
+      2. 前缀匹配（模型只写到日期）；
+      3. 同一法规下按输出顺序分配（同一法规多个日期时最稳妥）。
+
+    只做键对齐，不改写模型给出的摘要/影响文本。
+    """
+    exact = {e["event_key"]: e for e in events}
+    by_law = {}
+    for event in events:
+        law_key = event["event_key"].split("|", 1)[0]
+        by_law.setdefault(law_key, []).append(event)
+
+    used = set()
+    parsed = {}
+    for raw_line in (text or "").splitlines():
+        line = raw_line.strip().lstrip("-•* ").strip()
+        if "|||" not in line:
+            continue
+        parts = [part.strip() for part in line.split("|||")]
+        if len(parts) < 3:
+            continue
+        key = parts[0].strip("`* ")
+        summary, impact = parts[1], "|||".join(parts[2:]).strip()
+        if not key or not (summary or impact):
+            continue
+
+        target = None
+        if key in exact and key not in used:
+            target = exact[key]
+        else:
+            prefixed = [event for event in events
+                        if event["event_key"] not in used
+                        and event["event_key"].startswith(key + "|")]
+            if prefixed:
+                target = prefixed[0]
+        if target is None:
+            law_key = key.split("|", 1)[0]
+            candidates = [event for event in by_law.get(law_key, [])
+                          if event["event_key"] not in used]
+            if candidates:
+                target = candidates[0]
+        if target is None:
+            continue
+
+        used.add(target["event_key"])
+        parsed[target["event_key"]] = (summary, impact)
+    return parsed
+
+
 def m2_summaries(events):
     """M2 的可选润色：为每条事件生成 (变化摘要, 影响说明)。
 
@@ -480,7 +565,9 @@ def m2_summaries(events):
     text, meta = chat(prompt, max_tokens=4000)
     if not meta["ok"]:
         return {}, meta
-    return parse_keyed_triples(text), meta
+    parsed = parse_event_summaries(text, events)
+    meta = dict(meta, parsed=len(parsed), expected=len(events))
+    return parsed, meta
 
 
 # ── M3 专用提示词：法规语言 → 可执行动作 ────────────────────────

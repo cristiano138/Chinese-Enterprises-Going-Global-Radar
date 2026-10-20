@@ -6,6 +6,7 @@ the model or rerun a query. Every callback carries a result ID, never parsed HTM
 from copy import deepcopy
 import html
 import json
+import logging
 from pathlib import Path
 import tempfile
 from urllib.parse import urlsplit
@@ -14,6 +15,8 @@ import gradio as gr
 
 from core import asr, conversation, corpus, law_store, llm, snapshot
 from modules import m2_timeline
+
+LOG = logging.getLogger(__name__)
 
 ROOT = Path(__file__).resolve().parent
 CSS = (ROOT / "assets" / "chat.css").read_text(encoding="utf-8")
@@ -35,6 +38,17 @@ KIND = {"law": "法律法规", "legal": "法律法规", "platform": "平台规�
         "regulation": "法律法规", "task": "法律法规",
         "advice": "操作建议", "guidance": "操作建议", "legal_requirement": "法律法规",
         "platform_rule": "平台规则", "recommendation": "操作建议"}
+
+
+def _new_session():
+    """新会话：模型已配置时默认启用输入理解与结果润色。
+
+    ``conversation.new_session()`` 本身保持确定性默认值，供离线测试和
+    直接调用方使用；只有交互界面在这里按模型就绪状态打开开关。
+    """
+    state = conversation.new_session()
+    state["context"]["use_llm"] = bool(llm.is_ready())
+    return state
 
 
 def _e(value):
@@ -98,7 +112,7 @@ def _result_map(state):
 
 
 def submit_message(text, state, action=None):
-    state = state or conversation.new_session()
+    state = state or _new_session()
     if not (text or "").strip() and not action:
         return _unpack(state, _result_map(state).get(state.get("active_result_id")),
                        "先写下你的产品和问题，或选择一个示例。")
@@ -118,7 +132,7 @@ def submit_message(text, state, action=None):
 
 
 def reset_session():
-    return _unpack(conversation.new_session(), None, "新对话已开始。")
+    return _unpack(_new_session(), None, "新对话已开始。")
 
 
 def prepare_export(state, result):
@@ -471,7 +485,7 @@ def _appbar_sub():
 def build_ui():
     with gr.Blocks(title="出海合规雷达 · 从问题到下一步", analytics_enabled=False,
                    delete_cache=(3600, 3600)) as demo:
-        session = gr.State(value=conversation.new_session, time_to_live=7200)
+        session = gr.State(value=_new_session, time_to_live=7200)
         active = gr.State(value=None)
         gr.HTML('<div class="cr-intro" aria-hidden="true"><div class="cr-intro-card">'
                 '<div class="cr-intro-logo" aria-hidden="true">合</div>'
@@ -525,7 +539,8 @@ def build_ui():
             kind = current.get("kind", "question")
             gr.HTML('<div class="cr-result-header" data-result-id="' + _e(rid) + '"><span class="cr-eyebrow">' + _e(
                 {"map": "法规清单", "todo": "行动清单", "timeline": "日期节点", "compare": "区域对照",
-                 "multi": "分市场汇总", "readiness": "上线准备", "model": "方法对照", "journey": "六阶段行动路线"}.get(kind, "继续梳理")) +
+                 "multi": "分市场汇总", "readiness": "上线准备", "recall": "条文依据",
+                 "model": "方法对照", "journey": "六阶段行动路线"}.get(kind, "继续梳理")) +
                 '</span><h2>' + _e(current.get("title", "你的查询结果")) + '</h2><p>' +
                 _e(current.get("summary", "")) + '</p></div>')
             gr.HTML(context_html(current.get("context", {}), label="本次查询条件"))
@@ -653,7 +668,10 @@ def build_ui():
             with gr.Row():
                 window = gr.Radio(m2_timeline.WINDOW_CHOICES, value=m2_timeline.DEFAULT_WINDOW, label="时间线窗口")
                 markets = gr.CheckboxGroup(list(corpus.SUPPORTED_MARKETS), value=list(corpus.SUPPORTED_MARKETS), label="对比／汇总／上线准备市场")
-                use_model = gr.Checkbox(value=False, label="使用已配置模型理解输入", interactive=llm.config_summary()["ready"])
+                use_model = gr.Checkbox(
+                    value=bool(llm.config_summary()["ready"]),
+                    label="使用已配置模型理解输入与润色结果",
+                    interactive=llm.config_summary()["ready"])
             apply_context = gr.Button("应用条件并更新当前结果", size="sm")
 
         with gr.Accordion("查看历史结果 · 保留当时条件", open=False, visible=False, elem_id="cr-history") as history_panel:
@@ -708,9 +726,10 @@ def build_ui():
                         "会话业务状态默认保存在服务内存，不写入原始对话日志；网页录音与导出使用临时文件。模型理解可能发送输入文字，云端语音会发送录音。请勿输入客户敏感资料。")
             gr.Markdown("数据快照：" + _md(snapshot.SNAPSHOT_VERSION) + " · 截止：" + _md(snapshot.DATA_CUTOFF) +
                         "\n\n条款检索状态：" + _md(law_store.status().get("reason")))
-            clause_id = gr.Textbox(label="按法规编号检索条款", placeholder="如 16 CFR Part 1250")
+            clause_id = gr.Textbox(label="法规编号或自然语言问题",
+                                   placeholder="如 16 CFR Part 1250，或「毛绒玩具出口欧盟要做哪些安全测试」")
             clause_heading = gr.Textbox(label="条款标题关键词（可选）")
-            clause_btn = gr.Button("检索已有条款", size="sm")
+            clause_btn = gr.Button("检索条文（编号或智能检索）", size="sm")
             clause_out = gr.Markdown(elem_id="cr-clause-result")
         gr.HTML('<div class="cr-footer">有来源，有边界。帮助你准备下一步，不构成法律意见。 · ' + BUILD_VERSION + '</div>')
 
@@ -742,7 +761,7 @@ def build_ui():
                        concurrency_id="asr", concurrency_limit=1)
 
         def update_conditions(current_state, cat, mkt, nation, sales_platform, delivery, preparation, time_window, regions, model):
-            updated = deepcopy(current_state or conversation.new_session())
+            updated = deepcopy(current_state or _new_session())
             ctx = updated["context"]
             if cat and cat != ctx.get("category"):
                 # Product-specific evidence cannot carry into another category.
@@ -809,6 +828,40 @@ def build_ui():
 
         def search_clauses(identifier, heading):
             result = law_store.retrieve(identifier or "", heading or "")
+            if not result.get("ok") or not result.get("units"):
+                # 编号定位失败时按自然语言问题走两层召回：路由 LLM 选法规，
+                # 检索 LLM 在候选目录树里选片段；任一层失败都有确定性兜底。
+                text = (identifier or "").strip()
+                if len(text) >= 4:
+                    try:
+                        from modules import recall_flow
+                        recalled = recall_flow.run(text, use_llm=True)
+                    except Exception:  # noqa: BLE001
+                        LOG.exception("recall fallback failed")
+                        recalled = {"ok": False, "reason": "智能检索暂不可用，请稍后重试"}
+                    retrieval = recalled.get("retrieval") or {}
+                    selected = retrieval.get("selected") or []
+                    if recalled.get("ok") and selected:
+                        route = recalled.get("route") or {}
+                        return clause_markdown({
+                            "ok": True,
+                            "reason": ("智能检索（" + str(route.get("route_via") or "两层召回") +
+                                       "）找到以下条文片段；请按产品条件核对适用性。"),
+                            "law_id": text,
+                            "units": [{
+                                "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
+                                "body": snippet.get("body") or "",
+                                "locator": conversation._safe_url(snippet.get("locator") or ""),
+                                "source_url": conversation._safe_url(snippet.get("locator") or ""),
+                                "version_date": "",
+                                "parse_status": "智能检索",
+                            } for snippet in selected],
+                        })
+                    reason = recalled.get("reason") or retrieval.get("reason") or ""
+                    if reason:
+                        result = dict(result)
+                        result["reason"] = ((result.get("reason") or "没有检索到条款") +
+                                            "；智能检索：" + reason)
             return clause_markdown(result)
 
         clause_btn.click(search_clauses, inputs=[clause_id, clause_heading], outputs=clause_out)
