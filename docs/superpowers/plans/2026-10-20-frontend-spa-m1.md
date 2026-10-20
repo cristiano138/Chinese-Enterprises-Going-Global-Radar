@@ -667,6 +667,23 @@ class SampleDataTests(unittest.TestCase):
         self.assertEqual(got["sheets"], 7)
         self.assertEqual(got["items"], 14, "原型 ITEMS 恰好 14 个顶层键（939-1094 行）")
 
+    def test_profile_sheets_are_actually_callable(self):
+        """只数键名是假绿：七个函数体各自调用 ic()，缺导入则全抛 ReferenceError。"""
+        got = _Browser.page.evaluate("""async () => {
+          const s = await import('/web/js/sample.js');
+          const out = {};
+          for (const k of Object.keys(s.PROFILE_SHEETS)) {
+            try { out[k] = s.PROFILE_SHEETS[k](); }
+            catch (e) { out[k] = 'THREW: ' + e.message; }
+          }
+          return out;
+        }""")
+        self.assertEqual(len(got), 7)
+        for key, html in got.items():
+            with self.subTest(key=key):
+                self.assertFalse(str(html).startswith("THREW"), f"{key} 抛异常：{html}")
+                self.assertIn('class="sheet__body"', str(html))
+
 
 class RenderHelperTests(unittest.TestCase):
     @classmethod
@@ -688,8 +705,10 @@ class RenderHelperTests(unittest.TestCase):
         got = _Browser.page.evaluate(
             "async () => { const r = await import('/web/js/render.js');"
             "const s = await import('/web/js/sample.js');"
-            "s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
-            "return r.rowHtml('toy'); }")
+            "const saved = s.ITEMS.toy.title;"
+            "try { s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
+            "      return r.rowHtml('toy'); }"
+            "finally { s.ITEMS.toy.title = saved; } }")
         self.assertNotIn("<img", got)
         self.assertIn("&lt;img", got)
 
@@ -717,7 +736,9 @@ class RenderHelperTests(unittest.TestCase):
                    ok: ids('已最新').length, muted: ids('无法确认').length };
         }""")
         self.assertEqual(got["all"], 4)
-        self.assertEqual(got["warn"] + got["ok"] + got["muted"], 4)
+        self.assertEqual(got["warn"], 2, "原型 freshGpsr / freshToy 为 warn")
+        self.assertEqual(got["ok"], 1, "原型 freshEn71 为 ok")
+        self.assertEqual(got["muted"], 1, "原型 freshAmazon 为 muted")
 ```
 
 - [ ] **Step 2: 运行测试确认失败**
@@ -737,6 +758,11 @@ Expected: FAIL —— `/web/js/sample.js` 尚不存在
 | `web/js/sample.js` | 1735–1747 | `CLAUSES` |
 | `web/js/sample.js` | 2187–2321 | `PROFILE_SHEETS` |
 
+**本步骤有两处增量，缺一不可**：
+
+1. 八个顶层 `const X = ` 改为 `export const X = `（脚本已做）。
+2. **头部补 `import { ic } from "./icons.js";`**。原型里 `ic` 是同一个闭包内的 `const`，模块化后它是 `icons.js` 的**具名导出、不是全局**（`index.html` 只加载 `type="module"` 脚本，ES module 绑定是词法的）。`PROFILE_SHEETS` 的七个函数体里共调用 `ic(...)` **10 次**——不加这行导入，那七个函数**全部会抛 `ReferenceError: ic is not defined`**，而"只数键名"的测试照样全绿。导入行位于被搬运的主体之外，逐字节保真性不受影响。
+
 ```bash
 python - <<'PY'
 import re
@@ -752,14 +778,18 @@ for name in ("ITEMS", "RESULT_ITEMS", "PRIORITIES", "TOOL_PAGES",
                   body, count=1, flags=re.M)
     assert body != before, f"{name} 未被替换"
 header = ("// 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321。\n"
-          "// 仅把顶层 const 改为 export const，数据内容逐字未动。\n"
-          "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n")
+          "// 增量：顶层 const → export const；并补 ic 导入（见下）。数据内容逐字未动。\n"
+          "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n"
+          'import { ic } from "./icons.js";\n\n')
 Path("web/js/sample.js").write_text(header + body, encoding="utf-8")
 PY
 grep -cE "^[[:space:]]*export const [A-Z_]+ = " web/js/sample.js
+grep -c '^import { ic } from "./icons.js";' web/js/sample.js
 ```
 
-Expected: `8`
+Expected: `8`；`1`
+
+**第二行为 0 就说明 `PROFILE_SHEETS` 必然全抛异常**——见上面那两处增量的第 2 条。
 
 - [ ] **Step 4: 搬运渲染辅助**
 
