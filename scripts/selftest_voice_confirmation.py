@@ -13,6 +13,14 @@ from core import conversation
 
 
 class VoiceConfirmationTests(unittest.TestCase):
+    def test_repeated_transcription_preserves_original_draft(self):
+        meta = {"ok": True, "backend": "engine"}
+        with patch.object(ui_chat.asr, "transcribe", return_value=("识别文字", meta)):
+            first = ui_chat.transcribe("sample.wav", "原始草稿", {})
+            second = ui_chat.transcribe("sample.wav", first[0], first[2])
+        self.assertEqual(second[2]["before"], "原始草稿")
+        self.assertEqual(ui_chat.undo_voice(second[2], second[0])[0], "原始草稿")
+
     def test_dotenv_loaded_before_asr(self):
         code = '''
 import os

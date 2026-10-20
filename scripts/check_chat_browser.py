@@ -124,11 +124,11 @@ def main():
         record("animation completes without blocking input", not page.locator(".cr-intro").is_visible())
         record("desktop no horizontal overflow", page.evaluate("document.documentElement.scrollWidth <= innerWidth"))
         page.screenshot(path=str(output / "01-desktop.png"), full_page=True)
-        page.locator("#cr-discover > button").click()
+        page.locator('[data-cr-panel="cr-discover"]').click()
         record("all seven functions discoverable", all(page.get_by_role("button", name=title).count() for title in
                ("相关法规", "合规待办", "变化与关键日期", "两个市场对比", "多个市场汇总", "上线准备计划", "回答方法与来源对照")))
         page.screenshot(path=str(output / "02-capabilities.png"), full_page=True)
-        page.locator("#cr-discover > button").click()
+        page.locator('[data-cr-panel="cr-discover"]').click()
 
         def ask(text, title):
             before = page.locator(".cr-result-header").get_attribute("data-result-id") if page.locator(".cr-result-header").count() else ""
@@ -175,6 +175,7 @@ def main():
         page.get_by_role("button", name="依据与官方原文", exact=False).first.click()
         record("official source has a real external URL", page.locator(".cr-item a[href^='https://']").count() > 0)
         page.screenshot(path=str(output / "04-task-evidence.png"), full_page=True)
+        page.locator('[data-cr-panel="cr-export-panel"]').click()
         page.get_by_role("button", name="生成当前结果的导出文件", exact=True).click()
         download = page.get_by_role("button", name="下载这份结果", exact=True)
         download.wait_for()
@@ -189,6 +190,7 @@ def main():
         # The generated file has identical bytes, so Gradio may reuse its hash
         # URL. Wait for this submission's textbox update, not the old notice.
         page.wait_for_function("document.querySelector('#cr-input textarea').value === ''", timeout=25000)
+        page.locator('[data-cr-panel="cr-export-panel"]').click()
         record("natural export preserves current result and creates download", page.locator(".cr-result-header").get_attribute("data-result-id") == todo_id and download.is_visible())
 
         ask("比较欧盟和美国的法规目录", "比较两个市场")
@@ -215,7 +217,7 @@ def main():
         record("model view shows real replay or explicit empty state",
                page.get_by_text("真实回放", exact=False).count() > 0
                or page.get_by_text("尚无可展示的真实回放记录", exact=False).count() > 0)
-        page.locator("#cr-history > button").click()
+        page.locator('[data-cr-panel="cr-history"]').click()
         history = page.get_by_label("历史结果", exact=True)
         history.fill("我现在需要做什么")
         history.press("Enter")
@@ -223,13 +225,13 @@ def main():
         page.wait_for_function("id => document.querySelector('.cr-result-header')?.dataset.resultId === id", arg=todo_id, timeout=25000)
         record("history opens the saved result", page.locator(".cr-result-header h2").inner_text() == "我现在需要做什么")
 
-        page.locator("#cr-coverage > button").click()
+        page.locator('[data-cr-panel="cr-coverage"]').click()
         page.get_by_label("按法规编号检索条款", exact=True).fill("32009L0048")
         page.get_by_role("button", name="检索已有条款", exact=True).click()
         page.locator("#cr-clause-result").get_by_text("查看官方原文", exact=False).first.wait_for(timeout=response_timeout)
         record("desktop database returns clauses with official provenance", page.locator("#cr-clause-result a[href*='eur-lex.europa.eu']").count() > 0 and "EU:32009L0048" in page.locator("#cr-clause-result").inner_text())
         page.screenshot(path=str(output / "09-clause-retrieval.png"), full_page=True)
-        page.locator("#cr-coverage > button").click()
+        page.locator('[data-cr-panel="cr-coverage"]').click()
 
         page.locator("#cr-reset").click()
         page.locator("#cr-input textarea").wait_for()

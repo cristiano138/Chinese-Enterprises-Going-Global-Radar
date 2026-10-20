@@ -164,7 +164,11 @@ def transcribe(audio, original, preedit=None):
     try:
         text, meta = asr.transcribe(audio)
         if text and meta.get("ok"):
-            snapshot = {"before": original or "", "voice": text,
+            previous = preedit or {}
+            before = original or ""
+            if previous.get("voice") == text and before == previous.get("voice"):
+                before = previous.get("before") or ""
+            snapshot = {"before": before, "voice": text,
                         "backend": meta.get("backend") or ""}
             return text, _preedit_note(text, meta), snapshot
     except Exception:
@@ -475,7 +479,7 @@ def build_ui():
                           feedback_options=None, elem_id="cr-chat", layout="bubble", autoscroll=False)
         context = gr.HTML("")
         result_filter = gr.Radio(["全部", "待确认", "法律法规", "平台规则", "操作建议"], value="全部",
-                                 label="筛选当前结果", visible=False)
+                                 label="筛选当前结果", visible=False, elem_id="cr-result-filter")
         with gr.Row(visible=True, elem_id="cr-examples", elem_classes=["cr-suggest"]) as examples:
             example_1 = gr.Button("🍼 毛绒玩具卖到德国亚马逊，\n从哪里开始？")
             example_2 = gr.Button("📚 儿童玩具卖到欧盟，\n先看相关法规")
@@ -643,9 +647,21 @@ def build_ui():
             history = gr.Dropdown(choices=[], value=None, label="历史结果", interactive=True)
             history_btn = gr.Button("打开选中的结果", size="sm")
 
-        export_btn = gr.Button("生成当前结果的导出文件", size="sm", visible=False)
-        download = gr.DownloadButton("下载这份结果", visible=False)
+        with gr.Column(elem_id="cr-export-panel"):
+            export_btn = gr.Button("生成当前结果的导出文件", size="sm", visible=False)
+            download = gr.DownloadButton("下载这份结果", visible=False)
         with gr.Column(elem_id="cr-composer"):
+            gr.HTML('''<nav id="cr-actionbar" aria-label="底部功能入口">
+                <button type="button" data-cr-panel="cr-discover" aria-pressed="false">⊞ <span>更多功能</span></button>
+                <button type="button" data-cr-panel="cr-settings" aria-pressed="false">⚙ <span>调整业务摘要与查询条件</span></button>
+                <button type="button" data-cr-panel="cr-result-filter" aria-pressed="false">≡ <span>筛选当前结果</span></button>
+                <button type="button" data-cr-panel="cr-history" aria-pressed="false">◷ <span>查看历史结果</span></button>
+                <button type="button" data-cr-panel="cr-export-panel" aria-pressed="false">↓ <span>导出</span></button>
+                <button type="button" data-cr-panel="cr-voice" aria-pressed="false">♩ <span>语音输入</span></button>
+                <button type="button" data-cr-panel="cr-coverage" aria-pressed="false">⌕ <span>资料覆盖、来源与条款检索</span></button>
+                <button type="button" data-cr-panel="cr-tutorial" aria-pressed="false">? <span>新手教程</span></button>
+                <button type="button" data-cr-reset>＋ <span>新建对话</span></button>
+            </nav>''')
             with gr.Column(elem_id="cr-composer-inner"):
                 text = gr.Textbox(value="", lines=2, max_lines=5, label="你的问题", show_label=False,
                                   placeholder="例如：我想把毛绒玩具卖到德国亚马逊，需要先准备什么？",
@@ -706,7 +722,7 @@ def build_ui():
                          show_progress="minimal", concurrency_id="conversation", concurrency_limit=1)
         export_btn.click(prepare_export, inputs=[session, active], outputs=[download, status], show_progress="minimal")
         voice_bind = dict(inputs=[audio, text, preedit], outputs=[text, status, preedit],
-                          concurrency_id="asr", concurrency_limit=1)
+                          concurrency_id="asr", concurrency_limit=1, show_progress="hidden")
         voice_btn.click(transcribe, **voice_bind)
         audio.stop_recording(transcribe, **voice_bind)
         undo_btn.click(undo_voice, inputs=[preedit, text], outputs=[text, status, preedit],
