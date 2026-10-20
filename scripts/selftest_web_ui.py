@@ -88,6 +88,81 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(probe.locator("b").count(), 0)
 
 
+class SampleDataTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_sample_tables_carry_the_prototype_shape(self):
+        got = _Browser.page.evaluate("""async () => {
+          const s = await import('/web/js/sample.js');
+          return { items: Object.keys(s.ITEMS).length,
+                   result: s.RESULT_ITEMS.length,
+                   tools: Object.keys(s.TOOL_PAGES).length,
+                   fresh: s.FRESH_ITEMS.length,
+                   start: s.START.length,
+                   sheets: Object.keys(s.PROFILE_SHEETS).length };
+        }""")
+        self.assertEqual(got["result"], 7)
+        self.assertEqual(got["tools"], 8)
+        self.assertEqual(got["fresh"], 4)
+        self.assertEqual(got["start"], 4)
+        self.assertEqual(got["sheets"], 7)
+        self.assertGreaterEqual(got["items"], 20)
+
+
+class RenderHelperTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_row_html_uses_the_prototype_classes_and_action(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js'); return r.rowHtml('toy'); }")
+        self.assertIn('class="row"', got)
+        self.assertIn('data-action="detail"', got)
+        self.assertIn('data-id="toy"', got)
+        self.assertIn("row__rail", got)
+        self.assertIn("row__body", got)
+        self.assertIn("type-chip", got)
+        self.assertNotIn("row__copy", got)      # 先前那版计划自创的类名，必须不存在
+
+    def test_row_html_escapes_the_title(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js');"
+            "const s = await import('/web/js/sample.js');"
+            "s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
+            "return r.rowHtml('toy'); }")
+        self.assertNotIn("<img", got)
+        self.assertIn("&lt;img", got)
+
+    def test_row_html_returns_empty_for_an_unknown_id(self):
+        """Review Focus 2：未知条目 id 不得抛异常。"""
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js'); return r.rowHtml('不存在'); }")
+        self.assertEqual(got, "")
+
+    def test_tool_card_uses_the_prototype_markup(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js');"
+            "return r.toolCard('regulations', 'map', 'map', '法规地图', '按品类和市场看适用法规'); }")
+        self.assertIn('data-action="open-tool"', got)
+        self.assertIn('data-group="regulations"', got)
+        self.assertIn('data-tool="map"', got)
+        self.assertIn("tool__icon", got)
+        self.assertNotIn("tool__copy", got)     # 自创类名，必须不存在
+
+    def test_freshness_filter_selects_by_rail(self):
+        got = _Browser.page.evaluate("""async () => {
+          const r = await import('/web/js/render.js');
+          const ids = (f) => r.filteredFresh({ freshFilter: f });
+          return { all: ids('全部').length, warn: ids('需处理').length,
+                   ok: ids('已最新').length, muted: ids('无法确认').length };
+        }""")
+        self.assertEqual(got["all"], 4)
+        self.assertEqual(got["warn"] + got["ok"] + got["muted"], 4)
+
+
 def _stop_browser():
     _Browser.stop()
 
