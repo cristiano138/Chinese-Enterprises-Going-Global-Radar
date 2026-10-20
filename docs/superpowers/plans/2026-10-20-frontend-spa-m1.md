@@ -51,8 +51,8 @@
 | `web/styles/tokens.css` | 原型的 `:root` 设计令牌【搬运】 |
 | `web/styles/base.css` | reset、排版、`.ic`、`.mono`【搬运】 |
 | `web/styles/shell.css` | 外壳：手机壳、顶栏、滚动区、底部导航、输入区、抽屉、轻提示【搬运】 |
-| `web/styles/components.css` | 通用组件：页头、卡片、行、按钮、状态点、工具格、筛选栏、步骤【搬运】 |
-| `web/styles/views.css` | 仅视图特有样式（首页、结果页、法规库、检索、我的、教程）【搬运】 |
+| `web/styles/components.css` | 通用页头与按钮【搬运：原型 434-445、527-551】 |
+| `web/styles/views.css` | 其余组件与各视图样式：卡片、行、状态点、工具格、筛选栏、步骤、首页、结果页、法规库、检索、我的【搬运：原型 149-433、446-526、640-780】 |
 | `web/js/main.js` | 启动：建壳、绑全局事件、启动路由 |
 | `web/js/router.js` | 路由表、hash 解析、导航、未知路由回落 |
 | `web/js/store.js` | 会话与筛选状态（订阅式） |
@@ -386,12 +386,14 @@ Expected: `CR_UI 开关 OK`
 - [ ] **Step 9: 真机冒烟（进程级）**
 
 ```bash
-PORT=7897 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py &
+PORT=7897 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py > /tmp/cr-smoke.log 2>&1 &
+APP_PID=$!
+sleep 12
 sleep 12
 curl -s -o /dev/null -w "root=%{http_code}\n" http://127.0.0.1:7897/
 curl -s -o /dev/null -w "static=%{http_code}\n" http://127.0.0.1:7897/web/js/main.js
 curl -s -o /dev/null -w "gradio=%{http_code}\n" http://127.0.0.1:7897/gradio_api/info
-kill %1
+kill "$APP_PID"
 ```
 
 Expected: `root=200`、`static=200`、`gradio=200`
@@ -416,7 +418,7 @@ git commit -m "feat(web): serve the SPA shell from Gradio's FastAPI instance"
 - Test: `scripts/selftest_web_ui.py`（新建，Playwright）
 
 **Interfaces:**
-- Consumes: `web_app.install()`（Task 1）提供的 `/` 与 `/web/*`
+- Consumes: `web_app.install()`（Task 1）提供的 `/` 与 `/web/*`；`docs/ui-preview/prototype-v2.html`（Task 1 入库的原型参考资产——本任务的【搬运】步骤按它的行号取值，未入库就跑不了）
 - Produces:
   - `web/js/icons.js` → `export const ICONS: Record<string, string>`（原型图标表全文）；`export const ic = (name, cls) => string`
   - `web/js/dom.js` → `export const esc = (v) => string`；`export const h = (strings, ...values) => string`（自动 `esc` 所有插值）
@@ -833,7 +835,7 @@ Expected: FAIL —— `#tabbar` 为空（`main.js` 还是 Task 1 的占位）
 | `web/styles/shell.css` | `552-597` | 输入区 `.composer`（Task 6 用，先搬） |
 | `web/styles/shell.css` | `781-855` | 抽屉 `.sheet` / `.backdrop`（Task 4 用，先搬） |
 | `web/styles/shell.css` | `856-876` | 轻提示 `.toast`（Task 4 用，先搬） |
-| `web/styles/shell.css` | `877-882` | 可访问性规则 |
+| `web/styles/shell.css` | `877-881` | 可访问性规则（**不含** 882 行的 `</style>`） |
 | `web/styles/components.css` | `434-445` | 通用页头 `.page-head` |
 | `web/styles/components.css` | `527-551` | 按钮 `.btn` |
 | `web/styles/views.css` | `204-306` | 工作台首页与法规时效只读卡 |
@@ -857,7 +859,7 @@ src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").spli
 def take(a, b):            # 1-based 闭区间
     return "".join(src[a - 1:b])
 
-shell = (take(71, 148) + take(552, 639) + take(781, 882))
+shell = (take(71, 148) + take(552, 639) + take(781, 881))   # 881 为终点：882 是 </style>
 components = take(434, 445) + take(527, 551)
 views = (take(149, 433) + take(446, 526) + take(640, 780))
 
@@ -1347,6 +1349,10 @@ git commit -m "feat(web): bottom sheet and toast"
 
 - [ ] **Step 1: 写失败的测试**
 
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+
 ```python
 class HomeViewTests(unittest.TestCase):
     @classmethod
@@ -1542,6 +1548,10 @@ git commit -m "feat(web): home view"
 **语音预编辑归前端**（规格第 6 节）：`voiceState` 保存 `{text, before, backend}`，`undoVoice()` 仅在用户尚未编辑时允许撤销。M1 不接真实转写，`onVoice` 先 `showToast("语音待接入")`；M2 接 `/api/transcribe`。
 
 - [ ] **Step 1: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
 
 ```python
 class AssistantViewTests(unittest.TestCase):
@@ -1798,6 +1808,10 @@ git commit -m "feat(web): assistant view, composer dock and voice pre-edit"
 - 样式已在 Task 3 搬运（`views.css` 的 `344-368`、`640-732`、`733-755`）
 
 - [ ] **Step 1: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
 
 ```python
 class RegulationsTests(unittest.TestCase):
@@ -2090,6 +2104,10 @@ git commit -m "feat(web): regulations hub, clause search and the seven tool page
 
 - [ ] **Step 1: 写失败的测试**
 
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+
 ```python
 class ResultAndFreshnessTests(unittest.TestCase):
     @classmethod
@@ -2377,6 +2395,10 @@ git commit -m "feat(web): result, freshness, profile and tutorial views"
 
 - [ ] **Step 1: 写失败的测试**
 
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+
 ```python
 class DetailSheetTests(unittest.TestCase):
     @classmethod
@@ -2520,11 +2542,22 @@ export const detailHtml = (id) => (SHEETS[id] ? SHEETS[id]() : fallback(String(i
 
 - [ ] **Step 4: 在 `main.js` 注册详情渲染器**
 
-在 `web/js/main.js` 的 `import { detailSheet } from "./ui/detail.js";` 之后加一行：
+把 `web/js/main.js` 里现有的
+
+```js
+import { detailSheet } from "./ui/detail.js";
+```
+
+改为
+
+```js
+import { detailSheet, registerDetail } from "./ui/detail.js";
+```
+
+并在其上方新增一行
 
 ```js
 import { detailHtml } from "./views/detail.js";
-import { registerDetail } from "./ui/detail.js";
 ```
 
 并在 `start(render);` 之前加：
@@ -2565,6 +2598,10 @@ git commit -m "feat(web): the seven bottom sheets"
 原型在 `@media (min-width: 700px)` 里给 `body` 加了 `display:grid; place-items:center; padding:24px`，给 `.app-shell` 加了 `height: min(900px, calc(100dvh - 48px))`、`border`、`border-radius:30px`、`box-shadow`。本任务把这段改为"去壳"版本。
 
 - [ ] **Step 1: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
+追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
+输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
 
 ```python
 class ResponsiveTests(unittest.TestCase):
