@@ -44,6 +44,7 @@ def main():
             for route in ROUTES:
                 page.goto(f"{args.url}#/{route}", wait_until="load")
                 page.wait_for_timeout(400)
+                page.add_style_tag(content="*, *::before, *::after { animation: none !important; transition: none !important; }")
                 key = f"{route}@{vp_name}"
                 page.screenshot(path=str(shots / f"{key.replace('/', '_')}.png"))
                 info = page.evaluate("""() => ({

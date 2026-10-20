@@ -99,18 +99,18 @@
   {
    "name": "assistant@desktop.png",
    "status": "different",
-   "changed_ratio": 0.794434799382716,
-   "changed_pixels": 4118350,
+   "changed_ratio": 0.7943998842592592,
+   "changed_pixels": 4118169,
    "compared_pixels": 5184000,
    "maximum_channel_delta": 242
   },
   {
    "name": "assistant@mobile.png",
-   "status": "different",
-   "changed_ratio": 0.006058603718556325,
-   "changed_pixels": 7977,
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
    "compared_pixels": 1316640,
-   "maximum_channel_delta": 5
+   "maximum_channel_delta": 0
   },
   {
    "name": "freshness@desktop.png",
@@ -147,18 +147,18 @@
   {
    "name": "profile@desktop.png",
    "status": "different",
-   "changed_ratio": 0.7959909336419753,
-   "changed_pixels": 4126417,
+   "changed_ratio": 0.795470100308642,
+   "changed_pixels": 4123717,
    "compared_pixels": 5184000,
    "maximum_channel_delta": 242
   },
   {
    "name": "profile@mobile.png",
-   "status": "identical",
-   "changed_ratio": 0,
-   "changed_pixels": 0,
+   "status": "different",
+   "changed_ratio": 0.011199720500668368,
+   "changed_pixels": 14746,
    "compared_pixels": 1316640,
-   "maximum_channel_delta": 0
+   "maximum_channel_delta": 238
   },
   {
    "name": "profile_tutorial@desktop.png",
@@ -309,8 +309,8 @@
   {
    "name": "assistant@desktop.png",
    "status": "different",
-   "changed_ratio": 0.794434799382716,
-   "changed_pixels": 4118350,
+   "changed_ratio": 0.7943998842592592,
+   "changed_pixels": 4118169,
    "compared_pixels": 5184000,
    "maximum_channel_delta": 242
   },
@@ -333,8 +333,8 @@
   {
    "name": "profile@desktop.png",
    "status": "different",
-   "changed_ratio": 0.7959909336419753,
-   "changed_pixels": 4126417,
+   "changed_ratio": 0.795470100308642,
+   "changed_pixels": 4123717,
    "compared_pixels": 5184000,
    "maximum_channel_delta": 242
   },
