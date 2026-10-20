@@ -95,6 +95,19 @@ class PathTests(EngineCase):
         self.assertEqual(Path(state["binary"]), binary)
         self.assertTrue(asr_engine.engine_ready())
 
+    def test_cli_paths_are_relative_inside_the_project(self):
+        """项目路径可能含中文；sherpa-onnx 解析 argv 时按本地代码页读绝对路径，
+        会被读成乱码并报 does not exist。命令行参数必须走项目内相对路径。"""
+        inside = os.path.join(asr_engine.PROJECT, "models", "sherpa-onnx", "tokens.txt")
+        relative = asr_engine._cli_path(inside)
+        self.assertFalse(os.path.isabs(relative))
+        self.assertEqual(relative, os.path.join("models", "sherpa-onnx", "tokens.txt"))
+        self.assertNotIn("出海合规", relative)
+
+    def test_cli_paths_outside_the_project_stay_absolute(self):
+        outside = os.path.abspath(os.path.join(os.sep, "cr-outside", "tokens.txt"))
+        self.assertEqual(asr_engine._cli_path(outside), outside)
+
     def test_asset_name_matches_platform(self):
         name = asr_engine.asset_name()
         self.assertTrue(name.startswith(f"sherpa-onnx-{asr_engine.VERSION}-"))

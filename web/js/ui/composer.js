@@ -1,9 +1,10 @@
 // 搬运自 prototype.html:1946-1967, 2335-2348。函数体逐字未动。
 import { esc } from "../dom.js";
 import { ic } from "../icons.js";
+import { conv } from "../conversation.js";
 
   export function composerDock(state) {
-    const inChat = state.messages.length > 0;
+    const inChat = state.messages.length > 0 || Boolean(conv.session?.messages?.length);
     const strip = inChat
       ? `<div class="quickbar">
           ${[["⚖️", "欧美对比", "比较欧盟和美国的儿童玩具法规目录"],

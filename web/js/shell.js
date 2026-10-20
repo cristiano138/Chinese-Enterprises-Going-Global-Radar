@@ -4,6 +4,12 @@
 import { esc } from "./dom.js";
 import { ic } from "./icons.js";
 import { TOOL_PAGES } from "./sample.js";
+import { cache, conditions } from "./data.js";
+
+const coverageLabel = () => {
+  const laws = cache.boot && cache.boot.coverage && cache.boot.coverage.laws;
+  return laws ? `在线 · 法规库 ${laws} 部` : "在线 · 法规库";
+};
 
   export function renderAppbar(state) {
     const r = state.route;
@@ -35,12 +41,14 @@ import { TOOL_PAGES } from "./sample.js";
             <span class="bar-title__name">合规雷达 · 新对话</span>
             <span class="bar-title__caret">▾</span>
           </button>
-          <div class="bar-title__sub"><span class="live-dot"></span>deepseek-chat · 德国 / 亚马逊</div>
+          <div class="bar-title__sub"><span class="live-dot"></span>deepseek-chat · ${esc(conditions.market)} / ${esc(conditions.platform)}</div>
         </div>
         <button class="iconbtn" data-action="new-chat" aria-label="新对话">${ic("plus")}</button>`;
     }
     if (r === "result") {
-      return back(state.resultFrom || "assistant", "德国市场行动清单", "结果 CR-1019-03 · 数据截止 10-19") +
+      const cutoff = (cache.boot && cache.boot.data_cutoff) || "—";
+      return back(state.resultFrom || "assistant", `${conditions.category} · ${conditions.market} 行动清单`,
+        `数据截止 ${cutoff}`) +
         `<button class="iconbtn" data-action="export" aria-label="导出">${ic("download")}</button>`;
     }
     if (r === "regulations") return brand("合规雷达", "法规中心 · 搜索与时间线") + history;
@@ -52,13 +60,15 @@ import { TOOL_PAGES } from "./sample.js";
     if (r === "action") return brand("合规雷达", "行动 · 任务、计划与市场") + history;
     if (r.startsWith("action/")) {
       const tool = state.tool && TOOL_PAGES[state.tool];
-      return back("action", tool ? tool.title : "行动", "当前筛选会随结果保留") + history;
+      const exportBtn = (state.tool === "readiness" || state.tool === "journey")
+        ? `<button class="iconbtn" data-action="export" aria-label="导出">${ic("download")}</button>` : "";
+      return back("action", tool ? tool.title : "行动", "当前筛选会随结果保留") + history + exportBtn;
     }
     if (r === "profile/tutorial") return back("profile", "教程", "企业用户使用指引 · 约 3 分钟") + history;
     if (r === "profile") return brand("我的", "教程、历史与设置") +
       `<button class="iconbtn" data-action="nav" data-to="profile/tutorial" aria-label="教程">${ic("help")}</button>`;
 
-    return brand("合规雷达", "在线 · 法规库 86 部") + history + plus;
+    return brand("合规雷达", coverageLabel()) + history + plus;
   }
 
   export const TABS = [

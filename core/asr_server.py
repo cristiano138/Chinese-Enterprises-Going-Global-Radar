@@ -271,10 +271,13 @@ def _command(port):
             f"--port={port}",
             f"--num-work-threads={asr_engine.THREADS}",
             f"--max-batch-size=1",
-            f"--tokens={tokens}",
-            f"--sense-voice-model={onnx}",
+            f"--tokens={asr_engine._cli_path(tokens)}",
+            f"--sense-voice-model={asr_engine._cli_path(onnx)}",
             f"--sense-voice-language={language}",
-            "--sense-voice-use-itn=1"]
+            "--sense-voice-use-itn=1",
+            # 服务默认把 log.txt 写到当前目录；指到被 .gitignore 的 models/ 下，
+            # 避免在仓库根目录留下运行日志。
+            f"--log-file={asr_engine._cli_path(os.path.join(asr_engine.ROOT, 'asr-server.log'))}"]
 
 
 def _wait_ready(port, process, deadline):
@@ -313,7 +316,7 @@ def start():
         _last_start = time.monotonic()
         try:
             _process = subprocess.Popen(
-                _command(port), cwd=os.path.dirname(binary),
+                _command(port), cwd=asr_engine.PROJECT,
                 stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL, **options)
         except (OSError, ValueError):

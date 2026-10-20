@@ -1163,6 +1163,12 @@ def export_result(state, result_id):
     if result.get("kind") in ("question", "capabilities", "unsupported", "message", "error"):
         raise ValueError("当前回答没有可导出的业务结果。")
     raw = copy.deepcopy(result.get("raw", {}))
+    # SPA 会话会经 JSON 往返，date 会变成 ISO 字符串；导出层仍要求 date。
+    if isinstance(raw.get("today"), str):
+        try:
+            raw["today"] = date.fromisoformat(raw["today"][:10])
+        except ValueError:
+            raw.pop("today", None)
     tasks = list(_all_tasks(result))
     if result["kind"] == "todo":
         allowed = {task["id"]: task for task in tasks if task.get("status") not in ("excluded", "historical")}
