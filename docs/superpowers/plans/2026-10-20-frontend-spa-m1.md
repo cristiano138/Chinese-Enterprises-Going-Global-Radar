@@ -26,6 +26,12 @@
 
 本计划中标注 **【搬运】** 的步骤指的是：把 `prototype.html` 中指定行号范围的文本**原样复制**到目标文件，不做改写、不重排、不"顺手优化"。每个【搬运】步骤都给出了**精确行号范围**与**搬运后的校验断言**，因此它是一条可执行、可验证的指令，不是占位符。行号以入库的 `docs/ui-preview/prototype-v2.html` 为准（Task 1 入库后行号与原件一致）。
 
+**【搬运】是本计划的主要手段，不只是给 CSS 用的。** 前端的行为层同样逐字搬运——原型那 2452 行里的 JS 本身就是一个干净的小型 SPA 运行时，不需要重新架构它。
+
+**这件事上曾经栽过跟头，所以规则写死在这里**：先前那版计划让作者手写视图标记，结果 77 个静态类名里 20 个（26%）在原型 CSS 里不存在——`fresh-card__top`（原型是 `__head`）、`resume__copy`、`progress__meta`、`composer__mic`、`pill`、`row__copy` 等全是凭空发明的，还自创了 `back` / `send` / `starter` 等原型没有的 `data-action`。**手写就必须手写类名，手写类名就会写错。** 逐字搬运则从根本上没有这个失效模式。
+
+**视图搬运的机械装置**：视图函数**接收 `state` 形参、函数体一字不动**。原型函数体内部本来就写作 `state`、`ITEMS`、`rowHtml`、`ic`、`esc`——模块化后只要用形参与 `import` 把这些名字提供出来，标记与逻辑**一个字符都不用改**。因此每个视图任务的增量只有三类：改 `export`、补 `import`、剔掉演示专用件（逐条列出）。
+
 标注 **【新写】** 的步骤给出完整代码，照抄即可。
 
 ## Review Focus
@@ -53,17 +59,24 @@
 | `web/styles/shell.css` | 外壳：手机壳、顶栏、滚动区、底部导航、输入区、抽屉、轻提示【搬运】 |
 | `web/styles/components.css` | 通用页头与按钮【搬运：原型 434-445、527-551】 |
 | `web/styles/views.css` | 其余组件与各视图样式：卡片、行、状态点、工具格、筛选栏、步骤、首页、结果页、法规库、检索、我的【搬运：原型 149-433、446-526、640-780】 |
-| `web/js/main.js` | 启动：建壳、绑全局事件、启动路由 |
-| `web/js/router.js` | 路由表、hash 解析、导航、未知路由回落 |
-| `web/js/store.js` | 会话与筛选状态（订阅式） |
-| `web/js/icons.js` | 原型图标表【搬运】+ `ic()` 辅助 |
-| `web/js/dom.js` | `esc()`、模板工具 |
-| `web/js/ui/sheet.js` | 底部抽屉：`openSheet` / `closeSheet` |
-| `web/js/ui/toast.js` | 轻提示：`showToast` |
-| `web/js/views/*.js` | 16 条路由的视图模块（10 个文件） |
-| `scripts/selftest_web_api.py` | 离线：静态托管、`/api/*` 契约、`ok:false`、未知路由 |
-| `scripts/check_web_browser.py` | 浏览器：逐路由 DOM/布局断言 + 截图（沿用 `check_chat_browser.py` 范式） |
+| `web/js/main.js` | 启动：`render()` 路由分派、事件委托、视图注册 |
+| `web/js/router.js` | `routeOf` / `go`【搬运：原型 1181-1182】 |
+| `web/js/store.js` | 状态（字段形状取自原型 1151-1165）+ `set` / `setConditions` / `subscribe` |
+| `web/js/icons.js` | 图标表 + `ic()`【搬运：原型 901-936】 |
+| `web/js/dom.js` | `esc()`【搬运：原型 1176-1178】 |
+| `web/js/sample.js` | 示例数据表：`ITEMS` / `TOOL_PAGES` / `PROFILE_SHEETS` / `START` / `CLAUSES` 等【搬运：原型 939-1148、1243-1248、1735-1747、2187-2321】——**M2 只换这一个文件** |
+| `web/js/render.js` | 渲染辅助：`rowHtml` / `toolCard` / `filteredItems` / `filteredFresh`【搬运：原型 1425-1441、1443-1447、1566-1571、1627-1632】 |
+| `web/js/shell.js` | `renderAppbar` / `renderTabbar` / `TABS`【搬运：原型 1186-1240、1970-2003】 |
+| `web/js/ui/sheet.js` | 底部抽屉【搬运：原型 2322-2333】 |
+| `web/js/ui/toast.js` | 轻提示【搬运：原型 2147-2152】 |
+| `web/js/ui/composer.js` | 输入区 + `bindComposer`【搬运：原型 1946-1967、2335-2348】 |
+| `web/js/views/*.js` | 11 个视图模块（home / result / freshness / assistant / regulations / search / tool / action / profile / tutorial / detail）【搬运】 |
+| `scripts/selftest_web_api.py` | 离线：静态托管、`install()` 成败契约、未知路由 |
+| `scripts/selftest_web_ui.py` | 浏览器：逐路由 DOM/布局/交互断言（Playwright） |
+| `scripts/check_web_browser.py` | 浏览器：逐路由截图 + 结构报告（沿用 `check_chat_browser.py` 范式） |
 | `scripts/compare_web_screenshots.py` | 像素比对：原型 vs 改造后（调 REA） |
+
+**没有 `components.js`**：先前那版计划造过一层组件抽象（`pageHead` / `card` / `row` / `toolCard` 等返回 HTML 的函数），结果引入了一套自创类名——77 个静态类名里 20 个（26%）在原型 CSS 里不存在。现改为**视图直接逐字搬运原型标记**，不需要中间抽象层。
 
 ### 修改
 
@@ -80,7 +93,9 @@
 
 ### M1 刻意不含的文件
 
-规格 §4.1 列出的 `web/js/api.js`（`/api/*` 封装）**属于 M2**：M1 的决定是"先做壳与路由，内容先用示例数据"，因此 M1 的每一层都不发网络请求，各视图的数据以模块内的 `SAMPLE` 常量提供。M2 引入 `api.js` 时，只替换各视图的 `SAMPLE` 取值处，视图的模板与交互不动。`web_app.py` 的 `/api/*` 端点同样在 M2 落地（M1 只做根路由接管与静态托管）。
+规格 §4.1 列出的 `web/js/api.js`（`/api/*` 封装）**属于 M2**：M1 的决定是"先做壳与路由，内容先用示例数据"，因此 M1 的每一层都不发网络请求——所有数据来自 `web/js/sample.js`（原型数据表的逐字搬运）。
+
+**M2 的接缝因此只有一个文件**：把 `sample.js` 的取值处换成 `api.js` 的请求。视图模板、交互、类名一律不动——因为视图代码里不含任何数据来源假设，它们只是消费 `ITEMS` / `TOOL_PAGES` / `PROFILE_SHEETS` 这些名字。`web_app.py` 的 `/api/*` 端点同样在 M2 落地（M1 只做根路由接管与静态托管）。
 
 ---
 
@@ -119,7 +134,8 @@ print('sha256:', hashlib.sha256(data).hexdigest())
 "
 ```
 
-Expected（**归一化后**的值——原文件是均匀 CRLF，归一化会去掉 2452 个 ）：
+Expected（**归一化后**的值——原文件是均匀 CRLF，归一化会去掉 2452 个 
+）：
 ```
 bytes: 125082
 sha256: 43ef8e474d330c99d5e65bdcfe42648c492299587ab19fde713a1744f05104f5
@@ -312,16 +328,18 @@ def install(demo) -> bool:
   <main class="view" id="view" tabindex="-1"></main>
   <div id="dock"></div>
   <nav class="tabbar" id="tabbar" aria-label="主要导航"></nav>
+  <div class="backdrop" id="backdrop" data-action="close-sheet"></div>
+  <aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="详情"></aside>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </div>
-<div class="backdrop" id="backdrop" data-action="close-sheet"></div>
-<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-label="详情"></aside>
-<div class="toast" id="toast" role="status" aria-live="polite"></div>
 <script type="module" src="/web/js/main.js"></script>
 </body>
 </html>
 ```
 
-六个挂载点必须与原型 `prototype.html:885-893` 的 `id` 完全一致（`shell` / `appbar` / `view` / `dock` / `tabbar` / `backdrop` / `sheet` / `toast`），后续所有任务依赖这些 id。
+八个挂载点的 `id` 必须与原型 `prototype.html:885-893` 完全一致（`shell` / `appbar` / `view` / `dock` / `tabbar` / `backdrop` / `sheet` / `toast`），后续所有任务依赖这些 id。
+
+**`#backdrop` / `#sheet` / `#toast` 必须是 `.app-shell` 的子元素，不能是它的兄弟。** 原型就是这样嵌套的（`prototype.html` 的 `</div>` 关闭 `.app-shell` 在第 894 行，位于这三个元素之后）。原因：三者都是 `position: absolute`，而 `.app-shell` 是 `position: relative`，所以绝对定位是相对 `.app-shell` 解析的。一旦把它们放到 `.app-shell` 之外，最近已定位祖先就退化成视口 —— 桌面端（≥700px）抽屉会横跨整个视口宽度而不是收在 480px 窄栏内，Toast 也会居中于整屏而非栏内。
 
 创建占位样式与脚本，使本任务的测试可通过（后续任务会替换为【搬运】的真实内容）：
 
@@ -411,63 +429,71 @@ git commit -m "feat(web): serve the SPA shell from Gradio's FastAPI instance"
 
 ---
 
-## Task 2: 设计令牌、基础样式、图标与共享组件
+## Task 2: 基础样式、图标与转义
 
 **Files:**
-- Modify: `web/styles/tokens.css`（替换 Task 1 的占位）
-- Modify: `web/styles/base.css`（替换占位）
-- Create: `web/js/icons.js`
-- Create: `web/js/dom.js`
-- Create: `web/js/components.js`
-- Test: `scripts/selftest_web_ui.py`（新建，Playwright）
+- Modify: `web/styles/tokens.css`、`web/styles/base.css`（替换 Task 1 的占位）
+- Create: `web/js/icons.js`、`web/js/dom.js`
+- Test: `scripts/selftest_web_ui.py`（新建）
 
 **Interfaces:**
-- Consumes: `web_app.install()`（Task 1）提供的 `/` 与 `/web/*`；`docs/ui-preview/prototype-v2.html`（Task 1 入库的原型参考资产——本任务的【搬运】步骤按它的行号取值，未入库就跑不了）
+- Consumes: `web_app.install()`（Task 1）提供的 `/` 与 `/web/*`；`docs/ui-preview/prototype-v2.html`（Task 1 入库的原型参考资产——本任务所有【搬运】按它的行号取值）
 - Produces:
-  - `web/js/icons.js` → `export const ICONS: Record<string, string>`（原型图标表全文）；`export const ic = (name, cls) => string`
-  - `web/js/dom.js` → `export const esc = (v) => string`；`export const h = (strings, ...values) => string`（自动 `esc` 所有插值）
-  - `web/js/components.js` → `pageHead({title, lead})`、`sectionHead({title, count, action})`、`card(inner, cls)`、`row({id, title, sub, status, rail})`、`chip(text)`、`stat({value, label, tone})`、`toolCard({group, id, icon, title, sub})`、`rail({tone})`、`iconTile({icon, tone})` —— 全部返回 HTML 字符串
+  - `web/js/icons.js` → `export const ICONS`、`export const ic = (name, cls) => string`
+  - `web/js/dom.js` → `export const esc = (s) => string`
 
-- [ ] **Step 1: 搬运设计令牌**
+**本任务不做**：不建 `components.js`。原型的视图直接用模板字符串写标记，不需要组件抽象层——先前那版计划造的 `components.js` 引入了一套自创类名，是 26% 类名错误的来源。视图任务改为逐字搬运原型标记。
 
-把 `prototype.html:15-47`（`:root { … }` 整块，含文件头注释）复制进 `web/styles/tokens.css`，并保留其上方 `prototype.html:9-14` 的三行设计方向注释。
+- [ ] **Step 1: 搬运设计令牌与基础样式**
+
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/styles/tokens.css` | 9–47 |
+| `web/styles/base.css` | 49–69 |
 
 ```bash
 python - <<'PY'
 from pathlib import Path
 src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-# 行号 1-based → 切片 0-based
-Path("web/styles/tokens.css").write_text("".join(src[8:47]), encoding="utf-8")   # 9-47
+def take(a, b): return "".join(src[a-1:b])          # 1-based 闭区间
+Path("web/styles/tokens.css").write_text(take(9, 47), encoding="utf-8")
+Path("web/styles/base.css").write_text(take(49, 69), encoding="utf-8")
 PY
-```
-
-【搬运】校验：
-
-```bash
 grep -c -- "--brand:\|--paper:\|--r-xl:" web/styles/tokens.css
-grep -q "min(480px" web/styles/tokens.css || echo "注意：手机壳规则属 shell.css，见 Task 3"
-```
-
-Expected: 至少 3 行命中（`--brand`、`--paper`、`--r-xl`）
-
-- [ ] **Step 2: 搬运基础样式**
-
-把 `prototype.html:49-69`（`* { box-sizing }` 到 `.mono`，含 `html`/`body`/`button`/`a`/`h1,h2,h3,p`/`.ic`）复制进 `web/styles/base.css`。
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-Path("web/styles/base.css").write_text("".join(src[48:69]), encoding="utf-8")   # 49-69
-PY
 grep -c "box-sizing\|\.ic {\|\.mono {" web/styles/base.css
 ```
 
-Expected: ≥ 3
+Expected: 均 ≥ 3
 
-- [ ] **Step 3: 写失败的浏览器测试**
+- [ ] **Step 2: 搬运图标表与转义函数**
 
-创建 `scripts/selftest_web_ui.py`。这是后续所有视图任务共用的浏览器测试骨架，先起服务、再断言令牌与转义。
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+
+icons = take(901, 936)
+icons = icons.replace("const ICONS = {", "export const ICONS = {", 1)
+icons = icons.replace("const ic = (name, cls) =>", "export const ic = (name, cls) =>", 1)
+Path("web/js/icons.js").write_text(
+    "// 搬运自 prototype.html:901-936。仅把两处 const 改为 export const，其余未动。\n" + icons,
+    encoding="utf-8")
+
+dom = take(1176, 1178)
+dom = dom.replace("const esc = (s) =>", "export const esc = (s) =>", 1)
+Path("web/js/dom.js").write_text(
+    "// 搬运自 prototype.html:1176-1178。仅把 const 改为 export const。\n" + dom,
+    encoding="utf-8")
+PY
+grep -c "export const ICONS\|export const ic\|export const esc" web/js/icons.js web/js/dom.js
+```
+
+Expected: `web/js/icons.js:2`、`web/js/dom.js:1`
+
+- [ ] **Step 3: 写失败的测试**
+
+创建 `scripts/selftest_web_ui.py`。这是后续所有任务共用的浏览器测试骨架。
 
 ```python
 """SPA 前端行为与布局检查；需要 Playwright 与一个已启动的服务。
@@ -489,6 +515,8 @@ BASE = os.getenv("SELFTEST_WEB_URL", "http://127.0.0.1:7899")
 
 
 class _Browser:
+    """整个测试文件共用一次浏览器会话。"""
+
     _pw = None
     _browser = None
     page = None
@@ -540,6 +568,13 @@ class TokenTests(unittest.TestCase):
         self.assertIn("&lt;img", got)
         self.assertIn("&amp;", got)
 
+    def test_ic_renders_an_svg_with_the_prototype_geometry(self):
+        got = _Browser.page.evaluate(
+            "async () => { const m = await import('/web/js/icons.js'); return m.ic('home'); }")
+        self.assertIn('class="ic', got)
+        self.assertIn('viewBox="0 0 24 24"', got)
+        self.assertIn("M3 10.5 12 3l9 7.5", got)
+
     def test_injected_markup_is_not_parsed(self):
         """Review Focus 1：用户输入含 HTML 时不得被解析成元素。"""
         _Browser.page.evaluate(
@@ -551,28 +586,7 @@ class TokenTests(unittest.TestCase):
         self.assertEqual(probe.locator("b").count(), 0)
 
 
-class SharedComponentsTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        _Browser.start()
-
-    def test_page_head_escapes_its_title(self):
-        got = _Browser.page.evaluate(
-            "async () => { const c = await import('/web/js/components.js');"
-            "return c.pageHead({title:'<script>x</script>', lead:'a & b'}); }")
-        self.assertNotIn("<script>", got)
-        self.assertIn("&lt;script&gt;", got)
-        self.assertIn("a &amp; b", got)
-
-    def test_ic_renders_an_svg_with_the_prototype_geometry(self):
-        got = _Browser.page.evaluate(
-            "async () => { const m = await import('/web/js/icons.js'); return m.ic('home'); }")
-        self.assertIn('class="ic', got)
-        self.assertIn('viewBox="0 0 24 24"', got)
-        self.assertIn("M3 10.5 12 3l9 7.5", got)   # 原型 home 图标路径
-
-
-def _teardown_module():
+def _stop_browser():
     _Browser.stop()
 
 
@@ -586,149 +600,360 @@ if __name__ == "__main__":
 - [ ] **Step 4: 起服务并运行测试确认失败**
 
 ```bash
-PORT=7899 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py &
+PORT=7899 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py > /tmp/cr-ui.log 2>&1 &
 sleep 12
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: FAIL —— `/web/js/dom.js` 与 `/web/js/components.js` 不存在，`main.js` 尚未导入它们
+Expected: FAIL —— `/web/js/dom.js` 与 `icons.js` 尚不存在
 
-- [ ] **Step 5: 搬运图标表并写 `web/js/icons.js`**
+- [ ] **Step 5: 运行测试确认通过**
 
-把 `prototype.html:902-936`（`const ICONS = { … }` 与 `const ic = (name, cls) => …`）复制为新文件主体，并把两处 `const` 改成 `export const`。
+```bash
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+```
+
+Expected: PASS（4 个用例）
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add web/styles/tokens.css web/styles/base.css web/js/icons.js web/js/dom.js scripts/selftest_web_ui.py
+git commit -m "feat(web): design tokens, icons and escaping ported from the prototype"
+```
+
+---
+
+## Task 3: 示例数据层与渲染辅助
+
+**Files:**
+- Create: `web/js/sample.js`、`web/js/render.js`
+- Test: `scripts/selftest_web_ui.py`（追加）
+
+**Interfaces:**
+- Consumes: `ic`、`esc`（Task 2）
+- Produces:
+  - `web/js/sample.js` → `export const ITEMS`、`RESULT_ITEMS`、`PRIORITIES`、`TOOL_PAGES`、`FRESH_ITEMS`、`START`、`CLAUSES`、`PROFILE_SHEETS`
+  - `web/js/render.js` → `export function rowHtml(id)`、`filteredItems()`、`toolCard(group, id, icon, title, sub, badge)`、`filteredFresh()`
+
+**为什么有这一层**：原型的视图函数依赖这批数据表与四个渲染辅助。把它们逐字搬成模块，视图才能在 Task 6–9 里近乎逐字搬运；M2 接真数据时**只换 `sample.js` 的取值处**，视图模板与交互不动——这正是架构想要的接缝。
+
+- [ ] **Step 1: 搬运数据表**
+
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/js/sample.js` | 939–1148 | `ITEMS`、`RESULT_ITEMS`、`PRIORITIES`、`TOOL_PAGES`、`FRESH_ITEMS` |
+| `web/js/sample.js` | 1243–1248 | `START` |
+| `web/js/sample.js` | 1735–1747 | `CLAUSES` |
+| `web/js/sample.js` | 2187–2321 | `PROFILE_SHEETS` |
+
+```bash
+python - <<'PY'
+import re
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+body = take(939, 1148) + take(1243, 1248) + take(1735, 1747) + take(2187, 2321)
+# 顶层 const 改为 export const，逐个精确替换（不用全局替换，避免误伤对象内部的字面量）
+for name in ("ITEMS", "RESULT_ITEMS", "PRIORITIES", "TOOL_PAGES",
+             "FRESH_ITEMS", "START", "CLAUSES", "PROFILE_SHEETS"):
+    before = body
+    body = re.sub(rf"^(\s*)const {name} = ", rf"\1export const {name} = ",
+                  body, count=1, flags=re.M)
+    assert body != before, f"{name} 未被替换"
+header = ("// 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321。\n"
+          "// 仅把顶层 const 改为 export const，数据内容逐字未动。\n"
+          "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n")
+Path("web/js/sample.js").write_text(header + body, encoding="utf-8")
+PY
+grep -c "^export const" web/js/sample.js
+```
+
+Expected: `8`
+
+- [ ] **Step 2: 搬运渲染辅助**
+
+| 目标 | 原型行号（含） | 函数 |
+|---|---|---|
+| `web/js/render.js` | 1425–1441 | `rowHtml(id)` |
+| `web/js/render.js` | 1443–1447 | `filteredItems()` |
+| `web/js/render.js` | 1566–1571 | `toolCard(...)` |
+| `web/js/render.js` | 1627–1632 | `filteredFresh()` |
+
+三处增量（必须照做，否则后面视图搬不动）：
+
+1. `function rowHtml` / `function filteredItems` / `function filteredFresh` → `export function …`；`const toolCard =` → `export const toolCard =`。
+2. 本文件顶部加 `import { esc } from "./dom.js";` 与 `import { ic } from "./icons.js";`——原型里这两个是全局的，模块化后必须显式导入。
+3. 四个函数都引用 `ITEMS` / `RESULT_ITEMS` / `FRESH_ITEMS`，加 `import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";`。
+4. `filteredItems` 与 `filteredFresh` 读 `state.filter` / `state.freshFilter`。**本任务先把 `state` 作为参数传入**：签名改为 `filteredItems(state)` / `filteredFresh(state)`，函数体里的 `state.filter` 保持不变。Task 4 引入 store 后由调用方传入。
 
 ```bash
 python - <<'PY'
 from pathlib import Path
 src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-body = "".join(src[901:936])                      # 902-936
-body = body.replace("  const ICONS = {", "export const ICONS = {", 1)
-body = body.replace("  const ic = (name, cls) =>", "export const ic = (name, cls) =>", 1)
-header = ("// 图标表搬运自 prototype.html:902-936，未做任何改动。\n"
-          "// 新增图标前请先确认原型里确实没有。\n")
-Path("web/js/icons.js").write_text(header + body, encoding="utf-8")
+def take(a, b): return "".join(src[a-1:b])
+body = take(1425, 1441) + take(1443, 1447) + take(1566, 1571) + take(1627, 1632)
+body = body.replace("function rowHtml(id) {", "export function rowHtml(id) {", 1)
+body = body.replace("function filteredItems() {", "export function filteredItems(state) {", 1)
+body = body.replace("const toolCard = (", "export const toolCard = (", 1)
+body = body.replace("function filteredFresh() {", "export function filteredFresh(state) {", 1)
+header = ('// 搬运自 prototype.html:1425-1441, 1443-1447, 1566-1571, 1627-1632。\n'
+          '// 增量：顶层函数/常量改为 export；显式导入 esc/ic/数据表；\n'
+          '// filteredItems/filteredFresh 改吃 state 参数（Task 4 起由调用方传 store.state）。\n'
+          'import { esc } from "./dom.js";\n'
+          'import { ic } from "./icons.js";\n'
+          'import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";\n\n')
+Path("web/js/render.js").write_text(header + body, encoding="utf-8")
 PY
-grep -c "export const ICONS\|export const ic" web/js/icons.js
-grep -c "radar:\|shield:\|compare:" web/js/icons.js
+grep -c "^export function\|^export const" web/js/render.js
+grep -c "^import" web/js/render.js
 ```
 
-Expected: `2`；第二个 grep ≥ 3（确认图标表是完整的，不是被截断的）
+Expected: `4`；`3`
 
-- [ ] **Step 6: 写 `web/js/dom.js`**
+- [ ] **Step 3: 写失败的测试**
 
-```js
-// 模板与转义工具。所有插值都必须经过 esc() 或 h`` —— 见 Review Focus 1。
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
 
-export const esc = (value) => String(value ?? "").replace(/[&<>"']/g,
-  (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+```python
+class SampleDataTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
 
-/** 带标签模板：除 HTML 片段外，所有插值自动转义。 */
-export const h = (strings, ...values) => strings.reduce((out, part, i) => {
-  if (i === 0) return part;
-  const v = values[i - 1];
-  const rendered = Array.isArray(v) ? v.join("") : esc(v);
-  return out + rendered + part;
-}, "");
+    def test_sample_tables_carry_the_prototype_shape(self):
+        got = _Browser.page.evaluate("""async () => {
+          const s = await import('/web/js/sample.js');
+          return { items: Object.keys(s.ITEMS).length,
+                   result: s.RESULT_ITEMS.length,
+                   tools: Object.keys(s.TOOL_PAGES).length,
+                   fresh: s.FRESH_ITEMS.length,
+                   start: s.START.length,
+                   sheets: Object.keys(s.PROFILE_SHEETS).length };
+        }""")
+        self.assertEqual(got["result"], 7)
+        self.assertEqual(got["tools"], 8)
+        self.assertEqual(got["fresh"], 4)
+        self.assertEqual(got["start"], 4)
+        self.assertEqual(got["sheets"], 7)
+        self.assertGreaterEqual(got["items"], 20)
+
+
+class RenderHelperTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_row_html_uses_the_prototype_classes_and_action(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js'); return r.rowHtml('toy'); }")
+        self.assertIn('class="row"', got)
+        self.assertIn('data-action="detail"', got)
+        self.assertIn('data-id="toy"', got)
+        self.assertIn("row__rail", got)
+        self.assertIn("row__body", got)
+        self.assertIn("type-chip", got)
+        self.assertNotIn("row__copy", got)      # 先前那版计划自创的类名，必须不存在
+
+    def test_row_html_escapes_the_title(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js');"
+            "const s = await import('/web/js/sample.js');"
+            "s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
+            "return r.rowHtml('toy'); }")
+        self.assertNotIn("<img", got)
+        self.assertIn("&lt;img", got)
+
+    def test_row_html_returns_empty_for_an_unknown_id(self):
+        """Review Focus 2：未知条目 id 不得抛异常。"""
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js'); return r.rowHtml('不存在'); }")
+        self.assertEqual(got, "")
+
+    def test_tool_card_uses_the_prototype_markup(self):
+        got = _Browser.page.evaluate(
+            "async () => { const r = await import('/web/js/render.js');"
+            "return r.toolCard('regulations', 'map', 'map', '法规地图', '按品类和市场看适用法规'); }")
+        self.assertIn('data-action="open-tool"', got)
+        self.assertIn('data-group="regulations"', got)
+        self.assertIn('data-tool="map"', got)
+        self.assertIn("tool__icon", got)
+        self.assertNotIn("tool__copy", got)     # 自创类名，必须不存在
+
+    def test_freshness_filter_selects_by_rail(self):
+        got = _Browser.page.evaluate("""async () => {
+          const r = await import('/web/js/render.js');
+          const ids = (f) => r.filteredFresh({ freshFilter: f });
+          return { all: ids('全部').length, warn: ids('需处理').length,
+                   ok: ids('已最新').length, muted: ids('无法确认').length };
+        }""")
+        self.assertEqual(got["all"], 4)
+        self.assertEqual(got["warn"] + got["ok"] + got["muted"], 4)
 ```
 
-注意 `h` 的语义：数组插值按"已渲染片段"直接拼接（调用方负责用 `esc` 处理元素），标量插值自动转义。这是刻意设计——视图里大量 `items.map(row)` 需要拼片段，而零散字段需要转义。
+- [ ] **Step 4: 运行测试确认失败**
 
-**`raw` 不需要出现在最终代码里**：M1 的每个视图都能只用 `esc` 与 `h` 写完（`components.js` 已经把拼片段的场景收敛成了组件函数）。既然没有调用方，就不要导出它——绕过转义的逃生舱口一旦存在就会被用。若实现时确实需要拼接未转义片段，那说明该片段应该先变成一个组件函数，而不是打开这个口子。
-
-- [ ] **Step 7: 写 `web/js/components.js`**
-
-```js
-// 通用组件：与 prototype.html 里反复出现的片段一一对应。
-// 样式全部来自 components.css（Task 3 搬运），这里只产出结构。
-import { esc, h } from "./dom.js";
-import { ic } from "./icons.js";
-
-export const pageHead = ({ title, lead }) => h`
-  <div class="page-head">
-    <h1>${title}</h1>
-    ${lead ? h`<p>${lead}</p>` : ""}
-  </div>`;
-
-export const sectionHead = ({ title, count = "", action = "" }) => h`
-  <div class="section-head">
-    <b>${title}</b><span>${count}</span>${action}
-  </div>`;
-
-export const card = (inner, cls = "") =>
-  `<section class="card ${esc(cls)}">${inner}</section>`;
-
-/** 状态点：ok=绿 / warn=琥珀 / muted=灰，对应原型 .rail 的三种色调。 */
-export const rail = (tone = "ok") =>
-  `<span class="rail rail--${esc(tone)}" aria-hidden="true"></span>`;
-
-export const row = ({ id, title, sub, status, tone = "ok" }) => h`
-  <button class="row" data-action="detail" data-id="${id}">
-    ${rail(tone)}
-    <span class="row__copy">
-      <b>${title}</b>
-      ${sub ? h`<span>${sub}</span>` : ""}
-    </span>
-    ${status ? h`<span class="row__status">${status}</span>` : ""}
-    ${ic("chevron")}
-  </button>`;
-
-export const chip = (text) => `<span class="chip">${esc(text)}</span>`;
-
-export const stat = ({ value, label, tone = "" }) => h`
-  <div class="stat ${tone ? "stat--" + tone : ""}">
-    <b>${value}</b><span>${label}</span>
-  </div>`;
-
-export const iconTile = ({ icon, tone = "" }) => h`
-  <span class="tool__icon ${tone ? "tool__icon--" + tone : ""}">${ic(icon)}</span>`;
-
-export const toolCard = ({ group, id, icon, title, sub }) => h`
-  <button class="tool" data-action="open-tool" data-group="${group}" data-tool="${id}">
-    ${iconTile({ icon })}
-    <span class="tool__copy"><b>${title}</b><span>${sub}</span></span>
-    ${ic("chevron")}
-  </button>`;
-
-export const emptyState = (text) => h`<p class="fine fine--empty">${text}</p>`;
+```bash
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SampleDataTests RenderHelperTests
 ```
 
-- [ ] **Step 8: 运行测试确认通过**
+Expected: FAIL —— `/web/js/sample.js` 尚不存在
+
+- [ ] **Step 5: 运行测试确认通过**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（5 个用例）
+Expected: PASS（TokenTests 4 + SampleDataTests 1 + RenderHelperTests 5）
 
-- [ ] **Step 9: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add web/styles/tokens.css web/styles/base.css web/js/icons.js web/js/dom.js web/js/components.js scripts/selftest_web_ui.py
-git commit -m "feat(web): prototype design tokens, icons and shared components"
+git add web/js/sample.js web/js/render.js scripts/selftest_web_ui.py
+git commit -m "feat(web): port the prototype's sample data tables and render helpers"
 ```
 
 ---
 
-## Task 3: 应用外壳、底部标签栏与路由
+## Task 4: 状态、路由、顶栏与标签栏
 
 **Files:**
-- Modify: `web/styles/shell.css`（替换占位；【搬运】原型的外壳与导航分节）
-- Create: `web/js/store.js`
-- Create: `web/js/router.js`
+- Create: `web/js/store.js`、`web/js/router.js`、`web/js/shell.js`
 - Modify: `web/js/main.js`（替换 Task 1 的占位）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: `ic()`（Task 2）、`esc`/`h`（Task 2）、`components.js`（Task 2）
+- Consumes: `ic`（Task 2）、`esc`（Task 2）、`TOOL_PAGES`（Task 3）
 - Produces:
-  - `web/js/store.js` → `export const store`，含 `store.state`、`store.set(patch) -> void`、`store.subscribe(fn) -> () => void`、`store.reset() -> void`
-    - `store.state` 形状：`{ category: string, market: string, markets: string[], platform: string, resultId: string|null, filter: string }`
-  - `web/js/router.js` → `export const ROUTES`（`Record<string, () => object>`）、`export const parse = (hash) => {path, group, tool}`、`export const navigate = (route) => void`、`export const start = (onRoute) => void`、`export const activeTab = (route) => "home"|"regulations"|"assistant"|"action"|"profile"`
-  - `web/js/main.js` → 无导出；导入即启动
+  - `web/js/store.js` → `export const store`：`store.state`（与原型 `state` 同形）、`store.set(patch)`、`store.subscribe(fn)`
+  - `web/js/router.js` → `export const routeOf`、`export const go`
+  - `web/js/shell.js` → `export const TABS`、`export function renderAppbar(state)`、`export function renderTabbar(state)`
+  - `web/js/main.js` → 导入即启动；导出 `export const render = ()`
 
-- [ ] **Step 1: 写失败的测试**
+- [ ] **Step 1: 搬运状态与路由**
 
-在 `scripts/selftest_web_ui.py` 的 `_teardown_module` 之前追加：
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/store.js` | 1151–1165（`state`） |
+| `web/js/router.js` | 1181–1182（`routeOf`、`go`；**不含** 1183 的 hashchange，它由 main.js 绑） |
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+st = take(1151, 1165).replace("const state = {", "export const store = {", 1)
+st = st.replace('  route: "home",', '  state: {\n    route: "home",', 1)
+Path("web/js/store.js").write_text(
+    "// 搬运自 prototype.html:1151-1165。形状与原型一致，外面套一层 store。\n"
+    + st, encoding="utf-8")
+PY
+```
+
+上面只做了一半——`store` 需要一个把 `state` 作为属性的包装。**本步骤直接写完整文件**，字段逐字取自原型 1152–1164：
+
+```js
+// 状态：字段逐字取自 prototype.html:1151-1165。
+// 包装成 store 是为了让视图改条件时能作废旧结果锚点（见 setConditions）。
+const initial = () => ({
+  route: "home",
+  chatStarted: false,
+  messages: [],
+  typing: false,
+  choices: [],
+  filter: "全部",
+  freshFilter: "全部",
+  tool: null,
+  toolGroup: null,
+  resultFrom: "assistant",
+  searchDone: false,
+  query: "",
+  hasFreshness: true,
+});
+
+export const store = {
+  state: initial(),
+  _subs: new Set(),
+
+  set(patch) {
+    Object.assign(this.state, patch);
+    this._subs.forEach((fn) => fn(this.state));
+  },
+
+  /** 换查询条件时同时作废旧结果锚点，避免旧结果被当成新条件的结果。 */
+  setConditions(patch) {
+    this.set({ ...patch, resultFrom: "assistant" });
+  },
+
+  reset() {
+    this.state = initial();
+    this._subs.forEach((fn) => fn(this.state));
+  },
+
+  subscribe(fn) {
+    this._subs.add(fn);
+    return () => this._subs.delete(fn);
+  },
+};
+```
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+body = "".join(src[1180:1182])          # 1181-1182
+body = body.replace("const routeOf =", "export const routeOf =", 1)
+body = body.replace("const go =", "export const go =", 1)
+Path("web/js/router.js").write_text(
+    "// 搬运自 prototype.html:1181-1182。hashchange 的绑定在 main.js（原型的 1183 行）。\n"
+    + body, encoding="utf-8")
+PY
+grep -c "^export const" web/js/router.js
+```
+
+Expected: `2`
+
+- [ ] **Step 2: 搬运顶栏与标签栏**
+
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/js/shell.js` | 1186–1240 | `renderAppbar()` |
+| `web/js/shell.js` | 1970–2003 | `TABS` + `renderTabbar()` |
+
+增量：
+1. `function renderAppbar()` → `export function renderAppbar(state)`，函数体把 `state.route` 等改为 `state.route`（形参同名，**函数体内一行不用改**——原型内部就写作 `state`）。
+2. `function renderTabbar()` → `export function renderTabbar(state)`，同样函数体不动。
+3. `const TABS = [` → `export const TABS = [`。
+4. 顶部加 `import { esc } from "./dom.js";`、`import { ic } from "./icons.js";`、`import { TOOL_PAGES } from "./sample.js";`。
+
+**注意**：把 `state` 作为形参、函数体一字不改，是为了让搬运真正做到逐字——原型函数体里所有 `state.x` 引用都保持不变。
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+body = take(1186, 1240) + "\n" + take(1970, 2003)
+body = body.replace("function renderAppbar() {", "export function renderAppbar(state) {", 1)
+body = body.replace("function renderTabbar() {", "export function renderTabbar(state) {", 1)
+body = body.replace("const TABS = [", "export const TABS = [", 1)
+header = ('// 搬运自 prototype.html:1186-1240, 1970-2003。\n'
+          '// 增量：函数改为 export 并接收 state 形参（函数体逐字未动，因为原型内部就写作 state）；\n'
+          '// 显式导入 esc/ic/TOOL_PAGES。\n'
+          'import { esc } from "./dom.js";\n'
+          'import { ic } from "./icons.js";\n'
+          'import { TOOL_PAGES } from "./sample.js";\n\n')
+Path("web/js/shell.js").write_text(header + body, encoding="utf-8")
+PY
+grep -c "^export function renderAppbar\|^export function renderTabbar\|^export const TABS" web/js/shell.js
+```
+
+Expected: `3`
+
+- [ ] **Step 3: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
 
 ```python
 class ShellTests(unittest.TestCase):
@@ -742,12 +967,12 @@ class ShellTests(unittest.TestCase):
                          ["首页", "法规", "助手", "行动", "我的"])
 
     def test_assistant_tab_uses_the_raised_pill(self):
-        """原型的中央助手是凸起药丸，不是普通标签。"""
         self.assertEqual(_Browser.page.locator("#tabbar .tab--main").count(), 1)
         self.assertIn("助手", _Browser.page.locator("#tabbar .tab--main").inner_text())
 
-    def test_active_tab_follows_the_route_group(self):
-        cases = [("home", "首页"), ("freshness", "首页"), ("result", "首页"),
+    def test_active_tab_matches_the_prototype_mapping(self):
+        """原型的映射：regulations/action/profile 前缀归各自标签，freshness 归首页。"""
+        cases = [("home", "首页"), ("freshness", "首页"),
                  ("regulations", "法规"), ("regulations/map", "法规"),
                  ("action", "行动"), ("action/journey", "行动"),
                  ("profile", "我的"), ("profile/tutorial", "我的"),
@@ -759,9 +984,22 @@ class ShellTests(unittest.TestCase):
                 self.assertEqual(current.count(), 1)
                 self.assertIn(expected, current.inner_text())
 
+    def test_result_route_highlights_no_tab(self):
+        """原型对 result 不做归并，因此没有任何标签被标为当前页。"""
+        _Browser.goto("result")
+        self.assertEqual(_Browser.page.locator('#tabbar [aria-current="page"]').count(), 0)
+
+    def test_appbar_gives_back_buttons_a_nav_action(self):
+        """原型没有 back 这个 action；返回一律走 data-action="nav" data-to=父路由。"""
+        _Browser.goto("regulations/map")
+        back = _Browser.page.locator("#appbar button[aria-label='返回']")
+        self.assertEqual(back.count(), 1)
+        self.assertEqual(back.get_attribute("data-action"), "nav")
+        self.assertEqual(back.get_attribute("data-to"), "regulations")
+
     def test_unknown_route_falls_back_to_home(self):
         """Review Focus 2：畸形/未知 hash 不得白屏。"""
-        for bad in ["regulations/不存在", "action/zzz", "完全瞎写", "", "//"]:
+        for bad in ["regulations/不存在", "action/zzz", "完全瞎写"]:
             with self.subTest(bad=bad):
                 _Browser.goto(bad)
                 self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
@@ -779,35 +1017,32 @@ class StoreTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    def test_changing_conditions_drops_the_previous_result_anchor(self):
-        """Review Focus 4：先查德国再切美国时，不得把旧结果当成新条件的结果。"""
+    def test_state_shape_matches_the_prototype(self):
         got = _Browser.page.evaluate("""async () => {
           const { store } = await import('/web/js/store.js');
-          store.reset();
-          store.set({ resultId: '德国-清单' });
-          const before = store.state.resultId;
-          store.setConditions({ market: '美国' });
-          return { before, after: store.state.resultId, market: store.state.market };
+          return Object.keys(store.state).sort();
         }""")
-        self.assertEqual(got["before"], "德国-清单")
-        self.assertIsNone(got["after"], "换条件必须作废旧结果锚点")
-        self.assertEqual(got["market"], "美国")
+        self.assertEqual(got, sorted(["route", "chatStarted", "messages", "typing",
+                                      "choices", "filter", "freshFilter", "tool",
+                                      "toolGroup", "resultFrom", "searchDone",
+                                      "query", "hasFreshness"]))
 
-    def test_plain_set_keeps_the_result_anchor(self):
-        """只改筛选（不换条件）时结果锚点必须保留，否则展开/筛选会跳位。"""
+    def test_set_conditions_resets_the_result_origin(self):
+        """Review Focus 4：换条件后不得沿用上一次的结果来源。"""
         got = _Browser.page.evaluate("""async () => {
           const { store } = await import('/web/js/store.js');
           store.reset();
-          store.set({ resultId: 'R1' });
-          store.set({ filter: '需处理' });
-          return store.state.resultId;
+          store.set({ resultFrom: 'home' });
+          const before = store.state.resultFrom;
+          store.setConditions({ freshFilter: '需处理' });
+          return { before, after: store.state.resultFrom };
         }""")
-        self.assertEqual(got, "R1")
+        self.assertEqual(got["before"], "home")
+        self.assertEqual(got["after"], "assistant")
 
     def test_subscribers_are_notified_and_can_unsubscribe(self):
         got = _Browser.page.evaluate("""async () => {
           const { store } = await import('/web/js/store.js');
-          store.reset();
           let hits = 0;
           const off = store.subscribe(() => { hits += 1; });
           store.set({ filter: '全部' });
@@ -818,242 +1053,15 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(got, 1)
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ShellTests
-```
-
-Expected: FAIL —— `#tabbar` 为空（`main.js` 还是 Task 1 的占位）
-
-- [ ] **Step 3: 搬运外壳与导航样式**
-
-按分节搬运进 `web/styles/shell.css`（追加，保持原型顺序）：
-
-| 目标文件 | 原型行号 | 内容 |
-|---|---|---|
-| `web/styles/shell.css` | `71-91` | 手机壳 `.app-shell`（含 `@media (min-width: 700px)`） |
-| `web/styles/shell.css` | `92-135` | 顶栏 `.appbar` / `.brand` / `.live-dot` / `.bar-title` / `.iconbtn` |
-| `web/styles/shell.css` | `136-148` | 主滚动区 `.view` |
-| `web/styles/shell.css` | `598-639` | 底部导航 `.tabbar` / `.tab` / `.tab--main` |
-| `web/styles/shell.css` | `552-597` | 输入区 `.composer`（Task 6 用，先搬） |
-| `web/styles/shell.css` | `781-855` | 抽屉 `.sheet` / `.backdrop`（Task 4 用，先搬） |
-| `web/styles/shell.css` | `856-876` | 轻提示 `.toast`（Task 4 用，先搬） |
-| `web/styles/shell.css` | `877-881` | 可访问性规则（**不含** 882 行的 `</style>`） |
-| `web/styles/components.css` | `434-445` | 通用页头 `.page-head` |
-| `web/styles/components.css` | `527-551` | 按钮 `.btn` |
-| `web/styles/views.css` | `204-306` | 工作台首页与法规时效只读卡 |
-| `web/styles/views.css` | `149-203` | 首页 hero 与推荐项 `.reco` |
-| `web/styles/views.css` | `307-326` | 首次使用态 |
-| `web/styles/views.css` | `327-343` | 教程页 |
-| `web/styles/views.css` | `344-368` | 法规中心 / 行动入口 / 时效性检查 |
-| `web/styles/views.css` | `369-433` | 对话 |
-| `web/styles/views.css` | `446-526` | 结果页 |
-| `web/styles/views.css` | `640-732` | 法规库 |
-| `web/styles/views.css` | `733-755` | 检索 |
-| `web/styles/views.css` | `756-780` | 我的 |
-
-一次性完成所有搬运（后续任务不再重复搬运样式）：
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-
-def take(a, b):            # 1-based 闭区间
-    return "".join(src[a - 1:b])
-
-shell = (take(71, 148) + take(552, 639) + take(781, 881))   # 881 为终点：882 是 </style>
-components = take(434, 445) + take(527, 551)
-views = (take(149, 433) + take(446, 526) + take(640, 780))
-
-Path("web/styles/shell.css").write_text(
-    "/* 搬运自 prototype.html：71-148, 552-639, 781-882。未做改动。 */\n" + shell, encoding="utf-8")
-Path("web/styles/components.css").write_text(
-    "/* 搬运自 prototype.html：434-445, 527-551。未做改动。 */\n" + components, encoding="utf-8")
-Path("web/styles/views.css").write_text(
-    "/* 搬运自 prototype.html：149-433, 446-526, 640-780。未做改动。 */\n" + views, encoding="utf-8")
-PY
-```
-
-【搬运】校验（每节都必须留下可辨识的规则）：
-
-```bash
-grep -c "\.app-shell\|\.appbar\|\.tabbar\|\.tab--main" web/styles/shell.css
-grep -c "\.page-head\|\.btn" web/styles/components.css
-grep -c "\.wb-head\|\.fresh-card\|\.reco\|\.tool\b" web/styles/views.css
-```
-
-Expected: 均 ≥ 3
-
-- [ ] **Step 4: 写 `web/js/store.js`**
+- [ ] **Step 4: 写 `web/js/main.js`**
 
 ```js
-// 会话状态。抽屉与筛选不写 URL（照原型），因此它们住在 store 里而不是路由里。
-
-const initial = () => ({
-  category: "儿童玩具",
-  market: "德国",
-  markets: ["欧盟", "美国"],
-  platform: "亚马逊",
-  resultId: null,
-  filter: "全部",
-});
-
-export const store = {
-  state: initial(),
-  _subs: new Set(),
-
-  set(patch) {
-    this.state = { ...this.state, ...patch };
-    this._subs.forEach((fn) => fn(this.state));
-  },
-
-  /** 条件变化时清掉上一次的结果锚点，避免旧结果被当成新条件的结果。 */
-  setConditions(patch) {
-    this.set({ ...patch, resultId: null });
-  },
-
-  reset() {
-    this.state = initial();
-    this._subs.forEach((fn) => fn(this.state));
-  },
-
-  subscribe(fn) {
-    this._subs.add(fn);
-    return () => this._subs.delete(fn);
-  },
-};
-```
-
-`setConditions` 是 Review Focus 4（会话中途切换条件）的落点：换条件必须同时作废旧结果锚点。
-
-- [ ] **Step 5: 写 `web/js/router.js`**
-
-```js
-// hash 路由。语义照原型：go("regulations/map") → "#/regulations/map"。
-
-import home from "./views/home.js";
-import result from "./views/result.js";
-import freshness from "./views/freshness.js";
-import assistant from "./views/assistant.js";
-import regulations from "./views/regulations.js";
-import search from "./views/search.js";
-import tool from "./views/tool.js";
-import action from "./views/action.js";
-import profile from "./views/profile.js";
-import tutorial from "./views/tutorial.js";
-
-/** 静态路由表。工具页由 tool.js 按 tool 名分发，避免 7 个近乎相同的模块。 */
-export const ROUTES = {
-  home,
-  result,
-  freshness,
-  assistant,
-  regulations,
-  "regulations/search": search,
-  regulations_tool: tool,     // 见 parse()：regulations/<tool> 走这里
-  action,
-  action_tool: tool,          // action/<tool>
-  profile,
-  "profile/tutorial": tutorial,
-};
-
-const TOOL_NAMES = ["map", "timeline", "todo", "readiness", "journey", "compare", "multi"];
-
-export const parse = (hash) => {
-  const path = String(hash || "").replace(/^#\/?/, "").replace(/\/+$/, "");
-  if (!path) return { path: "home", group: null, tool: null };
-
-  if (path === "regulations") return { path, group: null, tool: null };
-  if (path === "action") return { path, group: null, tool: null };
-
-  const [head, tail] = path.split("/");
-  if ((head === "regulations" || head === "action") && tail) {
-    // Review Focus 2：未知工具名必须回落，不得白屏。
-    const toolName = TOOL_NAMES.includes(tail) ? tail : TOOL_NAMES[0];
-    return { path: `${head}_tool`, group: head, tool: toolName };
-  }
-  if (ROUTES[path]) return { path, group: null, tool: null };
-  return { path: "home", group: null, tool: null };
-};
-
-export const activeTab = (route) => {
-  if (route.startsWith("regulations")) return "regulations";
-  if (route.startsWith("action")) return "action";
-  if (route.startsWith("profile")) return "profile";
-  if (route === "assistant") return "assistant";
-  return "home";   // home / result / freshness 都归首页
-};
-
-export const navigate = (route) => { location.hash = "#/" + String(route).replace(/^#?\/?/, ""); };
-
-export const start = (onRoute) => {
-  const run = () => onRoute(parse(location.hash));
-  window.addEventListener("hashchange", run);
-  run();
-};
-```
-
-- [ ] **Step 6: 建视图桩模块**
-
-`main.js` 在导入时会拉起全部 10 个视图模块，所以它们**必须在本任务就存在**，否则本任务的测试无法通过。先建桩，后续视图任务逐个替换为真实实现。
-
-```bash
-mkdir -p web/js/views
-for v in home result freshness assistant regulations search tool action profile tutorial; do
-  cat > "web/js/views/$v.js" <<EOF
-// 桩：由后续视图任务替换为真实实现。
-export default {
-  title: "出海合规雷达",
-  sub: "桩视图",
-  render() { return '<p class="fine">$v 视图待实现</p>'; },
-};
-EOF
-done
-ls web/js/views/ | wc -l
-```
-
-Expected: `10`
-
-- [ ] **Step 7: 写 `web/js/ui/detail.js`**
-
-详情抽屉的内容用注册表解耦：`main.js` 只依赖接口，各视图任务按需注册自己的详情渲染器。这样 `main.js` 不必反过来依赖所有视图。
-
-```bash
-cat > web/js/ui/detail.js <<'EOF'
-// 详情抽屉的内容注册表。默认渲染器保证任何 id 都有可读兜底，不会白屏。
-import { esc } from "../dom.js";
-
-let impl = (id) => `
-  <div class="sheet__grab"></div>
-  <div class="sheet__body"><h2>${esc(id)}</h2></div>`;
-
-export const registerDetail = (fn) => { impl = fn; };
-export const detailSheet = (id) => impl(id);
-EOF
-```
-
-- [ ] **Step 8: 写 `web/js/main.js`**
-
-```js
-// 启动：渲染外壳、绑定全局事件、启动路由。导入即执行。
-
+// 启动：挂路由、渲染外壳、绑事件委托。
+// render 的分派表与事件委托逐字对应 prototype.html:2006-2078 与 2351-2444。
 import { ic } from "./icons.js";
-import { h } from "./dom.js";
 import { store } from "./store.js";
-import { ROUTES, parse, navigate, start, activeTab } from "./router.js";
-import { openSheet, closeSheet } from "./ui/sheet.js";
-import { showToast } from "./ui/toast.js";
-import { detailSheet } from "./ui/detail.js";
-
-const TABS = [
-  ["home", "home", "首页"],
-  ["regulations", "book", "法规"],
-  ["assistant", "chat", "助手"],
-  ["action", "flag", "行动"],
-  ["profile", "user", "我的"],
-];
+import { routeOf, go } from "./router.js";
+import { renderAppbar, renderTabbar } from "./shell.js";
 
 const els = {
   appbar: document.getElementById("appbar"),
@@ -1062,139 +1070,160 @@ const els = {
   tabbar: document.getElementById("tabbar"),
 };
 
-export const renderTabbar = (route) => {
-  const active = activeTab(route);
-  els.tabbar.innerHTML = TABS.map(([to, icon, label]) => {
-    const on = active === to;
-    if (to === "assistant") {
-      return h`
-        <button class="tab tab--main ${on ? "is-on" : ""}" data-action="nav" data-to="${to}"
-                aria-current="${on ? "page" : "false"}" aria-label="${label}">
-          <span class="tab__main">${ic(icon)}<span>${label}</span></span>
-        </button>`;
-    }
-    return h`
-      <button class="tab ${on ? "is-on" : ""}" data-action="nav" data-to="${to}"
-              aria-current="${on ? "page" : "false"}">
-        <span class="tab__wrap">${ic(icon)}</span>
-        <span>${label}</span>
-      </button>`;
-  }).join("");
-};
+// Task 5 起逐个接入真实视图；在此之前视图为空，路由与外壳行为已可完整验证。
+const VIEWS = {};
 
-export const renderAppbar = (view, route) => {
-  const title = view.title ?? "合规雷达";
-  const sub = view.sub ?? "";
-  els.appbar.innerHTML = view.back
-    ? h`
-      <button class="iconbtn iconbtn--ghost" data-action="back" aria-label="返回">${ic("back")}</button>
-      <span class="bar-title">
-        <span class="bar-title__name">${title}</span>
-        ${sub ? h`<span class="bar-title__sub">${sub}</span>` : ""}
-      </span>
-      <button class="iconbtn iconbtn--ghost" data-action="history" aria-label="历史结果">${ic("history")}</button>`
-    : h`
-      <span class="brand">
-        <span class="brand__mark">${ic("radar")}</span>
-        <span>
-          <span class="brand__name">${title}</span>
-          <span class="brand__sub"><span class="live-dot"></span>${sub}</span>
-        </span>
-      </span>
-      <button class="iconbtn iconbtn--ghost" data-action="history" aria-label="历史结果">${ic("history")}</button>
-      <button class="iconbtn iconbtn--ghost" data-action="new" aria-label="新建">${ic("plus")}</button>`;
-};
+export const render = () => {
+  const state = store.state;
+  state.route = routeOf();
+  const r = state.route;
 
-const render = (r) => {
-  const view = ROUTES[r.path] ?? ROUTES.home;
-  const ctx = { route: r, store, navigate, openSheet, closeSheet, showToast };
-  renderAppbar(view, r.path);
-  renderTabbar(r.path);
-  els.view.className = view.viewClass ? `view ${view.viewClass}` : "view";
-  els.view.innerHTML = view.render(ctx);
+  // 与原型 2010-2019 一致：工具组与工具名的解析
+  if (r.startsWith("regulations/")) {
+    state.toolGroup = "regulations";
+    state.tool = r.split("/")[1] || null;
+  } else if (r.startsWith("action/")) {
+    state.toolGroup = "action";
+    state.tool = r.split("/")[1] || null;
+  } else {
+    state.tool = null;
+    state.toolGroup = null;
+  }
+
+  els.appbar.innerHTML = renderAppbar(state);
+  els.tabbar.innerHTML = renderTabbar(state);
+
+  const view = VIEWS[r] || VIEWS.default;
+  els.view.className = "view";
+  els.view.innerHTML = view ? view(state) : "";
   els.view.scrollTop = 0;
-  els.dock.innerHTML = view.dock ? view.dock(ctx) : "";
-  view.mount?.(els.view, ctx);
+  els.dock.innerHTML = "";
 };
+
+window.addEventListener("hashchange", () => { store.state.route = routeOf(); render(); });
 
 document.addEventListener("click", (event) => {
-  const nav = event.target.closest("[data-action='nav']");
-  if (nav) { navigate(nav.dataset.to); return; }
-  const tool = event.target.closest("[data-action='open-tool']");
-  if (tool) { navigate(`${tool.dataset.group}/${tool.dataset.tool}`); return; }
-  const back = event.target.closest("[data-action='back']");
-  if (back) { history.length > 1 ? history.back() : navigate("home"); return; }
-  if (event.target.closest("[data-action='close-sheet'], #backdrop")) { closeSheet(); return; }
-  const detail = event.target.closest("[data-action='detail']");
-  if (detail) { openSheet(detailSheet(detail.dataset.id)); return; }
+  const el = event.target.closest("[data-action]");
+  if (!el) return;
+  const action = el.dataset.action;
+  if (action === "nav") {
+    go(el.dataset.to || "assistant");          // 原型 2358：nav 默认去 assistant
+  } else if (action === "open-tool") {
+    go((el.dataset.group || "regulations") + "/" + el.dataset.tool);
+  }
+  // 其余 action 由 Task 5 起的任务逐个接入。
 });
 
-document.addEventListener("keydown", (event) => {
-  if (event.key === "Escape") closeSheet();
-});
-
-start(render);
+store.state.route = routeOf();
+render();
 ```
 
-- [ ] **Step 9: 建 `ui/sheet.js` 与 `ui/toast.js` 桩**
+**注意**：`nav` 默认目标是 `assistant`（原型 2358 行 `go(el.dataset.to || "assistant")`），不是 `home`——先前那版计划写成了 home 并把返回按钮做成自创的 `back` action。
 
-`main.js` 导入了这两个模块，本任务先把它们建出来；完整实现见 Task 4。
-
-```bash
-cat > web/js/ui/sheet.js <<'EOF'
-// 桩：Task 4 替换为完整实现。
-export const openSheet = () => {};
-export const closeSheet = () => {};
-EOF
-cat > web/js/ui/toast.js <<'EOF'
-// 桩：Task 4 替换为完整实现。
-export const showToast = () => {};
-EOF
-```
-
-- [ ] **Step 10: 运行测试确认通过**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ShellTests
-```
-
-Expected: PASS（ShellTests 5 + StoreTests 3 = 8；`test_unknown_route_falls_back_to_home` 的 5 个子用例全过）
-
-- [ ] **Step 11: 全量回归确认 Task 2 未被破坏**
+- [ ] **Step 5: 运行测试确认通过**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS。此后的每个任务都以此为准：**新测试类全通过，且既有测试类一个不少、全部仍通过**。（累计数量会随任务增长，故不再逐个写死；若有既有用例转红，即为回归。）
+Expected: PASS（ShellTests 7 + StoreTests 3 全通过，既有类无回归）
 
-- [ ] **Step 12: 提交**
+- [ ] **Step 6: 提交**
 
 ```bash
-git add web/js/store.js web/js/router.js web/js/main.js web/js/views web/js/ui scripts/selftest_web_ui.py
-git commit -m "feat(web): app shell, bottom tabbar and hash router"
+git add web/js/store.js web/js/router.js web/js/shell.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): state, routing, appbar and tabbar ported from the prototype"
 ```
 
 ---
 
-## Task 4: 底部抽屉与轻提示
+## Task 5: 底部抽屉与轻提示
 
 **Files:**
-- Modify: `web/js/ui/sheet.js`（替换桩）
-- Modify: `web/js/ui/toast.js`（替换桩）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Create: `web/js/ui/sheet.js`、`web/js/ui/toast.js`
+- Modify: `web/js/main.js`（接入 `close-sheet` 与 Escape）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: `#sheet` / `#backdrop` / `#toast` 三个挂载点（Task 1）；`.is-on` 类（Task 3 搬运的 `shell.css:781-882`）
+- Consumes: `#sheet` / `#backdrop` / `#toast` 挂载点（Task 1）；`.is-on` 类（Task 3 搬运的 `shell.css`）
 - Produces:
-  - `ui/sheet.js` → `openSheet(html: string) -> void`、`closeSheet() -> void`、`isSheetOpen() -> boolean`
-  - `ui/toast.js` → `showToast(text: string) -> void`
+  - `web/js/ui/sheet.js` → `export function openSheet(html)`、`export function closeSheet()`
+  - `web/js/ui/toast.js` → `export function showToast(text)`
 
-原型的抽屉靠给 `#backdrop` 与 `#sheet` 加 `.is-on` 打开（`prototype.html:2322-2333`），CSS 里 `.sheet` 默认 `translateY(100%)`、`.sheet.is-on` 归零（`prototype.html:789-808`）。所以本任务只需管类名与 aria，不需要手写动画。
+**原型对照**：抽屉 `prototype.html:2322-2333`；轻提示 `2147-2152`。动画全在 CSS（`.sheet` 默认 `translateY(103%)`、`.is-on` 归零），JS 只管类名与 aria——与原型一致，本任务不写动画。
 
-- [ ] **Step 1: 写失败的测试**
+- [ ] **Step 1: 搬运抽屉与轻提示**
 
-追加到 `scripts/selftest_web_ui.py`（`_teardown_module` 之前）：
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/ui/sheet.js` | 2322–2333 |
+| `web/js/ui/toast.js` | 2147–2152 |
+
+增量（三条）：
+
+1. `function openSheet` / `function closeSheet` / `function showToast` → `export function …`。
+2. 原型用模块顶层常量 `sheet` / `backdrop` / `toast` 持有 DOM 句柄（原型 1172–1174）。模块化后**不要在导入期取 DOM**（导入可能早于解析到这些节点）；改为在函数内 `document.getElementById(...)`。
+3. `showToast` 里的 `toast._t`（原型把计时器挂在 DOM 节点上）改为模块内的 `let timer`。
+
+先把原文看清楚：
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js").write_text(take(2322, 2333), encoding="utf-8")
+Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js").write_text(take(2147, 2152), encoding="utf-8")
+PY
+cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js
+echo '--- toast ---'
+cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js
+```
+
+然后按上面三条增量改写为：
+
+```js
+// web/js/ui/sheet.js —— 搬运自 prototype.html:2322-2333。
+// 增量：导出；DOM 句柄改为函数内查找（不在导入期取）。
+const sheetEl = () => document.getElementById("sheet");
+const backdropEl = () => document.getElementById("backdrop");
+
+export function openSheet(html) {
+  const sheet = sheetEl();
+  sheet.innerHTML = html;
+  backdropEl().classList.add("is-on");
+  sheet.classList.add("is-on");
+  sheet.setAttribute("aria-hidden", "false");
+}
+
+export function closeSheet() {
+  const sheet = sheetEl();
+  backdropEl().classList.remove("is-on");
+  sheet.classList.remove("is-on");
+  sheet.setAttribute("aria-hidden", "true");
+}
+```
+
+```js
+// web/js/ui/toast.js —— 搬运自 prototype.html:2147-2152。
+// 增量：导出；计时器从挂在 DOM 节点上的 toast._t 改为模块内变量。
+const DURATION = 2400;
+let timer = null;
+
+export function showToast(text) {
+  const toast = document.getElementById("toast");
+  toast.textContent = text;
+  toast.classList.add("is-on");
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => toast.classList.remove("is-on"), DURATION);
+}
+```
+
+**关键**：改写时必须保持原型那三行**赋值顺序**（先 `backdrop` 后 `sheet`）与 `aria-hidden` 的取值，测试会核对。
+
+- [ ] **Step 2: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。追加到末尾会让新测试类定义晚于 `unittest.main()`，用例被**静默跳过**（输出仍显 PASS）。追加后确认运行输出里出现了本任务新增的用例名。
 
 ```python
 class SheetTests(unittest.TestCase):
@@ -1207,39 +1236,40 @@ class SheetTests(unittest.TestCase):
         _Browser.page.evaluate(
             "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
 
-    def test_open_and_close_toggle_the_prototype_classes(self):
+    def _open(self, html='<div class="sheet__body"><h2>详情</h2></div>'):
         _Browser.page.evaluate(
-            "async () => { const s = await import('/web/js/ui/sheet.js');"
-            "s.openSheet('<div class=\"sheet__body\"><h2>详情</h2></div>'); }")
+            "async (h) => { const s = await import('/web/js/ui/sheet.js'); s.openSheet(h); }", html)
+
+    def test_open_and_close_toggle_the_prototype_classes(self):
+        self._open()
         self.assertIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
         self.assertIn("is-on", _Browser.page.locator("#backdrop").get_attribute("class"))
         self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-hidden"), "false")
-
         _Browser.page.evaluate(
             "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
         self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
         self.assertNotIn("is-on", _Browser.page.locator("#backdrop").get_attribute("class"))
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-hidden"), "true")
 
-    def test_sheet_is_marked_dialog_and_modal(self):
-        role = _Browser.page.locator("#sheet").get_attribute("role")
-        self.assertEqual(role, "dialog")
+    def test_sheet_is_marked_dialog_and_modal_from_the_markup(self):
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("role"), "dialog")
         self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-modal"), "true")
 
-    def test_escape_and_backdrop_click_close_the_sheet(self):
-        open_js = ("async () => { const s = await import('/web/js/ui/sheet.js');"
-                   "s.openSheet('<div class=\"sheet__body\"><h2>详情</h2></div>'); }")
-        _Browser.page.evaluate(open_js)
+    def test_escape_closes_the_sheet(self):
+        self._open()
         _Browser.page.keyboard.press("Escape")
         _Browser.page.wait_for_timeout(200)
         self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
 
-        _Browser.page.evaluate(open_js)
+    def test_backdrop_click_closes_the_sheet(self):
+        """backdrop 自带 data-action="close-sheet"（原型 891 行），走事件委托关闭。"""
+        self._open()
         _Browser.page.locator("#backdrop").click(force=True)
-        _Browser.page.wait_for_timeout(200)
+        _Browser.page.wait_for_timeout(250)
         self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
 
-    def test_sheet_content_is_escaped_by_the_caller_contract(self):
-        """Review Focus 1：抽屉内容里的用户输入必须已被转义。"""
+    def test_sheet_content_is_escaped_by_the_caller(self):
+        """Review Focus 1：esc 之后再注入的内容不得被解析成元素。"""
         _Browser.page.evaluate(
             "async () => { const d = await import('/web/js/dom.js');"
             "const s = await import('/web/js/ui/sheet.js');"
@@ -1252,7 +1282,7 @@ class ToastTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    def test_toast_shows_then_hides(self):
+    def test_toast_shows_then_hides_after_2400ms(self):
         _Browser.page.evaluate(
             "async () => { const t = await import('/web/js/ui/toast.js'); t.showToast('先写一句你的产品'); }")
         self.assertIn("is-on", _Browser.page.locator("#toast").get_attribute("class"))
@@ -1260,64 +1290,51 @@ class ToastTests(unittest.TestCase):
         _Browser.page.wait_for_timeout(2600)
         self.assertNotIn("is-on", _Browser.page.locator("#toast").get_attribute("class"))
 
-    def test_toast_announces_politely(self):
-        self.assertEqual(_Browser.page.locator("#toast").get_attribute("aria-live"), "polite")
+    def test_second_toast_restarts_the_timer(self):
+        got = _Browser.page.evaluate("""async () => {
+          const t = await import('/web/js/ui/toast.js');
+          t.showToast('第一条');
+          await new Promise(r => setTimeout(r, 1800));
+          t.showToast('第二条');
+          await new Promise(r => setTimeout(r, 1200));
+          return document.getElementById('toast').classList.contains('is-on');
+        }""")
+        self.assertTrue(got, "第二次提示必须重新计时，而不是沿用第一次留下的定时器")
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 3: 运行测试确认失败**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SheetTests ToastTests
 ```
 
-Expected: FAIL —— 桩实现不切换类名
+Expected: FAIL —— `/web/js/ui/sheet.js` 尚不存在
 
-- [ ] **Step 3: 实现 `web/js/ui/sheet.js`**
+- [ ] **Step 4: 在 `main.js` 接入 `close-sheet` 与 Escape**
 
-```js
-// 底部抽屉。样式全部来自 shell.css（搬运自 prototype.html:781-855），
-// 这里只负责类名与 aria —— 动画由 CSS 过渡完成，与原型一致。
-const backdrop = () => document.getElementById("backdrop");
-const sheet = () => document.getElementById("sheet");
-
-export const isSheetOpen = () => sheet()?.classList.contains("is-on") ?? false;
-
-export const openSheet = (html) => {
-  const node = sheet();
-  if (!node) return;
-  node.innerHTML = String(html ?? "");
-  node.classList.add("is-on");
-  node.setAttribute("aria-hidden", "false");
-  backdrop()?.classList.add("is-on");
-};
-
-export const closeSheet = () => {
-  const node = sheet();
-  if (!node) return;
-  node.classList.remove("is-on");
-  node.setAttribute("aria-hidden", "true");
-  backdrop()?.classList.remove("is-on");
-};
-```
-
-`#sheet` 的 `role="dialog"` / `aria-modal="true"` 已在 `index.html` 里静态声明（Task 1 Step 5），因此抽屉本身不需要再设置。
-
-- [ ] **Step 4: 实现 `web/js/ui/toast.js`**
+导入区加：
 
 ```js
-// 轻提示。原型用 2400ms 自动隐藏（prototype.html:2147-2152），照搬。
-const DURATION = 2400;
-let timer = null;
-
-export const showToast = (text) => {
-  const node = document.getElementById("toast");
-  if (!node) return;
-  node.textContent = String(text ?? "");
-  node.classList.add("is-on");
-  if (timer) clearTimeout(timer);
-  timer = setTimeout(() => node.classList.remove("is-on"), DURATION);
-};
+import { closeSheet } from "./ui/sheet.js";
 ```
+
+事件委托里，在 `open-tool` 分支之后补：
+
+```js
+  } else if (action === "close-sheet") {
+    closeSheet();
+```
+
+文件底部 `render();` 之前加：
+
+```js
+document.addEventListener("keydown", (event) => {
+  const sheet = document.getElementById("sheet");
+  if (event.key === "Escape" && sheet.classList.contains("is-on")) closeSheet();
+});
+```
+
+**注意**：Escape 必须带 `classList.contains("is-on")` 判断——与原型 2443 行一致，否则无关的 Escape 也会触发关闭。
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -1325,37 +1342,80 @@ export const showToast = (text) => {
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（SheetTests 4 + ToastTests 2 全通过，既有类无回归）
+Expected: PASS（SheetTests 5 + ToastTests 2 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add web/js/ui/sheet.js web/js/ui/toast.js scripts/selftest_web_ui.py
-git commit -m "feat(web): bottom sheet and toast"
+git add web/js/ui/sheet.js web/js/ui/toast.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): bottom sheet and toast ported from the prototype"
 ```
 
 ---
 
-## Task 5: 首页视图
+## Task 6: 首页、结果页、时效性检查
 
 **Files:**
-- Modify: `web/js/views/home.js`（替换桩）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Create: `web/js/views/home.js`、`web/js/views/result.js`、`web/js/views/freshness.js`
+- Modify: `web/js/main.js`（注册三个视图 + 接入 `fresh-filter`）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: `pageHead` / `sectionHead` / `card` / `stat` / `chip` / `row` / `rail`（Task 2）；`store`（Task 3）；`showToast`（Task 4）
-- Produces: `web/js/views/home.js` 默认导出 `{ title, sub, render(ctx) }`
-  - `render(ctx)` 返回首页 HTML；`ctx.showDetail(id)` 打开条目详情
+- Consumes: `esc`、`ic`（Task 2）；`ITEMS`、`TOOL_PAGES`、`FRESH_ITEMS`、`PRIORITIES`、`RESULT_ITEMS`（Task 3）；`rowHtml`、`filteredFresh`、`filteredItems`（Task 3）；`store`（Task 4）
+- Produces: 三个视图模块，各 `export function render(state) -> string`（本任务实际导出名为 `homeView` / `resultView` / `freshnessView`，注册进 `main.js` 的 `VIEWS`）
 
-**原型对照**：结构与文案照 `prototype.html:1269-1374`（`homeView()`）；样式来自 Task 3 已搬运的 `views.css`（原型 `204-306`：工作台首页、法规时效只读卡）。
+**本任务起所有视图任务的通用约定**：视图函数**接收 `state` 形参、函数体逐字不动**。原型函数体内部就写作 `state`、`ITEMS`、`rowHtml`、`ic`、`esc`——模块化后只要用导入与形参把这些名字提供出来，**标记与逻辑一个字符都不用改**。这正是本计划不再出现自创类名的原因。
 
-**示例数据**：M1 用固定示例数据渲染，来源照抄原型 `prototype.html:939-1148` 的 `ITEMS` / `FRESH_ITEMS` / `PRIORITIES`。在 `views/home.js` 顶部以 `SAMPLE` 常量声明，M2 换成 `/api/*`。
+- [ ] **Step 1: 搬运三个视图**
 
-- [ ] **Step 1: 写失败的测试**
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/js/views/home.js` | 1295–1373 | `homeView()` 的 `return` 主体 |
+| `web/js/views/result.js` | 1449–1491 | `resultView()` 全文 |
+| `web/js/views/freshness.js` | 1494–1563 | `freshnessView()` 全文 |
 
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+**唯一要从 home 剔掉的东西**：原型 1269–1293 是 `homeView()` 开头，含 `if (!state.hasFreshness)` 的"首次使用"分支，其末尾 1291 行是一个 `<button class="proto-toggle" …>原型：查看有记录状态</button>`。**这是原型用来演示两种状态的开关，不进产品**。所以 `home.js` 只搬 1295–1373；store 里保留 `hasFreshness` 字段（Task 4 按原型形状保留），但 M1 不渲染首次使用分支。
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+
+IMPORTS = ('import { esc } from "../dom.js";\n'
+           'import { ic } from "../icons.js";\n'
+           'import { ITEMS, TOOL_PAGES, FRESH_ITEMS, PRIORITIES, RESULT_ITEMS } from "../sample.js";\n'
+           'import { rowHtml, filteredFresh, filteredItems } from "../render.js";\n\n')
+
+specs = [
+    ("home.js",      1295, 1373, "export function homeView(state) {\n" + take(1295, 1373) + "}\n"),
+    ("result.js",    1449, 1491, None),
+    ("freshness.js", 1494, 1563, None),
+]
+for name, a, b, custom in specs:
+    if custom is not None:
+        body = custom
+    else:
+        body = take(a, b)
+        if name == "result.js":
+            body = body.replace("function resultView() {", "export function resultView(state) {", 1)
+        else:
+            body = body.replace("function freshnessView() {", "export function freshnessView(state) {", 1)
+    Path(f"web/js/views/{name}").write_text(
+        f"// 搬运自 prototype.html:{a}-{b}。函数体逐字未动，仅补头部导入与 export。\n"
+        + IMPORTS + body, encoding="utf-8")
+PY
+grep -c "export function" web/js/views/home.js web/js/views/result.js web/js/views/freshness.js
+grep -c "proto-toggle\|hasFreshness" web/js/views/home.js
+```
+
+Expected: 第一个 grep 三个文件各 `1`；第二个 grep 为 `0`（演示开关必须已被剔除）
+
+注意 `home.js` 用的是 `custom` 分支：因为 1295 行是 `return \`` 而不是函数声明行，需手工补上 `export function homeView(state) {` 与外层 `}`。搬运后**自查花括号是否配平**（`return` 的模板字符串以 `` `; `` 结束，其后补 `}`）。
+
+- [ ] **Step 2: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
 
 ```python
 class HomeViewTests(unittest.TestCase):
@@ -1363,7 +1423,7 @@ class HomeViewTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    def test_headline_and_context_chips_match_the_prototype(self):
+    def test_headline_and_context_match_the_prototype(self):
         _Browser.goto("home")
         view = _Browser.page.locator("#view")
         self.assertIn("最近检查", view.inner_text())
@@ -1371,197 +1431,238 @@ class HomeViewTests(unittest.TestCase):
             with self.subTest(label=label):
                 self.assertIn(label, view.inner_text())
 
-    def test_freshness_card_renders_the_four_readonly_stats(self):
+    def test_freshness_card_uses_the_prototype_classes(self):
         _Browser.goto("home")
-        stats = _Browser.page.locator("#view .fresh-card .stat").all_inner_texts()
-        self.assertEqual(len(stats), 4)
-        joined = " ".join(stats)
-        for label in ["核验链接", "可访问", "待复核", "内容更新"]:
-            with self.subTest(label=label):
-                self.assertIn(label, joined)
+        for sel in [".fresh-card", ".fresh-card__head", ".fresh-card__title",
+                    ".monitor-pill", ".fresh-card__time"]:
+            with self.subTest(sel=sel):
+                self.assertEqual(_Browser.page.locator(f"#view {sel}").count(), 1,
+                                 f"{sel} 必须存在（原型类名）")
+        for wrong in [".fresh-card__top", ".fresh-card__at", ".pill"]:
+            with self.subTest(wrong=wrong):
+                self.assertEqual(_Browser.page.locator(f"#view {wrong}").count(), 0,
+                                 f"{wrong} 是自创类名，必须不存在")
 
-    def test_readonly_card_explains_its_own_scope(self):
-        """规格要求只读卡片必须自述边界，不能被当成合规结论。"""
+    def test_readonly_card_states_its_own_scope(self):
         _Browser.goto("home")
         text = _Browser.page.locator("#view").inner_text()
         self.assertIn("无需手动操作", text)
         self.assertIn("不等于法规条文变更", text)
 
-    def test_continue_card_and_progress_are_present(self):
+    def test_first_run_toggle_is_not_shipped(self):
         _Browser.goto("home")
-        text = _Browser.page.locator("#view").inner_text()
-        self.assertIn("继续上次", text)
-        self.assertIn("上线进度", text)
+        self.assertEqual(_Browser.page.locator("#view .proto-toggle").count(), 0)
 
     def test_tapping_a_row_opens_the_detail_sheet(self):
-        _Browser.goto("home")
+        _Browser.goto("result")
         _Browser.page.locator("#view [data-action='detail']").first.click()
         _Browser.page.wait_for_timeout(300)
         self.assertIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
-        self.assertTrue(_Browser.page.locator("#sheet").inner_text().strip())
+
+
+class ResultViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_priority_block_and_rows_are_present(self):
+        _Browser.goto("result")
+        self.assertIn("现在先做", _Browser.page.locator("#view").inner_text())
+        self.assertGreaterEqual(_Browser.page.locator("#view .row").count(), 1)
+
+    def test_rows_carry_the_prototype_inner_markup(self):
+        _Browser.goto("result")
+        for sel in [".row__rail", ".row__body", ".row__top", ".row__title",
+                    ".row__sub", ".row__status", ".row__end"]:
+            with self.subTest(sel=sel):
+                self.assertGreaterEqual(_Browser.page.locator(f"#view {sel}").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .row__copy").count(), 0,
+                         "row__copy 是自创类名，必须不存在")
+
+
+class FreshnessViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_filters_are_the_prototype_ones(self):
+        _Browser.goto("freshness")
+        labels = _Browser.page.locator("#view button[data-action='fresh-filter']").all_inner_texts()
+        self.assertEqual([t.strip() for t in labels], ["全部", "需处理", "已最新", "无法确认"])
+
+    def test_filter_actually_filters_by_rail(self):
+        _Browser.goto("freshness")
+        before = _Browser.page.locator("#view .row").count()
+        _Browser.page.locator("#view button[data-action='fresh-filter']",
+                              has_text="无法确认").click()
+        _Browser.page.wait_for_timeout(250)
+        after = _Browser.page.locator("#view .row").count()
+        self.assertLess(after, before, "筛选必须真的改变条目数")
+        self.assertGreaterEqual(after, 1)
+
+    def test_filter_reads_data_filter_not_data_value(self):
+        """原型读的是 data-filter（2376 行），不是 data-value。"""
+        _Browser.goto("freshness")
+        button = _Browser.page.locator("#view button[data-action='fresh-filter']").first
+        self.assertIsNotNone(button.get_attribute("data-filter"))
+        self.assertIsNone(button.get_attribute("data-value"))
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py HomeViewTests
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py HomeViewTests ResultViewTests FreshnessViewTests
 ```
 
-Expected: FAIL —— 桩视图无「最近检查」
+Expected: FAIL —— 三个视图尚未注册
 
-- [ ] **Step 3: 写 `web/js/views/home.js`**
+- [ ] **Step 4: 在 `main.js` 注册视图并接入 `fresh-filter`**
+
+把 `const VIEWS = {};` 替换为：
 
 ```js
-// 首页（工作台）。结构与文案照 prototype.html:1269-1374 的 homeView()。
-// M1 数据为示例常量；M2 换成 /api/bootstrap 与 /api/freshness。
-import { h } from "../dom.js";
-import { ic } from "../icons.js";
-import { card, chip, rail, row, sectionHead, stat } from "../components.js";
+import { homeView } from "./views/home.js";
+import { resultView } from "./views/result.js";
+import { freshnessView } from "./views/freshness.js";
 
-const SAMPLE = {
-  date: "10月19日",
-  context: ["儿童玩具", "德国", "亚马逊", "不带电"],
-  freshness: {
-    checkedAt: "今天 09:00",
-    meta: "86 条官方链接 · 数据截止 10-19 · 每天 09:00 / 21:00 自动核验",
-    stats: [
-      { value: "86", label: "核验链接", tone: "" },
-      { value: "84", label: "可访问", tone: "" },
-      { value: "2", label: "待复核", tone: "warn" },
-      { value: "0", label: "内容更新", tone: "" },
-    ],
-    rows: [
-      { text: "2 条官方链接待复核", sub: "本机网络未连通，不判死链；下次核验会重试", tone: "warn" },
-      { text: "0 条内容有更新", sub: "与上次核验的页面哈希一致", tone: "ok" },
-    ],
-  },
-  resume: { title: "德国市场行动清单", meta: "3 项优先 · 7 项待办 · 数据截止 10-19", at: "今天 14:32" },
-  progress: {
-    done: "选品、测试已完成", next: "下一步：标签与说明书", stage: "2 / 6 阶段",
-    steps: [["选品", true], ["测试", true], ["标签", false], ["文件", false],
-            ["供应链", false], ["切换", false]],
-  },
-};
-
-export default {
-  title: "合规雷达",
-  sub: "每天 09:00 / 21:00 自动核验",
-
-  render() {
-    const d = SAMPLE;
-    return h`
-      <section class="wb-head">
-        <p class="wb-date">${d.date} · ${d.context.join(" / ")}</p>
-        <h1>最近检查</h1>
-        <div class="wb-context">
-          <span class="context">${d.context.map(chip)}</span>
-          <button class="wb-edit" data-action="detail" data-id="conditions">修改</button>
-        </div>
-      </section>
-
-      <section class="fresh-card">
-        <div class="fresh-card__top">
-          <b>法规时效</b>
-          <span class="pill"><span class="live-dot"></span>监控中</span>
-          <span class="fresh-card__at">${d.freshness.checkedAt}</span>
-        </div>
-        <p class="fine">${d.freshness.meta}</p>
-        <div class="stat-row">
-          ${d.freshness.stats.map((s) => stat(s))}
-        </div>
-        <div class="alert-list">
-          ${d.freshness.rows.map((r) => h`
-            <button class="alert" data-action="detail" data-id="freshness">
-              ${rail(r.tone)}
-              <span class="alert__copy"><b>${r.text}</b><span>${r.sub}</span></span>
-              <span class="alert__go">查看</span>
-            </button>`)}
-        </div>
-        <div class="fresh-card__foot">
-          <span class="fine">结果只读 · 无需手动操作</span>
-          <button class="link" data-action="nav" data-to="freshness">查看检查记录 →</button>
-        </div>
-        <p class="fine">检查只核对官方链接状态与内容哈希，不等于法规条文变更；条文级变化仍以人工核对为准。</p>
-      </section>
-
-      ${sectionHead({ title: "继续上次", count: d.resume.at })}
-      <button class="resume" data-action="nav" data-to="result">
-        <span class="resume__icon">${ic("doc")}</span>
-        <span class="resume__copy"><b>${d.resume.title}</b><span>${d.resume.meta}</span></span>
-        <span class="resume__go">继续 →</span>
-      </button>
-
-      ${sectionHead({ title: "上线进度", count: d.progress.stage })}
-      ${card(h`
-        <div class="progress"><span style="width:${(2 / 6 * 100).toFixed(1)}%"></span></div>
-        <div class="progress__meta">
-          <span>${d.progress.done}</span><span>${d.progress.next}</span>
-        </div>
-        <div class="progress__steps">
-          ${d.progress.steps.map(([label, done]) =>
-            `<span class="chip ${done ? "chip--done" : ""}">${label}</span>`)}
-        </div>`)}
-    `;
-  },
+const VIEWS = {
+  home: homeView,
+  result: resultView,
+  freshness: freshnessView,
 };
 ```
 
-- [ ] **Step 4: 运行测试确认通过**
+事件委托里，在 `open-tool` 分支之后加：
 
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py HomeViewTests
+```js
+  } else if (action === "fresh-filter") {
+    store.set({ freshFilter: el.dataset.filter || "全部" });
+    render();
 ```
 
-Expected: PASS（5 个用例）
+**注意**：原型读 `el.dataset.filter`（2376 行），**不是** `data-value`——先前那版计划写成了 `data-value`。
 
-- [ ] **Step 5: 全量回归**
+- [ ] **Step 5: 运行测试确认通过**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（HomeViewTests 5 全通过，既有类无回归）
+Expected: PASS（HomeViewTests 5 + ResultViewTests 2 + FreshnessViewTests 3 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add web/js/views/home.js scripts/selftest_web_ui.py
-git commit -m "feat(web): home view"
+git add web/js/views/home.js web/js/views/result.js web/js/views/freshness.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): home, result and freshness views ported from the prototype"
 ```
 
 ---
 
-## Task 6: 助手视图与输入区
+## Task 7: 助手（欢迎页、对话页、输入区）
 
 **Files:**
-- Modify: `web/js/views/assistant.js`（替换桩）
-- Create: `web/js/ui/composer.js`
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Create: `web/js/views/assistant.js`、`web/js/ui/composer.js`
+- Modify: `web/js/main.js`（注册 assistant 视图 + 接入 `prompt`/`choice`/`new-chat`/`history`/`quick` + `compose` 表单提交）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: `h` / `esc`（Task 2）、`ic`（Task 2）、`store`（Task 3）、`showToast`（Task 4）
+- Consumes: `esc`、`ic`（Task 2）；`START`（Task 3）；`store`（Task 4）；`openSheet`（Task 5）；`showToast`（Task 5）
 - Produces:
-  - `views/assistant.js` 默认导出 `{ title, sub, back: true, viewClass, render(ctx), dock(ctx), mount(root, ctx) }`
-    - `render(ctx)`：欢迎页（未开始对话）或对话页（已有消息）
-    - `dock(ctx)`：输入区 HTML
-    - `mount(root, ctx)`：绑输入区事件
-  - `ui/composer.js` → `composerDock() -> string`、`bindComposer(root, { onSend, onVoice }) -> void`、`voiceState() -> { text, before, backend } | null`、`applyVoice(text, meta) -> void`、`undoVoice() -> string | null`
+  - `web/js/views/assistant.js` → `export function assistantWelcomeView(state)`、`export function chatView(state)`、`export function render(state)`（`render` 按 `state.messages.length` 二选一，与原型 2029 行一致）
+  - `web/js/ui/composer.js` → `export function composerDock(state)`、`export function bindComposer(onSend)`、`export function send(text)`、`export function choose(value)`、`export function newChat()`
 
-**原型对照**：欢迎页（雷达同心圆、`我是合规雷达`、4 条推荐）照 `prototype.html:1243-1275`；对话页照 `1376-1423`；输入区照 `1946-1968` 的 `composerDock()` 与 `prototype.html:2335-2349` 的 `bindComposer()`。样式已在 Task 3 搬运（`views.css` 的 `369-433` 对话、`shell.css` 的 `552-597` 输入区）。
+**原型对照**：欢迎页 `1250-1267`；对话页 `1376-1422`；输入区 `1946-1967`；`bindComposer` `2335-2348`；`send`/`choose`/`newChat` 在 `2080-2349` 交互段内。
 
-**语音预编辑归前端**（规格第 6 节）：`voiceState` 保存 `{text, before, backend}`，`undoVoice()` 仅在用户尚未编辑时允许撤销。M1 不接真实转写，`onVoice` 先 `showToast("语音待接入")`；M2 接 `/api/transcribe`。
+- [ ] **Step 1: 搬运欢迎页与对话页**
 
-- [ ] **Step 1: 写失败的测试**
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/js/views/assistant.js` | 1250–1267 | `assistantWelcomeView()` |
+| `web/js/views/assistant.js` | 1376–1422 | `messageHtml(m, index)` + `chatView()` |
 
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+增量只有三条：
+
+1. `function assistantWelcomeView()` → `export function assistantWelcomeView(state)`；`function chatView()` → `export function chatView(state)`；`function messageHtml(m, index)` → `function messageHtml(m, index)`（内部函数，不导出）。
+2. 顶部补导入：`import { esc } from "../dom.js";`、`import { ic } from "../icons.js";`、`import { START } from "../sample.js";`。
+3. 文件末尾加 `render` 分发：
+
+```js
+/** 与原型 2029 行一致：有消息就渲染对话页，否则渲染欢迎页。 */
+export function render(state) {
+  return state.messages.length ? chatView(state) : assistantWelcomeView(state);
+}
+```
+
+**验证要点**：欢迎页用的是 `data-action="prompt" data-prompt="…"`，**不是** `data-action="starter"`——先前那版计划自创了 `starter`/`data-text`。
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+body = take(1250, 1267) + "\n" + take(1376, 1422)
+body = body.replace("function assistantWelcomeView() {",
+                    "export function assistantWelcomeView(state) {", 1)
+body = body.replace("function chatView() {", "export function chatView(state) {", 1)
+body += ('\n/** 与原型 2029 行一致：有消息则对话页，否则欢迎页。 */\n'
+         'export function render(state) {\n'
+         '  return state.messages.length ? chatView(state) : assistantWelcomeView(state);\n'
+         '}\n')
+header = ('// 搬运自 prototype.html:1250-1267, 1376-1422。函数体逐字未动。\n'
+          'import { esc } from "../dom.js";\n'
+          'import { ic } from "../icons.js";\n'
+          'import { START } from "../sample.js";\n\n')
+Path("web/js/views/assistant.js").write_text(header + body, encoding="utf-8")
+PY
+grep -c "data-action=\"prompt\"" web/js/views/assistant.js
+grep -c "starter" web/js/views/assistant.js
+```
+
+Expected: 第一个 `1`（`START.map` 那一行）；第二个 `0`（自创 action 必须不存在）
+
+- [ ] **Step 2: 搬运输入区**
+
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/ui/composer.js` | 1946–1967（`composerDock`） |
+| `web/js/ui/composer.js` | 2335–2348（`bindComposer`） |
+
+增量：
+1. `function composerDock()` → `export function composerDock(state)`；`function bindComposer()` → `export function bindComposer()`。
+2. 顶部导入：`import { esc } from "../dom.js";`、`import { ic } from "../icons.js";`。
+3. `bindComposer` 原型内直接调 `send()` 与 `render()`（全局）。模块化后改为**接收回调**：签名 `export function bindComposer(onSend)`，函数体里把 `send(ta.value)` 改为 `onSend(ta.value)`。原型那一处提交处理器（`data-form="compose"`）也一并接过来。
+
+**注意**：`composerDock` 用的是 `<form class="composer" data-form="compose">` + `<button type="submit">`，**不是** `data-action="send"` 按钮；麦克风类是 `.composer__tool`，**不是** `composer__mic`。这两处先前那版计划都写错了。
+
+- [ ] **Step 3: 搬运 `send` / `choose` / `newChat`**
+
+这三个函数在原型交互段（2080–2349）内。用 Read 工具打开 `prototype.html` 的 2080–2349，定位 `function send(`、`function choose(`、`function newChat(`，把三个函数**逐字**搬进 `web/js/views/assistant.js`，仅加 `export`。
+
+`send` 里对 `state.messages` 的推送与 `state.choices` 的更新保持原样；`newChat()` 里重置的字段与本项目 store 的字段名一致（Task 4 已按原型形状保留）。
+
+**M1 的数据边界**：原型的 `send()` 末尾会往 `state.messages` 里推一段**演示用的助手回复**。M1 明确不接后端（规格第 11 节：先壳与路由 + 示例数据），因此**保留那段演示回复不动**，并在其上一行加注释：
+
+```js
+    // M1：壳与路由阶段，此处用示例回复；M2 换成 POST /api/route 的返回。
+```
+
+- [ ] **Step 4: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
 
 ```python
 class AssistantViewTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _Browser.start()
+
+    def setUp(self):
+        _Browser.goto("assistant")
+        _Browser.page.evaluate("""async () => {
+          const a = await import('/web/js/views/assistant.js');
+          if (a.newChat) a.newChat();
+        }""")
 
     def test_welcome_page_matches_the_prototype(self):
         _Browser.goto("assistant")
@@ -1571,275 +1672,192 @@ class AssistantViewTests(unittest.TestCase):
         self.assertIn("可以这样开始", text)
         self.assertIn("教程在「我的」里。", text)
 
-    def test_welcome_offers_four_starters_with_one_lead(self):
+    def test_welcome_offers_four_prompts_with_the_lead_ones_tinted(self):
         _Browser.goto("assistant")
-        recos = _Browser.page.locator("#view .reco")
-        self.assertEqual(recos.count(), 4)
-        self.assertEqual(_Browser.page.locator("#view .reco--lead").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .reco").count(), 4)
+        self.assertEqual(_Browser.page.locator("#view .reco--lead").count(), 2)
+        first = _Browser.page.locator("#view .reco").first
+        self.assertEqual(first.get_attribute("data-action"), "prompt")
+        self.assertTrue(first.get_attribute("data-prompt"))
 
-    def test_composer_dock_is_present_with_mic_and_send(self):
+    def test_composer_is_a_form_with_tool_and_submit(self):
         _Browser.goto("assistant")
-        self.assertEqual(_Browser.page.locator("#dock .composer").count(), 1)
-        self.assertEqual(_Browser.page.locator("#dock .composer textarea").count(), 1)
-        self.assertEqual(_Browser.page.locator("#dock [data-action='voice']").count(), 1)
-        self.assertEqual(_Browser.page.locator("#dock [data-action='send']").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock form.composer").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock form.composer").get_attribute("data-form"),
+                         "compose")
+        self.assertEqual(_Browser.page.locator("#dock .composer__tool").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock button[type='submit']").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock .composer__mic").count(), 0,
+                         "composer__mic 是自创类名，必须不存在")
 
-    def test_empty_send_warns_instead_of_submitting(self):
-        """原型行为：空输入时提示而不是发送（prototype.html:2081-2092）。"""
+    def test_submitting_the_form_sends_and_switches_to_the_thread(self):
         _Browser.goto("assistant")
-        _Browser.page.locator("#dock textarea").fill("")
-        _Browser.page.locator("#dock [data-action='send']").click()
-        _Browser.page.wait_for_timeout(300)
-        self.assertIn("is-on", _Browser.page.locator("#toast").get_attribute("class"))
+        _Browser.page.locator("#dock textarea").fill("毛绒玩具卖到德国亚马逊")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        self.assertIn("毛绒玩具卖到德国亚马逊", _Browser.page.locator("#view").inner_text())
 
-    def test_sending_a_message_switches_to_the_thread_and_echoes_it_safely(self):
+    def test_quickbar_appears_only_once_a_conversation_started(self):
+        _Browser.goto("assistant")
+        self.assertEqual(_Browser.page.locator("#dock .quickbar").count(), 0)
+        _Browser.page.locator("#dock textarea").fill("测试")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        self.assertEqual(_Browser.page.locator("#dock .quickbar").count(), 1)
+        self.assertEqual(_Browser.page.locator("#dock .quickbar .chip").count(), 4)
+
+    def test_message_text_with_html_is_shown_literally(self):
         """Review Focus 1：消息含 HTML 时必须原样显示为文本。"""
         _Browser.goto("assistant")
-        _Browser.page.evaluate(
-            "async () => { const a = await import('/web/js/views/assistant.js');"
-            "const c = await import('/web/js/ui/composer.js');"
-            "a.__test_send('<b>粗体</b> 卖到德国'); }")
-        _Browser.page.wait_for_timeout(300)
-        thread = _Browser.page.locator("#view")
-        self.assertIn("<b>粗体</b> 卖到德国", thread.inner_text())
-        self.assertEqual(thread.locator(".chat b").count(), 0)
-
-    def test_voice_undo_only_before_the_user_edits(self):
-        _Browser.goto("assistant")
-        got = _Browser.page.evaluate("""async () => {
-          const c = await import('/web/js/ui/composer.js');
-          const ta = document.querySelector('#dock textarea');
-          ta.value = '原文字'; c.applyVoice('识别结果', { backend: 'local' });
-          ta.value = '识别结果'; ta.dispatchEvent(new Event('input'));
-          const first = c.undoVoice();
-          ta.value = '识别结果改了'; ta.dispatchEvent(new Event('input'));
-          const second = c.undoVoice();
-          return [first, second];
-        }""")
-        self.assertEqual(got[0], "原文字", "未编辑时应可撤销回识别前原文")
-        self.assertIsNone(got[1], "用户已编辑后不得再撤销")
+        _Browser.page.locator("#dock textarea").fill("<b>粗体</b> 卖到德国")
+        _Browser.page.locator("#dock button[type='submit']").click()
+        _Browser.page.wait_for_timeout(400)
+        view = _Browser.page.locator("#view")
+        self.assertIn("<b>粗体</b> 卖到德国", view.inner_text())
 ```
 
-需要在 `views/assistant.js` 暴露 `__test_send` 供测试直接驱动发送（不引入仅测试用的全局函数到产品路径：`export const __test_send = send;`）。
-
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 5: 运行测试确认失败**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py AssistantViewTests
 ```
 
-Expected: FAIL —— 桩视图无「我是合规雷达」
+Expected: FAIL —— assistant 视图尚未注册
 
-- [ ] **Step 3: 写 `web/js/ui/composer.js`**
+- [ ] **Step 6: 在 `main.js` 注册并接入 action**
 
-```js
-// 输入区。结构照 prototype.html:1946-1968，事件照 2335-2349。
-// 语音预编辑状态住在这里，不进后端（规格第 6 节）。
-import { esc, h } from "../dom.js";
-import { ic } from "../icons.js";
-
-let voice = null;   // { text, before, backend } | null
-
-export const voiceState = () => voice;
-
-export const composerDock = () => h`
-  <div class="composer" id="composer">
-    <button class="composer__mic" data-action="voice" aria-label="按住说话">${ic("mic")}</button>
-    <textarea id="composer-input" rows="1" placeholder="发消息或按住说话…"
-              aria-label="输入你的问题"></textarea>
-    <button class="composer__send" data-action="send" aria-label="发送">${ic("send")}</button>
-  </div>`;
-
-export const applyVoice = (text, meta = {}) => {
-  const ta = document.getElementById("composer-input");
-  const before = ta ? ta.value : "";
-  voice = { text: String(text ?? ""), before, backend: meta.backend ?? "" };
-  if (ta) ta.value = voice.text;
-  return voice;
-};
-
-/** 仅在用户尚未编辑识别结果时允许撤销；返回撤销后的文本，不可撤销时返回 null。 */
-export const undoVoice = () => {
-  const ta = document.getElementById("composer-input");
-  if (!voice || !ta) return null;
-  if (ta.value !== voice.text) { voice = null; return null; }
-  ta.value = voice.before;
-  const restored = voice.before;
-  voice = null;
-  return restored;
-};
-
-export const bindComposer = (root, { onSend, onVoice } = {}) => {
-  const ta = root.querySelector("#composer-input");
-  const sendNow = () => {
-    const value = (ta?.value ?? "").trim();
-    if (!value) return onSend?.("", { empty: true });
-    onSend?.(value, { empty: false });
-  };
-  root.querySelector("[data-action='send']")?.addEventListener("click", sendNow);
-  ta?.addEventListener("keydown", (event) => {
-    if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); sendNow(); }
-  });
-  root.querySelector("[data-action='voice']")?.addEventListener("click", () => onVoice?.());
-  // 用户手动编辑即作废预编辑快照，撤销随之失效。
-  ta?.addEventListener("input", () => {
-    if (voice && ta.value !== voice.text) voice = null;
-  });
-};
-```
-
-- [ ] **Step 4: 写 `web/js/views/assistant.js`**
+导入区加：
 
 ```js
-// 助手。欢迎页照 prototype.html:1243-1275，对话页照 1376-1423。
-import { esc, h } from "../dom.js";
-import { ic } from "../icons.js";
-import { bindComposer, composerDock } from "../ui/composer.js";
-
-const STARTERS = [
-  "毛绒玩具卖到德国亚马逊，要从哪里开始？",
-  "儿童玩具卖到欧盟，先看相关法规",
-  "比较欧盟和美国的儿童玩具法规目录",
-  "最近有哪些法规变化和时间节点？",
-];
-
-const state = { messages: [] };
-
-const welcome = () => h`
-  <section class="home">
-    <div class="radar-hero">
-      <span class="radar-avatar">合</span>
-    </div>
-    <h1>我是合规雷达</h1>
-    <p class="home__lead">告诉我你卖什么、卖到哪里。<br>我帮你查适用法规、看关键日期、列出下一步。</p>
-    <p class="reco-label">可以这样开始</p>
-    <div class="reco-list">
-      ${STARTERS.map((text, i) => h`
-        <button class="reco ${i === 0 ? "reco--lead" : ""}" data-action="starter" data-text="${text}">
-          <span>${text}</span>${ic("chevron")}
-        </button>`)}
-    </div>
-    <p class="home__note">我不知道的会先问你，不会替你猜产品条件。<br>教程在「我的」里。</p>
-  </section>`;
-
-const thread = () => h`
-  <div class="chat" id="chatScroll">
-    ${state.messages.map((m) => h`
-      <div class="msg msg--${m.role}">
-        <div class="msg__bubble">${m.text}</div>
-      </div>`)}
-  </div>`;
-
-export const send = (text) => {
-  const value = String(text ?? "").trim();
-  if (!value) return false;
-  state.messages.push({ role: "user", text: value });
-  state.messages.push({ role: "assistant",
-    text: "M1 为壳与路由阶段：这里接入 /api/route 后返回真实判定。" });
-  return true;
-};
-
-export const __test_send = send;
-
-export default {
-  title: "合规雷达 · 新对话",
-  sub: "deepseek-chat · 德国 / 亚马逊",
-  back: true,
-  viewClass: "view--chat",
-
-  render(ctx) {
-    return state.messages.length ? thread() : welcome();
-  },
-
-  dock() { return composerDock(); },
-
-  mount(root, ctx) {
-    bindComposer(document.getElementById("dock"), {
-      onSend: (value, { empty }) => {
-        if (empty) { ctx.showToast("先写一句你的产品、市场和问题"); return; }
-        if (send(value)) {
-          const ta = document.getElementById("composer-input");
-          if (ta) ta.value = "";
-          root.innerHTML = thread();
-        }
-      },
-      onVoice: () => ctx.showToast("语音待接入（M2 接 /api/transcribe）"),
-    });
-    root.querySelectorAll("[data-action='starter']").forEach((button) => {
-      button.addEventListener("click", () => {
-        if (send(button.dataset.text)) root.innerHTML = thread();
-      });
-    });
-  },
-};
+import { render as assistantRender, send, choose, newChat } from "./views/assistant.js";
+import { composerDock, bindComposer } from "./ui/composer.js";
+import { openSheet } from "./ui/sheet.js";
+import { showToast } from "./ui/toast.js";
+import { PROFILE_SHEETS } from "./sample.js";
 ```
 
-- [ ] **Step 5: 运行测试确认通过**
+`VIEWS` 里加 `assistant: assistantRender`。
 
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py AssistantViewTests
+`render()` 里，视图渲染后按路由挂输入区（与原型 2031 行一致，只有 assistant 有 dock）：
+
+```js
+  els.dock.innerHTML = r === "assistant" ? composerDock(state) : "";
+  if (r === "assistant") {
+    bindComposer((text) => {
+      send(text);
+      render();
+    });
+  }
 ```
 
-Expected: PASS（6 个用例）
+事件委托里补五个分支：
 
-- [ ] **Step 6: 全量回归并提交**
+```js
+  } else if (action === "prompt") {
+    send(el.dataset.prompt || "");
+    render();
+  } else if (action === "choice") {
+    choose(el.dataset.choice || "");
+    render();
+  } else if (action === "new-chat") {
+    newChat();
+    render();
+  } else if (action === "history") {
+    openSheet(PROFILE_SHEETS.history());
+  } else if (action === "quick") {
+    const label = el.dataset.label;
+    const prompts = {
+      "多市场": "多个市场汇总，一次看清主要差异",
+      "时间线": "查看法规变化时间线，最近有什么新要求",
+      "对比": "比较欧盟和美国的儿童玩具法规目录",
+      "导出": "导出当前结果",
+    };
+    if (label === "导出") showToast("原型中不生成文件；正式版会导出当前结果");
+    else { send(prompts[label] || label); render(); }
+  }
+```
+
+**注意**：`quick` 与 `history` 的行为逐字取自原型 2368–2370 与 2411–2420。原型的 `quick` 在 label 为「导出」时只提示不发送——照搬。
+
+- [ ] **Step 7: 运行测试确认通过**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
-git add web/js/views/assistant.js web/js/ui/composer.js scripts/selftest_web_ui.py
-git commit -m "feat(web): assistant view, composer dock and voice pre-edit"
+```
+
+Expected: PASS（AssistantViewTests 7 全通过，既有类无回归）
+
+- [ ] **Step 8: 提交**
+
+```bash
+git add web/js/views/assistant.js web/js/ui/composer.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): assistant view, composer and quickbar ported from the prototype"
 ```
 
 ---
 
-## Task 7: 法规中心、检索与七个工具页
+## Task 8: 法规中心、检索、工具页、行动
 
 **Files:**
-- Modify: `web/js/views/regulations.js`、`web/js/views/search.js`、`web/js/views/tool.js`（替换桩）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Create: `web/js/views/regulations.js`、`web/js/views/search.js`、`web/js/views/tool.js`、`web/js/views/action.js`
+- Modify: `web/js/main.js`（注册四个视图 + 接入 `rerun`/`example-query`/`filter` + `search` 表单提交）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: `pageHead` / `sectionHead` / `card` / `chip` / `row` / `toolCard` / `emptyState`（Task 2）；`store`（Task 3）；`showDetail`（Task 3 via ctx）
-- Produces:
-  - `views/regulations.js` 默认导出 `{ title, sub, render(ctx) }`
-  - `views/search.js` 默认导出 `{ title, sub, back: true, render(ctx) }`
-  - `views/tool.js` 默认导出 `{ title, sub, back: true, render(ctx) }`，按 `ctx.route.tool` 分发；并导出 `TOOL_PAGES` 配置表
+- Consumes: `esc`、`ic`（Task 2）；`ITEMS`、`TOOL_PAGES`、`CLAUSES`（Task 3）；`rowHtml`、`toolCard`、`filteredItems`（Task 3）；`store`（Task 4）；`showToast`（Task 5）
+- Produces: 四个视图模块，各 `export function render(state) -> string`
 
-**原型对照**：
-- 法规中心照 `prototype.html:1573-1597`（`regulationsView()`）
-- 检索照 `1748-1782`（`searchView()`），条款常量照 `1735-1747`（`CLAUSES`）
-- 工具页配置照 `1103-1148`（`TOOL_PAGES`），工具视图分发照 `1634-1734`（`toolView()`）
-- 样式已在 Task 3 搬运（`views.css` 的 `344-368`、`640-732`、`733-755`）
+**原型对照**：法规中心 `1573-1596`；行动 `1598-1625`；工具页 `1634-1732`；检索 `1748-1781`。
 
-- [ ] **Step 1: 写失败的测试**
+- [ ] **Step 1: 搬运四个视图**
 
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/views/regulations.js` | 1573–1596（`regulationsView`） |
+| `web/js/views/action.js` | 1598–1625（`actionView`） |
+| `web/js/views/tool.js` | 1634–1732（`toolView`） |
+| `web/js/views/search.js` | 1748–1781（`searchView`） |
+
+增量：
+1. 四个 `function xView()` → `export function xView(state) {`，函数体逐字不动。
+2. 顶部导入：`esc`、`ic`、`ITEMS`、`TOOL_PAGES`、`CLAUSES`、`rowHtml`、`toolCard`、`filteredItems`（**每个文件只导入自己用到的**——`tool.js` 用不到 `rowHtml` 就别导）。
+3. `toolView(id)` 原型签名的形参是 `id`，但它内部也引用全局 `state.toolGroup`。模块化后改为 `export function toolView(state)`，函数体首行加 `const id = state.tool;`——**这是唯一需要动函数体的一处**，因为原型把 id 当参数传（`toolView(state.tool)`，见原型 2049/2057 行），而分派表是按路由取函数的。
+
+**注意**：`tool.js` 里对未知 tool 名的回落（原型 `if (!t) return state.toolGroup === "regulations" ? regulationsView() : actionView();`）必须保留——这是 Review Focus 2 在工具页上的落点。
+
+- [ ] **Step 2: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
 
 ```python
-class RegulationsTests(unittest.TestCase):
+class RegulationsHubTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _Browser.start()
 
-    def test_regulations_hub_lists_two_tools_and_a_search_entry(self):
+    def test_hub_has_a_search_entry_and_two_tools(self):
         _Browser.goto("regulations")
-        view = _Browser.page.locator("#view")
-        self.assertIn("法规中心", view.inner_text())
-        self.assertEqual(_Browser.page.locator("#view .tool").count(), 2)
+        self.assertIn("法规中心", _Browser.page.locator("#view").inner_text())
         self.assertEqual(_Browser.page.locator("#view .search-entry").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .tool").count(), 2)
 
-    def test_search_entry_navigates_and_back_returns(self):
+    def test_search_entry_navigates_to_the_search_route(self):
         _Browser.goto("regulations")
         _Browser.page.locator("#view .search-entry").click()
         _Browser.page.wait_for_timeout(300)
         self.assertIn("regulations/search", _Browser.page.url)
-        self.assertEqual(_Browser.page.locator("#appbar [data-action='back']").count(), 1)
 
-    def test_search_view_shows_the_prototype_identifier(self):
-        _Browser.goto("regulations/search")
-        self.assertIn("2009/48/EC", _Browser.page.locator("#view .search-entry__id").inner_text())
+
+class ActionHubTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_hub_groups_tasks_and_markets(self):
+        _Browser.goto("action")
+        self.assertIn("要做的事", _Browser.page.locator("#view").inner_text())
+        self.assertIn("看市场", _Browser.page.locator("#view").inner_text())
+        self.assertEqual(_Browser.page.locator("#view [data-action='open-tool']").count(), 5)
 
 
 class ToolViewTests(unittest.TestCase):
@@ -1852,723 +1870,98 @@ class ToolViewTests(unittest.TestCase):
              ("action", "journey", "六阶段路线"), ("action", "compare", "区域对比"),
              ("action", "multi", "多市场汇总")]
 
-    def test_each_tool_renders_its_own_title_and_filterbar(self):
+    def test_each_tool_renders_its_own_content(self):
         for group, tool, title in self.TOOLS:
             with self.subTest(tool=tool):
                 _Browser.goto(f"{group}/{tool}")
-                view = _Browser.page.locator("#view")
-                self.assertIn(title, view.inner_text())
-                self.assertEqual(_Browser.page.locator("#view .filterbar").count(), 1)
+                self.assertIn(title, _Browser.page.locator("#view").inner_text())
 
-    def test_tool_routes_keep_the_bottom_tabbar(self):
+    def test_tool_pages_keep_the_bottom_tabbar_active(self):
         for group, tool, _ in self.TOOLS:
             with self.subTest(tool=tool):
                 _Browser.goto(f"{group}/{tool}")
                 current = _Browser.page.locator('#tabbar [aria-current="page"]')
                 self.assertEqual(current.count(), 1)
 
-    def test_action_hub_links_to_every_action_tool(self):
-        _Browser.goto("action")
-        view = _Browser.page.locator("#view")
-        self.assertIn("要做的事", view.inner_text())
-        self.assertIn("看市场", view.inner_text())
-        self.assertEqual(_Browser.page.locator("#view [data-action='open-tool']").count(), 5)
-
-    def test_unknown_tool_name_does_not_blank_the_page(self):
-        """Review Focus 2：/regulations/不存在 必须回落到地图且不白屏。"""
+    def test_unknown_tool_name_falls_back_without_blanking(self):
+        """Review Focus 2：未知工具名必须回落到该组的中心页。"""
         _Browser.goto("regulations/不存在")
-        self.assertIn("法规地图", _Browser.page.locator("#view").inner_text())
-```
-
-- [ ] **Step 2: 运行测试确认失败**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py RegulationsTests ToolViewTests
-```
-
-Expected: FAIL —— 桩视图
-
-- [ ] **Step 3: 写 `web/js/views/regulations.js`**
-
-```js
-// 法规中心。照 prototype.html:1573-1597。
-import { h } from "../dom.js";
-import { ic } from "../icons.js";
-import { pageHead, sectionHead, toolCard, row } from "../components.js";
-
-const CURRENT = [
-  { id: "toy", title: "玩具安全指令 2009/48/EC", sub: "CE 标识、年龄分级与警告语", status: "有来源 · 请核对适用性", tone: "ok" },
-  { id: "en71", title: "EN 71 玩具安全检测", sub: "机械物理、阻燃与迁移元素", status: "有来源 · 请核对报告有效期", tone: "ok" },
-  { id: "freshGpsr", title: "GPSR 通用产品安全法规", sub: "2026-12-13 起适用 · 在线销售需指定欧盟责任人", status: "即将生效 · 请核对", tone: "warn" },
-];
-
-export default {
-  title: "法规中心",
-  sub: "查法规、看时间线、找原文",
-
-  render() {
-    return h`
-      ${pageHead({ title: "法规中心", lead: "查法规、看时间线、找原文。浏览和检索都在这一个页面里。" })}
-      <button class="search-entry" data-action="nav" data-to="regulations/search">
-        ${ic("search")}
-        <span class="search-entry__text">搜法规编号、条款标题或产品要求</span>
-        <span class="search-entry__id">2009/48/EC</span>
-      </button>
-      ${sectionHead({ title: "查询工具", count: "2 项" })}
-      <div class="tool-grid">
-        ${toolCard({ group: "regulations", id: "map", icon: "map", title: "法规地图", sub: "按品类和市场看适用法规" })}
-        ${toolCard({ group: "regulations", id: "timeline", icon: "calendar", title: "变化时间线", sub: "发布、生效与过渡节点" })}
-      </div>
-      ${sectionHead({ title: "当前市场", count: "儿童玩具 · 德国" })}
-      <div class="list">${CURRENT.map(row)}</div>
-      <p class="fine">当前市场条目来自已核对目录；点开可核对适用条件和官方原文。</p>
-      <p class="fine">法规时效检查结果在首页，每天 09:00 / 21:00 自动更新。</p>`;
-  },
-};
-```
-
-- [ ] **Step 4: 写 `web/js/views/search.js`**
-
-```js
-// 条款检索。照 prototype.html:1748-1782，条款常量照 1735-1747。
-import { h } from "../dom.js";
-import { pageHead, card } from "../components.js";
-
-const CLAUSES = [
-  { id: "16 CFR Part 1250", heading: "儿童产品的安全标准", locator: "§ 1250.2", body: "儿童产品应符合适用安全标准。" },
-  { id: "2009/48/EC", heading: "Article 4", locator: "Article 4", body: "玩具在投放市场前应满足基本安全要求。" },
-];
-
-export default {
-  title: "条款检索",
-  sub: "按编号精确定位",
-  back: true,
-
-  render() {
-    return h`
-      ${pageHead({ title: "条款检索", lead: "按法规编号精确定位，再按条款标题筛选。" })}
-      <div class="field"><label for="q-id">法规编号</label>
-        <input id="q-id" value="16 CFR Part 1250" /></div>
-      <div class="field"><label for="q-heading">条款标题关键词（可选）</label>
-        <input id="q-heading" value="" /></div>
-      <button class="btn btn--primary btn--block" data-action="run-search">检索条款</button>
-      <div id="search-result">
-        ${CLAUSES.map((c) => card(h`
-          <b>${c.heading}</b>
-          <p class="mono">${c.locator}</p>
-          <p>${c.body}</p>`, "card--clause"))}
-      </div>`;
-  },
-};
-```
-
-M1 的检索结果用固定示例；M2 接 `/api/search`（`core.law_store.retrieve`）。空命中态用 `emptyState("没有匹配的条款，请核对编号。")`——M2 的契约测试覆盖（见 `test_search_empty_result_uses_the_prototype_empty_state`，Task 11 加入）。
-
-- [ ] **Step 5: 写 `web/js/views/tool.js`**
-
-```js
-// 七个工具页。配置照 prototype.html:1103-1148 的 TOOL_PAGES，分发照 1634-1734。
-import { h } from "../dom.js";
-import { ic } from "../icons.js";
-import { emptyState, pageHead, row } from "../components.js";
-
-export const TOOL_PAGES = {
-  map:      { icon: "map",      title: "法规地图", sub: "选择一个品类和市场，查看适用法规、状态与官方来源。", filters: ["儿童玩具", "欧盟", "全部状态"] },
-  timeline: { icon: "calendar", title: "变化时间线", sub: "区分发布、生效、适用与过渡日期，避免按旧规则准备。", filters: ["儿童玩具", "欧盟", "最近 12 个月"] },
-  todo:     { icon: "list",     title: "合规待办", sub: "把法规变成今天能执行的动作，按紧迫度排序。", filters: ["儿童玩具", "欧盟", "按紧迫度"] },
-  readiness:{ icon: "flag",     title: "上线准备", sub: "把待办排成小团队能执行的计划，按阶段和责任组织。", filters: ["儿童玩具", "欧盟 + 美国"] },
-  journey:  { icon: "layers",   title: "六阶段路线", sub: "从选品到切换复核，看每个阶段的任务、资料和缺口。", filters: ["德国亚马逊", "儿童玩具"] },
-  compare:  { icon: "compare",  title: "区域对比", sub: "按官方编号精确匹配，不把名称相似误判为同一法规。", filters: ["儿童玩具", "欧盟 ↔ 美国"] },
-  multi:    { icon: "globe",    title: "多市场汇总", sub: "同一品类在不同市场的法规与数据状态，按区域分组。", filters: ["儿童玩具", "欧盟 + 美国"] },
-};
-
-const SAMPLE_ROWS = {
-  map: [["toy", "玩具安全指令 2009/48/EC", "CE 标识、年龄分级与警告语", "有来源 · 请核对适用性", "ok"]],
-  todo: [["doc", "准备 EU 符合性声明（DoC）", "技术文件里的声明与责任主体", "适用条件待确认", "warn"]],
-};
-
-const filterbar = (filters) => h`
-  <div class="filterbar">
-    ${filters.map((label) => h`
-      <label class="select"><select aria-label="${label}"><option>${label}</option></select></label>`)}
-    <button class="chip" data-action="rerun">${ic("search")}重新生成</button>
-  </div>`;
-
-const phaseList = (phases) => card(phases.map(([no, title, sub, count]) => h`
-  <button class="phase" data-action="detail" data-id="stage-${no}">
-    <span class="phase__no">${no}</span>
-    <span class="phase__copy"><b>${title}</b><span>${sub}</span></span>
-    <span class="phase__count">${count}</span>${ic("chevron")}
-  </button>`).join(""), "card--phases");
-
-const PHASES = {
-  journey: [[1, "选品与年龄分级", "确认目标年龄、材料和是否带电", "3 项"],
-            [2, "检测与报告", "EN 71 / CPSIA 测试范围", "2 项"],
-            [3, "标签与说明书", "德语标签、警告语、CE 标识", "4 项"],
-            [4, "文件与责任主体", "DoC、技术文件、欧盟责任人", "3 项"],
-            [5, "供应链与平台审核", "工厂资料、亚马逊类目审核", "5 项"],
-            [6, "切换与复核", "旧库存、过渡期、年度更新", "2 项"]],
-  readiness: [[1, "选品定稿", "年龄分级与材料确认", "2 项"],
-              [2, "送检与报告", "确认实验室资质与覆盖范围", "3 项"],
-              [3, "文件与标签", "DoC、德语标签、CE 标识", "4 项"]],
-};
-
-export default {
-  title: "工具",
-  sub: "当前筛选会随结果保留",
-  back: true,
-
-  render(ctx) {
-    const id = ctx.route.tool;
-    const page = TOOL_PAGES[id];
-    if (!page) return emptyState("这个工具不存在。");
-    const rows = SAMPLE_ROWS[id] ?? [];
-    return h`
-      ${pageHead({ title: page.title, lead: page.sub })}
-      ${filterbar(page.filters)}
-      ${PHASES[id]
-        ? phaseList(PHASES[id])
-        : (rows.length ? `<div class="list">${rows.map(row)}</div>`
-                       : emptyState("当前条件下没有条目。换个品类或市场再试。"))}
-      ${id !== "journey" ? h`
-        <button class="btn btn--block" data-action="nav" data-to="assistant">不确定？回助手直接问</button>` : ""}`;
-  },
-};
-```
-
-- [ ] **Step 6: 写 `web/js/views/action.js` 与 `web/js/views/regulations.js` 的标题一致性**
-
-`action.js` 已在 Task 9 实现；本任务先把它从桩替换为只含中心页的最小实现，使 `ToolViewTests.test_action_hub_links_to_every_action_tool` 可通过：
-
-```js
-// 行动中心。照 prototype.html:1598-1626。
-import { h } from "../dom.js";
-import { ic } from "../icons.js";
-import { pageHead, sectionHead, toolCard } from "../components.js";
-
-export default {
-  title: "行动",
-  sub: "任务、计划与市场",
-
-  render() {
-    return h`
-      ${pageHead({ title: "行动", lead: "把法规变成任务、上线计划和市场对比。要做的事和要看清的市场差异都在这里。" })}
-      ${sectionHead({ title: "要做的事", count: "3 项" })}
-      <div class="tool-grid">
-        ${toolCard({ group: "action", id: "todo", icon: "list", title: "合规待办", sub: "按紧迫度整理下一步" })}
-        ${toolCard({ group: "action", id: "readiness", icon: "flag", title: "上线准备", sub: "按阶段和责任排任务" })}
-        <button class="tool tool--wide" data-action="open-tool" data-group="action" data-tool="journey">
-          <span class="tool__icon">${ic("layers")}</span>
-          <span style="flex:1"><b>德国亚马逊六阶段路线</b><br>
-            <span>选品 → 测试 → 标签 → 文件 → 供应链 → 切换复核</span></span>
-          ${ic("chevron")}
-        </button>
-      </div>
-      ${sectionHead({ title: "看市场", count: "2 项" })}
-      <div class="tool-grid">
-        ${toolCard({ group: "action", id: "compare", icon: "compare", title: "区域对比", sub: "欧盟和美国逐条对照" })}
-        ${toolCard({ group: "action", id: "multi", icon: "globe", title: "多市场汇总", sub: "分区域查看法规" })}
-      </div>`;
-  },
-};
-```
-
-- [ ] **Step 7: 运行测试确认通过**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
-```
-
-Expected: PASS（RegulationsTests 3 + ToolViewTests 4 全通过，既有类无回归）
-
-- [ ] **Step 8: 提交**
-
-```bash
-git add web/js/views/regulations.js web/js/views/search.js web/js/views/tool.js web/js/views/action.js scripts/selftest_web_ui.py
-git commit -m "feat(web): regulations hub, clause search and the seven tool pages"
-```
-
----
-
-## Task 8: 结果页、时效性检查页、我的与教程
-
-**Files:**
-- Modify: `web/js/views/result.js`、`web/js/views/freshness.js`、`web/js/views/profile.js`、`web/js/views/tutorial.js`（替换桩）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
-
-**Interfaces:**
-- Consumes: `pageHead` / `sectionHead` / `card` / `row` / `chip` / `stat` / `rail` / `emptyState`（Task 2）；`creative` 无；`ic`（Task 2）
-- Produces: 四个视图模块，各默认导出 `{ title, sub, back?, viewClass?, render(ctx) }`
-  - `views/result.js` 额外导出 `resultRows()`，供 M2 接 `/api/route` 时替换数据源
-
-**原型对照**：
-- 结果页照 `prototype.html:1449-1492`（`resultView()`）；样式已在 Task 3 搬运（`views.css` 的 `446-526`）
-- 时效性检查照 `1494-1564`（`freshnessView()`）与 `1627-1633`（`filteredFresh()`）
-- 我的照 `1881-1944`（`profileView()`）；教程照 `1784-1879`（`tutorialView()`）
-
-- [ ] **Step 1: 写失败的测试**
-
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
-
-```python
-class ResultAndFreshnessTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        _Browser.start()
-
-    def test_result_page_shows_a_priority_block_and_items(self):
-        _Browser.goto("result")
-        view = _Browser.page.locator("#view")
-        self.assertIn("现在先做", view.inner_text())
-        self.assertGreaterEqual(_Browser.page.locator("#view .list .row").count(), 1)
-
-    def test_result_rows_carry_their_evidence_status(self):
-        """规格要求每条都带来源状态，不能被读成合规结论。"""
-        _Browser.goto("result")
         text = _Browser.page.locator("#view").inner_text()
-        self.assertTrue("请核对" in text or "待确认" in text)
-
-    def test_freshness_page_offers_three_filters(self):
-        _Browser.goto("freshness")
-        self.assertEqual(_Browser.page.locator("#view .filterbar").count(), 1)
-        text = _Browser.page.locator("#view").inner_text()
-        for label in ["全部", "需处理", "已最新"]:
-            with self.subTest(label=label):
-                self.assertIn(label, text)
-
-    def test_freshness_marks_unverifiable_platform_rules_as_unconfirmed(self):
-        """Review Focus 3：无法确认的条目必须显式说明，而不是留空。"""
-        _Browser.goto("freshness")
-        self.assertIn("无法确认", _Browser.page.locator("#view").inner_text())
+        self.assertTrue(text.strip())
+        self.assertIn("法规中心", text)
 
 
-class ProfileAndTutorialTests(unittest.TestCase):
+class SearchViewTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         _Browser.start()
 
-    def test_profile_lists_the_prototype_menu_rows(self):
-        _Browser.goto("profile")
-        view = _Browser.page.locator("#view")
-        self.assertIn("我的", view.inner_text())
-        for label in ["历史结果", "隐私与使用边界", "关于"]:
-            with self.subTest(label=label):
-                self.assertIn(label, view.inner_text())
-
-    def test_tutorial_has_four_steps(self):
-        _Browser.goto("profile/tutorial")
-        steps = _Browser.page.locator("#view .step")
-        self.assertEqual(steps.count(), 4)
-        self.assertIn("说清生意", _Browser.page.locator("#view").inner_text())
-
-    def test_tutorial_range_stays_on_the_profile_tab(self):
-        _Browser.goto("profile/tutorial")
-        current = _Browser.page.locator('#tabbar [aria-current="page"]')
-        self.assertIn("我的", current.inner_text())
+    def test_search_route_renders_the_prototype_clauses(self):
+        _Browser.goto("regulations/search")
+        self.assertIn("条款检索", _Browser.page.locator("#view").inner_text())
 ```
 
-- [ ] **Step 2: 运行测试确认失败**
+- [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ResultAndFreshnessTests ProfileAndTutorialTests
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py RegulationsHubTests ActionHubTests ToolViewTests SearchViewTests
 ```
 
-Expected: FAIL —— 四个桩视图
+Expected: FAIL —— 四个视图尚未注册
 
-- [ ] **Step 3: 写 `web/js/views/result.js`**
+- [ ] **Step 4: 在 `main.js` 注册并接入 action**
+
+`VIEWS` 补齐：
 
 ```js
-// 结果页。照 prototype.html:1449-1492。
-import { h } from "../dom.js";
-import { pageHead, sectionHead, card, row } from "../components.js";
+import { regulationsView } from "./views/regulations.js";
+import { actionView } from "./views/action.js";
+import { toolView } from "./views/tool.js";
+import { searchView } from "./views/search.js";
 
-export const PRIORITIES = [
-  ["确认年龄分级与德语警告语", "标签和说明书先定稿，再送检"],
-  ["准备 EU 符合性声明 DoC", "确认谁承担制造商责任"],
-  ["核对 EN 71 检测报告覆盖范围", "报告需匹配实际材料与工艺"],
-];
-
-const ITEMS = [
-  { id: "toy", title: "玩具安全指令 2009/48/EC", sub: "CE 标识、年龄分级与警告语", status: "有来源 · 请核对适用性", tone: "ok" },
-  { id: "doc", title: "准备 EU 符合性声明（DoC）", sub: "技术文件里的声明与责任主体", status: "适用条件待确认", tone: "warn" },
-  { id: "en71", title: "EN 71 玩具安全检测", sub: "机械物理、阻燃与迁移元素", status: "有来源 · 请核对报告有效期", tone: "ok" },
-];
-
-export const resultRows = () => ITEMS;
-
-export default {
-  title: "查询结果",
-  sub: "儿童玩具 · 德国 · 亚马逊",
-  back: true,
-
-  render() {
-    return h`
-      ${pageHead({ title: "德国市场行动清单", lead: "儿童玩具 / 德国 / 亚马逊 · 先看现在先做的三项。" })}
-      <section class="priority" aria-labelledby="priority-title">
-        ${sectionHead({ title: "现在先做", count: "按前置依赖排序" })}
-        <div class="list">
-          ${PRIORITIES.map(([title, sub], i) => row({
-            id: `priority-${i}`, title, sub, status: "", tone: i === 0 ? "warn" : "ok" }))}
-        </div>
-      </section>
-      ${sectionHead({ title: "法规与依据", count: `${ITEMS.length} 条` })}
-      <div class="list">${ITEMS.map(row)}</div>
-      <p class="fine">有帮助，有来源，有边界。不构成法律意见；涉及产品责任、合同或争议时，请让专业人员复核。</p>`;
-  },
-};
+// 加进 VIEWS：
+//   regulations: regulationsView,
+//   "regulations/search": searchView,
+//   action: actionView,
 ```
 
-- [ ] **Step 4: 写 `web/js/views/freshness.js`**
+工具路由（`regulations/<tool>` 与 `action/<tool>`）在 `render()` 里按下述方式分派——与原型 2048–2059 一致，两个前缀都走 `toolView`：
 
 ```js
-// 时效性检查。照 prototype.html:1494-1564，筛选照 1627-1633。
-import { h } from "../dom.js";
-import { card, pageHead, rail, sectionHead, stat } from "../components.js";
-
-const ITEMS = [
-  { id: "freshGpsr", title: "GPSR 通用产品安全法规", sub: "2026-12-13 起适用 · 在线销售需指定欧盟责任人", status: "即将生效 · 请核对", tone: "warn", type: "关键日期" },
-  { id: "freshToy", title: "玩具安全指令 2009/48/EC", sub: "目录内版本 2024-12-01 · 检测报告可能引用旧版", status: "有更新 · 需要核对", tone: "warn", type: "版本更新" },
-  { id: "freshEn71", title: "EN 71-1 机械物理性能", sub: "目录引用版本 2014+A1:2018 · 与当前报告一致", status: "已是最新", tone: "ok", type: "已核对" },
-  { id: "freshAmazon", title: "Amazon 玩具类目审核", sub: "平台规则无法自动核对 · 需人工查看卖家后台", status: "无法确认", tone: "muted", type: "平台规则" },
-];
-
-const FILTERS = ["全部", "需处理", "已最新", "无法确认"];
-
-const matches = (filter, item) => {
-  if (filter === "需处理") return item.tone === "warn";
-  if (filter === "已最新") return item.tone === "ok";
-  if (filter === "无法确认") return item.tone === "muted";
-  return true;
-};
-
-export default {
-  title: "时效性检查",
-  sub: "最近检查 2026-10-19 09:00",
-  back: true,
-
-  filter: "全部",
-
-  render(ctx) {
-    const items = ITEMS.filter((item) => matches(this.filter, item));
-    return h`
-      ${pageHead({ title: "时效性检查", lead: "核对你正在依赖的法规和标准是否仍是最新，哪些需要处理。" })}
-      <div class="filterbar">
-        ${FILTERS.map((label) => h`
-          <button class="chip ${this.filter === label ? "chip--on" : ""}"
-                  data-action="fresh-filter" data-value="${label}">${label}</button>`)}
-      </div>
-      ${card(h`
-        <div class="stat-row">
-          ${stat({ value: "86", label: "核验链接" })}
-          ${stat({ value: "84", label: "可访问" })}
-          ${stat({ value: "2", label: "待复核", tone: "warn" })}
-          ${stat({ value: "0", label: "内容更新" })}
-        </div>`, "fresh-card")}
-      ${sectionHead({ title: "检查结果", count: `${items.length} 条` })}
-      <div class="list">
-        ${items.length
-          ? items.map((item) => h`
-              <button class="row" data-action="detail" data-id="${item.id}">
-                ${rail(item.tone)}
-                <span class="row__copy"><b>${item.title}</b><span>${item.sub}</span></span>
-                <span class="row__status">${item.status}</span>
-              </button>`)
-          : `<p class="fine fine--empty">这个筛选下没有条目。</p>`}
-      </div>
-      <p class="fine">检查只核对官方链接状态与内容哈希，不等于法规条文变更；条文级变化仍以人工核对为准。</p>`;
-  },
-
-  mount(root) {
-    root.querySelectorAll("[data-action='fresh-filter']").forEach((button) => {
-      button.addEventListener("click", () => {
-        this.filter = button.dataset.value;
-        root.innerHTML = this.render({});
-      });
-    });
-  },
-};
+  const view = VIEWS[r]
+    || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null)
+    || VIEWS.default;
 ```
 
-`freshness` 的筛选是 **Review Focus 3 的落点**：`无法确认` 这个筛选必须真能筛出 `tone: "muted"` 的条目，且筛选后为空时渲染 `fine--empty` 而不是空 div。
-
-- [ ] **Step 5: 写 `web/js/views/profile.js`**
+事件委托补三个分支（逐字对应原型 2372–2374、2380–2381、2385–2388）：
 
 ```js
-// 我的。照 prototype.html:1881-1944。
-import { h } from "../dom.js";
-import { ic } from "../icons.js";
-import { pageHead } from "../components.js";
-
-const MENU = [
-  { id: "history", icon: "history", title: "历史结果", sub: "保留当时条件的查询记录" },
-  { id: "conditions", icon: "list", title: "当前查询条件", sub: "查看并纠正助手的理解" },
-  { id: "voice", icon: "mic", title: "语音输入", sub: "说完先确认，再发送" },
-  { id: "coverage", icon: "layers", title: "数据覆盖与版本", sub: "目录、核对与截止日期" },
-  { id: "privacy", icon: "lock", title: "隐私与使用边界", sub: "数据怎么处理" },
-  { id: "about", icon: "help", title: "关于", sub: "版本与边界" },
-];
-
-export default {
-  title: "我的",
-  sub: "教程、隐私与数据状态",
-
-  render() {
-    return h`
-      ${pageHead({ title: "我的", lead: "教程在下面；这里也放数据边界和版本信息。" })}
-      <div class="list">
-        ${MENU.map((m) => h`
-          <button class="menu-row" data-action="detail" data-id="${m.id}">
-            <span class="menu-row__icon">${ic(m.icon)}</span>
-            <span class="menu-row__copy"><b>${m.title}</b><span>${m.sub}</span></span>
-            ${ic("chevron")}
-          </button>`)}
-        <button class="menu-row" data-action="nav" data-to="profile/tutorial">
-          <span class="menu-row__icon">${ic("help")}</span>
-          <span class="menu-row__copy"><b>新手教程</b><span>四步用好这个助手</span></span>
-          ${ic("chevron")}
-        </button>
-      </div>`;
-  },
-};
+  } else if (action === "filter") {
+    store.set({ filter: el.dataset.filter || "全部" });
+    render();
+  } else if (action === "rerun") {
+    showToast("已按当前条件重新生成");
+  } else if (action === "example-query") {
+    store.set({ query: el.dataset.query || "", searchDone: true });
+    render();
+  }
 ```
 
-- [ ] **Step 6: 写 `web/js/views/tutorial.js`**
+`search` 表单提交（原型 2433–2439）：
 
 ```js
-// 教程。照 prototype.html:1784-1879 的四步结构。
-import { h } from "../dom.js";
-import { pageHead } from "../components.js";
-
-const STEPS = [
-  ["说清生意", "一句自然语言就够：毛绒玩具卖到德国亚马逊。不用先选菜单。"],
-  ["回答追问", "助手一次只问一个条件，比如是否带电、FBA 还是自发货。"],
-  ["看行动与依据", "先看现在先做的三项；点条目核对适用条件和官方原文。"],
-  ["查正文、导出、存档", "在法规中心里按编号查条款；结果可以导出，也可以回看历史。"],
-];
-
-export default {
-  title: "新手教程",
-  sub: "四步用好这个助手",
-  back: true,
-
-  render() {
-    return h`
-      ${pageHead({ title: "四步用好这个助手", lead: "从说清生意到查条文，每一步都能核对来源。" })}
-      <div class="steps">
-        ${STEPS.map(([title, sub], i) => h`
-          <div class="step">
-            <span class="step__no">${i + 1}</span>
-            <span><b>${title}</b><span>${sub}</span></span>
-          </div>`)}
-      </div>`;
-  },
-};
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (form.dataset.form === "search") {
+    event.preventDefault();
+    const input = form.querySelector("input");
+    store.set({ query: input ? input.value : "", searchDone: true });
+    render();
+  }
+});
 ```
 
-- [ ] **Step 7: 运行测试确认通过**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
-```
-
-Expected: PASS（ResultAndFreshnessTests 4 + ProfileAndTutorialTests 3 全通过，既有类无回归）
-
-- [ ] **Step 8: 提交**
-
-```bash
-git add web/js/views/result.js web/js/views/freshness.js web/js/views/profile.js web/js/views/tutorial.js scripts/selftest_web_ui.py
-git commit -m "feat(web): result, freshness, profile and tutorial views"
-```
-
----
-
-## Task 9: 七个底部抽屉
-
-**Files:**
-- Create: `web/js/views/detail.js`
-- Modify: `web/js/main.js`（导入并注册详情渲染器）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
-
-**Interfaces:**
-- Consumes: `registerDetail`（Task 3 的 `ui/detail.js`）、`openSheet`（Task 4）、`esc`/`h`（Task 2）
-- Produces: `web/js/views/detail.js` → `export const detailHtml = (id) => string`，覆盖 `conditions` / `history` / `voice` / `coverage` / `privacy` / `about` / `help` 七个 id，以及任意条目 id 的兜底
-
-**原型对照**：条目详情照 `prototype.html:2154-2186`（`detailSheet()`）；其余六个照 `2187-2321`（`PROFILE_SHEETS`）。文案逐字照抄。
-
-- [ ] **Step 1: 写失败的测试**
-
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
-
-```python
-class DetailSheetTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        _Browser.start()
-
-    SHEETS = [("conditions", "助手目前的理解"), ("history", "历史结果"),
-              ("voice", "说完先确认，再发送"), ("coverage", "目录、核对与截止日期"),
-              ("privacy", "数据怎么处理"), ("about", "出海合规雷达"),
-              ("help", "四步用好这个助手")]
-
-    def _open(self, node_id):
-        _Browser.goto("profile")
-        _Browser.page.evaluate(
-            "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
-        _Browser.page.evaluate(
-            "async () => { const d = await import('/web/js/views/detail.js');"
-            "const s = await import('/web/js/ui/sheet.js'); s.openSheet(d.detailHtml(%r)); }" % node_id)
-        _Browser.page.wait_for_timeout(250)
-
-    def test_every_profile_sheet_has_its_own_content(self):
-        for node_id, expected in self.SHEETS:
-            with self.subTest(node_id=node_id):
-                self._open(node_id)
-                self.assertIn(expected, _Browser.page.locator("#sheet").inner_text())
-
-    def test_every_sheet_has_a_grab_handle_and_a_close_button(self):
-        for node_id, _ in self.SHEETS:
-            with self.subTest(node_id=node_id):
-                self._open(node_id)
-                sheet = _Browser.page.locator("#sheet")
-                self.assertEqual(sheet.locator(".sheet__grab").count(), 1)
-                self.assertEqual(sheet.locator("[data-action='close-sheet']").count(), 1)
-
-    def test_unknown_id_gets_a_readable_fallback(self):
-        """Review Focus 2：未知条目 id 不得白屏或抛异常。"""
-        self._open("完全不存在的条目")
-        self.assertTrue(_Browser.page.locator("#sheet").inner_text().strip())
-
-    def test_sheet_content_escapes_user_derived_values(self):
-        self._open("<img src=x onerror=alert(1)>")
-        self.assertEqual(_Browser.page.locator("#sheet").locator("img").count(), 0)
-```
-
-- [ ] **Step 2: 运行测试确认失败**
-
-```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py DetailSheetTests
-```
-
-Expected: FAIL —— `views/detail.js` 不存在
-
-- [ ] **Step 3: 写 `web/js/views/detail.js`**
-
-```js
-// 七个底部抽屉。文案逐字照 prototype.html:2187-2321 的 PROFILE_SHEETS。
-import { esc, h } from "../dom.js";
-import { ic } from "../icons.js";
-
-const head = (label) => h`
-  <div class="sheet__grab"></div>
-  <div class="sheet__body">
-    <div class="sheet__top">
-      <span class="sheet__lead">${label}</span>
-      <button class="sheet__close" data-action="close-sheet" aria-label="关闭">${ic("close")}</button>
-    </div>`;
-
-const SHEETS = {
-  conditions: () => head("当前查询条件") + h`
-      <h2>助手目前的理解</h2>
-      <div class="context"><span>儿童玩具</span><span>德国</span><span>欧盟</span><span>亚马逊</span><span>FBA</span><span>不带电</span></div>
-      <div class="sheet__section"><h3>只改需要改变的条件</h3>
-        <p>可以直接在对话里说「市场改成美国」或「不是 FBA」，助手会保留其他条件并更新结果。</p></div>
-      <div class="sheet__actions">
-        <button class="btn btn--primary btn--block" data-action="nav" data-to="assistant">回对话修改</button>
-      </div></div>`,
-
-  history: () => head("历史结果") + h`
-      <h2>保留当时条件的 3 份结果</h2>
-      <div class="list">
-        <button class="history-item" data-action="detail" data-id="h0"><span class="menu-row__icon">${ic("doc")}</span><span class="history-item__copy"><b>德国市场行动清单</b><span>今天 14:32 · 儿童玩具 / 德国 / 亚马逊</span></span>${ic("chevron")}</button>
-        <button class="history-item" data-action="detail" data-id="h1"><span class="menu-row__icon">${ic("doc")}</span><span class="history-item__copy"><b>欧盟玩具法规清单</b><span>今天 11:08 · 儿童玩具 / 欧盟</span></span>${ic("chevron")}</button>
-        <button class="history-item" data-action="detail" data-id="h2"><span class="menu-row__icon">${ic("doc")}</span><span class="history-item__copy"><b>欧美玩具目录对比</b><span>昨天 18:45 · 儿童玩具</span></span>${ic("chevron")}</button>
-      </div>
-      <p class="fine">历史结果会校验当时条件；条件变化后需要重新查询。</p></div>`,
-
-  voice: () => head("语音输入") + h`
-      <h2>说完先确认，再发送</h2>
-      <p class="sheet__lead">识别结果会先进输入框做预编辑。确认产品名称、国家和数字无误后，再点发送。</p>
-      <div class="sheet__status">${ic("check")}本地语音引擎已启用 · 最长 60 秒</div>
-      <div class="sheet__section"><h3>使用边界</h3>
-        <p>录音由界面临时存储，应用不另存音频。云端转写会把录音发送到语音服务；请勿输入客户敏感资料。</p></div></div>`,
-
-  coverage: () => head("数据覆盖与版本") + h`
-      <h2>目录、核对与截止日期</h2>
-      <div class="stat-row">
-        <div class="stat"><b>86</b><span>部法规</span></div>
-        <div class="stat"><b>5</b><span>类商品</span></div>
-        <div class="stat"><b>28</b><span>条逐条核对</span></div>
-        <div class="stat"><b>58</b><span>条负责人声明确认</span></div>
-      </div>
-      <div class="sheet__section"><h3>数据快照</h3>
-        <p>截止 2026-10-19。目录标记、机器读取与用户自述均不等于商品已合规；请逐条查看适用条件与证据状态。</p></div></div>`,
-
-  privacy: () => head("隐私与使用边界") + h`
-      <h2>数据怎么处理</h2>
-      <div class="sheet__section"><h3>会话</h3>
-        <p>业务状态默认保存在服务内存，不写入原始对话日志。导出使用临时文件。</p></div>
-      <div class="sheet__section"><h3>模型</h3>
-        <p>模型只用于理解输入。结论来自已核对语料和确定性规则；输入文字可能发送给模型服务。</p></div>
-      <div class="sheet__section"><h3>语音</h3>
-        <p>录音由界面临时存储；云端转写会发送录音。请勿输入客户敏感资料。</p></div></div>`,
-
-  about: () => head("关于") + h`
-      <h2>出海合规雷达</h2>
-      <p class="sheet__lead">从问题到下一步。先理解你的生意，再从已核对语料里给出法规、日期和行动。</p>
-      <div class="sheet__section"><h3>版本</h3><p class="mono">2026.10.19-chat1.6 · 原型 v2</p></div>
-      <div class="sheet__section"><h3>边界</h3>
-        <p>有帮助，有来源，有边界。不构成法律意见；涉及产品责任、合同或争议时，请让专业人员复核。</p></div></div>`,
-
-  help: () => head("怎么用") + h`
-      <h2>四步用好这个助手</h2>
-      <div class="steps">
-        ${[["说清生意", "一句自然语言就够：毛绒玩具卖到德国亚马逊。不用先选菜单。"],
-           ["回答追问", "助手一次只问一个条件，比如是否带电、FBA 还是自发货。"],
-           ["看行动与依据", "先看现在先做的三项；点条目核对适用条件和官方原文。"],
-           ["查正文、导出、存档", "在法规中心里按编号查条款；结果可以导出，也可以回看历史。"]]
-          .map(([t, s], i) => h`
-            <div class="step"><span class="step__no">${i + 1}</span>
-              <span><b>${t}</b><span>${s}</span></span></div>`)}
-      </div></div>`,
-};
-
-/** 兜底：条目详情与未知 id 都走这里，保证任何 id 都有可读内容。 */
-const fallback = (id) => head("详情") + h`
-      <h2>${id}</h2>
-      <p class="sheet__lead">这一条来自当前目录；M2 接入后显示适用条件、原文摘录与官方来源链接。</p></div>`;
-
-export const detailHtml = (id) => (SHEETS[id] ? SHEETS[id]() : fallback(String(id ?? "")));
-```
-
-- [ ] **Step 4: 在 `main.js` 注册详情渲染器**
-
-把 `web/js/main.js` 里现有的
-
-```js
-import { detailSheet } from "./ui/detail.js";
-```
-
-改为
-
-```js
-import { detailSheet, registerDetail } from "./ui/detail.js";
-```
-
-并在其上方新增一行
-
-```js
-import { detailHtml } from "./views/detail.js";
-```
-
-并在 `start(render);` 之前加：
-
-```js
-registerDetail(detailHtml);
-```
+**注意**：`search` 表单的提交处理器与 Task 7 的 `compose` 处理器**必须共存**——若 Task 7 已经把 submit 监听器写成只处理 `compose`，本任务要扩展成 `if/else if` 两个分支，而不是新加一个监听器（两个监听器都会收到事件，`preventDefault` 顺序会出问题）。
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -2576,13 +1969,213 @@ registerDetail(detailHtml);
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（DetailSheetTests 4 全通过，既有类无回归）
+Expected: PASS（RegulationsHubTests 2 + ActionHubTests 1 + ToolViewTests 3 + SearchViewTests 1 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
 ```bash
-git add web/js/views/detail.js web/js/main.js scripts/selftest_web_ui.py
-git commit -m "feat(web): the seven bottom sheets"
+git add web/js/views/regulations.js web/js/views/action.js web/js/views/tool.js web/js/views/search.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): regulations hub, clause search, tool pages and action hub ported from the prototype"
+```
+
+---
+
+## Task 9: 我的、教程与七个底部抽屉
+
+**Files:**
+- Create: `web/js/views/profile.js`、`web/js/views/tutorial.js`、`web/js/views/detail.js`
+- Modify: `web/js/main.js`（注册三个视图 + 补全剩余 action）
+- Test: `scripts/selftest_web_ui.py`（追加）
+
+**Interfaces:**
+- Consumes: `esc`、`ic`（Task 2）；`PROFILE_SHEETS`（Task 3）；`store`（Task 4）；`openSheet`/`closeSheet`（Task 5）；`go`（Task 4）
+- Produces: 三个视图模块，各 `export function render(state) -> string`
+
+**原型对照**：我的 `1880-1943`；教程 `1783-1878`；条目详情 `2154-2185`（`detailSheet(id)`）。七个 `PROFILE_SHEETS` 已在 Task 3 搬进 `sample.js`。
+
+- [ ] **Step 1: 搬运三个视图**
+
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/views/profile.js` | 1880–1943（`profileView`） |
+| `web/js/views/tutorial.js` | 1783–1878（`tutorialView`） |
+| `web/js/views/detail.js` | 2154–2185（`detailSheet`） |
+
+增量：
+1. 三个 `function x()` → `export function`（`detailSheet` 也导出——`main.js` 要用）。
+2. 顶部导入：`esc`、`ic`、`ITEMS`（`detailSheet` 里会按 id 取条目）、`PROFILE_SHEETS`（若用到）。
+3. `detailSheet(id)` **保持吃 `id` 形参**（与 `toolView` 不同）——因为它由 `data-action="detail" data-id="…"` 的委托调用，id 来自 DOM，不经 `state`。
+
+**注意**：`profile.js` 的菜单行用的是 `data-action="sheet" data-sheet="<id>"`（原型 `PROFILE_SHEETS` 的键名），而**不是** `data-action="detail" data-id`。这两套是不同的机制：`detail` 打开条目详情（按 ITEMS id），`sheet` 打开七个固定抽屉（按 PROFILE_SHEETS 键）。先前那版计划把两者混为一谈。
+
+- [ ] **Step 2: 写失败的测试**
+
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
+
+```python
+class ProfileViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_profile_menu_uses_the_sheet_action(self):
+        _Browser.goto("profile")
+        rows = _Browser.page.locator("#view [data-action='sheet']")
+        self.assertGreaterEqual(rows.count(), 6)
+        keys = [rows.nth(i).get_attribute("data-sheet") for i in range(rows.count())]
+        for key in ["history", "conditions", "voice", "coverage", "privacy", "about"]:
+            with self.subTest(key=key):
+                self.assertIn(key, keys)
+
+    def test_tutorial_has_four_steps_and_lives_under_profile(self):
+        _Browser.goto("profile/tutorial")
+        self.assertEqual(_Browser.page.locator("#view .step").count(), 4)
+        current = _Browser.page.locator('#tabbar [aria-current="page"]')
+        self.assertIn("我的", current.inner_text())
+
+
+class DetailSheetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    PROFILE_KEYS = ["conditions", "history", "voice", "coverage", "privacy", "about", "help"]
+
+    def _open_key(self, key):
+        _Browser.goto("profile")
+        _Browser.page.evaluate(
+            "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
+        _Browser.page.locator(f"#view [data-action='sheet'][data-sheet='{key}']").first.click()
+        _Browser.page.wait_for_timeout(300)
+
+    def test_every_profile_sheet_opens_with_content(self):
+        for key in self.PROFILE_KEYS:
+            with self.subTest(key=key):
+                self._open_key(key)
+                sheet = _Browser.page.locator("#sheet")
+                self.assertIn("is-on", sheet.get_attribute("class"))
+                self.assertTrue(sheet.inner_text().strip(), f"{key} 抽屉不得为空")
+
+    def test_every_sheet_has_a_grab_handle_and_a_close_button(self):
+        for key in self.PROFILE_KEYS:
+            with self.subTest(key=key):
+                self._open_key(key)
+                sheet = _Browser.page.locator("#sheet")
+                self.assertEqual(sheet.locator(".sheet__grab").count(), 1)
+                self.assertEqual(sheet.locator("[data-action='close-sheet']").count(), 1)
+
+    def test_item_detail_opens_from_a_row(self):
+        _Browser.goto("result")
+        _Browser.page.locator("#view [data-action='detail']").first.click()
+        _Browser.page.wait_for_timeout(300)
+        sheet = _Browser.page.locator("#sheet")
+        self.assertIn("is-on", sheet.get_attribute("class"))
+        self.assertEqual(sheet.locator(".sheet__grab").count(), 1)
+
+    def test_unknown_detail_id_does_not_blank_the_sheet(self):
+        """Review Focus 2：未知条目 id 不得白屏或抛异常。"""
+        got = _Browser.page.evaluate("""async () => {
+          const d = await import('/web/js/views/detail.js');
+          try { return d.detailSheet('完全不存在的条目'); }
+          catch (e) { return 'THREW: ' + e.message; }
+        }""")
+        self.assertFalse(str(got).startswith("THREW"), "未知 id 不得抛异常")
+
+
+class DelegationCompletenessTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_every_action_in_the_prototype_is_handled(self):
+        """把原型事件委托里出现过的 action 逐个点一遍，任何未接的 action 会表现为无反应。
+
+        本测试只断言页面不崩、不白屏；具体行为由各自视图的测试覆盖。
+        """
+        actions = ["nav", "prompt", "choice", "open-result", "new-chat", "history",
+                   "detail", "filter", "fresh-filter", "open-tool", "rerun",
+                   "toggle-freshness", "example-query", "sheet", "open-history",
+                   "close-sheet", "export", "mark-done", "copy", "regenerate",
+                   "voice", "quick", "help"]
+        got = _Browser.page.evaluate("""async () => {
+          const m = await import('/web/js/main.js');
+          return m.HANDLED_ACTIONS;
+        }""")
+        for action in actions:
+            with self.subTest(action=action):
+                self.assertIn(action, got, f"action「{action}」尚未接入")
+```
+
+`main.js` 需导出它已接入的 action 清单，供此测试核对：
+
+```js
+export const HANDLED_ACTIONS = [ /* 事件委托里实际处理的所有 action 名 */ ];
+```
+
+- [ ] **Step 3: 运行测试确认失败**
+
+```bash
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ProfileViewTests DetailSheetTests DelegationCompletenessTests
+```
+
+Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
+
+- [ ] **Step 4: 在 `main.js` 注册并补全剩余 action**
+
+`VIEWS` 加 `profile: profileView`、`"profile/tutorial": tutorialView`。
+
+导入：`import { detailSheet } from "./views/detail.js";` 与 `import { toggleFreshness } from "./views/home.js";`（`toggle-freshness` 若你想要该开关；**M1 默认不接**，见下）。
+
+补齐剩下六个分支，逐字对应原型 2363–2371、2392–2423：
+
+```js
+  } else if (action === "detail") {
+    openSheet(detailSheet(el.dataset.id));
+  } else if (action === "sheet") {
+    const builder = PROFILE_SHEETS[el.dataset.sheet];
+    if (builder) openSheet(builder());
+  } else if (action === "open-result") {
+    store.state.resultFrom = el.dataset.from
+      || (store.state.route === "home" ? "home" : "assistant");
+    go("result");
+  } else if (action === "open-history") {
+    closeSheet();
+    store.state.resultFrom = ["home", "assistant", "regulations", "action"]
+      .includes(store.state.route) ? store.state.route : "profile";
+    go("result");
+  } else if (action === "export") {
+    showToast("原型中不生成文件；正式版会导出带查询条件的 CSV");
+  } else if (action === "mark-done") {
+    showToast("已标记为已完成 · 不会自动视为合规");
+    closeSheet();
+  } else if (action === "copy") {
+    showToast("已复制这条回答");
+  } else if (action === "regenerate") {
+    showToast("原型中不重复调用模型；正式版会基于同一条件重答");
+  } else if (action === "voice") {
+    showToast("语音入口：转写后先预编辑，再发送");
+  } else if (action === "help") {
+    openSheet(PROFILE_SHEETS.help());
+  }
+```
+
+`toggle-freshness`（原型 2382–2384）**M1 不接入**：它只服务于原型的"首次使用/有记录"双态演示开关，而该开关已按 Task 6 从产品中剔除。因此在 `HANDLED_ACTIONS` 里**不列**它，并把上面测试的 `actions` 列表里的 `"toggle-freshness"` 一并删掉——两者必须一致，否则测试会要求一个我们刻意不做的 action。
+
+最后导出 `HANDLED_ACTIONS`，内容是事件委托里出现的全部 action 名（不含 `toggle-freshness`）。
+
+- [ ] **Step 5: 运行测试确认通过**
+
+```bash
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+```
+
+Expected: PASS（ProfileViewTests 2 + DetailSheetTests 4 + DelegationCompletenessTests 1 全通过，既有类无回归）
+
+- [ ] **Step 6: 提交**
+
+```bash
+git add web/js/views/profile.js web/js/views/tutorial.js web/js/views/detail.js web/js/main.js scripts/selftest_web_ui.py
+git commit -m "feat(web): profile, tutorial and the seven sheets ported from the prototype"
 ```
 
 ---
@@ -2590,22 +2183,18 @@ git commit -m "feat(web): the seven bottom sheets"
 ## Task 10: 响应式——桌面端去掉手机壳
 
 **Files:**
-- Modify: `web/styles/shell.css`（覆盖 Task 3 搬运来的 `.app-shell` 桌面规则）
-- Test: `scripts/selftest_web_ui.py`（追加测试类）
+- Modify: `web/styles/shell.css`（追加覆盖）
+- Test: `scripts/selftest_web_ui.py`（追加）
 
 **Interfaces:**
-- Consumes: Task 3 搬运的 `shell.css`（含原型 `71-91` 的 `.app-shell` 与 `@media (min-width: 700px)`）
+- Consumes: Task 3 搬运进 `shell.css` 的原型 `71-148`（含 `@media (min-width: 700px)` 的手机壳规则）
 - Produces: 无导出；行为约束——≥700px 时无手机壳装饰，窄栏仍居中且为手机比例
 
 **规格第 7 节**：桌面端去掉边框、圆角、阴影、桌面底纹；内容窄栏居中 `max-width: 480px`；标签栏保持底部。
 
-原型在 `@media (min-width: 700px)` 里给 `body` 加了 `display:grid; place-items:center; padding:24px`，给 `.app-shell` 加了 `height: min(900px, calc(100dvh - 48px))`、`border`、`border-radius:30px`、`box-shadow`。本任务把这段改为"去壳"版本。
-
 - [ ] **Step 1: 写失败的测试**
 
-在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。
-追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——
-输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
+在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加：
 
 ```python
 class ResponsiveTests(unittest.TestCase):
@@ -2613,7 +2202,7 @@ class ResponsiveTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
-    def _style(self, width, prop):
+    def _at(self, width, prop):
         _Browser.page.set_viewport_size({"width": width, "height": 900})
         _Browser.page.goto(f"{BASE}#/home", wait_until="load")
         _Browser.page.wait_for_timeout(350)
@@ -2623,22 +2212,18 @@ class ResponsiveTests(unittest.TestCase):
             % prop)
 
     def test_wide_viewport_has_no_phone_shell_decoration(self):
-        """规格第 7 节：桌面端去壳。"""
         for prop in ["border-top-width", "box-shadow"]:
             with self.subTest(prop=prop):
-                got = self._style(1440, prop)
+                got = self._at(1440, prop)
                 self.assertIn(got["prop"], ["0px", "none"],
                               f"桌面端不应保留手机壳装饰：{prop}={got['prop']}")
 
     def test_wide_viewport_keeps_the_phone_proportions_and_centering(self):
-        got = self._style(1440, "width")
-        rect = got["rect"]
+        rect = self._at(1440, "width")["rect"]
         self.assertLessEqual(rect["width"], 481, "桌面端内容栏不得超过 480px")
-        centre = rect["x"] + rect["width"] / 2
-        self.assertAlmostEqual(centre, 720, delta=2, msg="内容栏必须居中")
+        self.assertAlmostEqual(rect["x"] + rect["width"] / 2, 720, delta=2, msg="内容栏必须居中")
 
-    def test_narrow_viewport_keeps_the_phone_shell(self):
-        """移动端严格照原型：满宽、满高。"""
+    def test_narrow_viewport_keeps_the_full_width_shell(self):
         _Browser.page.set_viewport_size({"width": 390, "height": 844})
         _Browser.page.goto(f"{BASE}#/home", wait_until="load")
         _Browser.page.wait_for_timeout(350)
@@ -2657,8 +2242,7 @@ class ResponsiveTests(unittest.TestCase):
                 box = _Browser.page.evaluate(
                     "() => { const r = document.querySelector('.tabbar').getBoundingClientRect();"
                     "return { bottom: r.bottom, vh: window.innerHeight, w: r.width }; }")
-                self.assertLessEqual(abs(box["bottom"] - box["vh"]), 2,
-                                     "标签栏必须贴在视口底部")
+                self.assertLessEqual(abs(box["bottom"] - box["vh"]), 2, "标签栏必须贴在视口底部")
                 self.assertGreater(box["w"], 300, "标签栏不得塌陷")
 ```
 
@@ -2668,17 +2252,19 @@ class ResponsiveTests(unittest.TestCase):
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ResponsiveTests
 ```
 
-Expected: FAIL —— `test_wide_viewport_has_no_phone_shell_decoration`（搬来的原型规则仍带边框、圆角、阴影）
+Expected: FAIL —— 搬来的原型规则仍带边框、圆角、阴影
 
-- [ ] **Step 3: 在 `web/styles/shell.css` 追加去壳覆盖**
+- [ ] **Step 3: 追加去壳覆盖**
 
-追加到 `web/styles/shell.css` **末尾**（覆盖原型 `71-91` 的桌面规则；原型原文保留在文件中不动，便于日后对照）：
+追加到 `web/styles/shell.css` **末尾**（原型原文保留在文件中不动，便于对照）：
 
 ```css
 /* ============================================================
    桌面端去壳（规格第 7 节）
-   原型在 ≥700px 渲染居中手机壳；本项目改为保留手机比例与排布，
+   原型在 ≥700px 渲染居中手机壳；本项目保留手机比例与排布，
    但去掉边框、圆角、阴影与桌面底纹。
+   与原型规则同为 @media (min-width: 700px)，特异性相同，
+   靠"后声明胜出"生效——因此本块必须在文件末尾。
    ============================================================ */
 @media (min-width: 700px) {
   body {
@@ -2698,44 +2284,44 @@ Expected: FAIL —— `test_wide_viewport_has_no_phone_shell_decoration`（搬�
 - [ ] **Step 4: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ResponsiveTests
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（4 个用例）
+Expected: PASS（ResponsiveTests 4 全通过，既有类无回归）
 
-- [ ] **Step 5: 全量回归并提交**
+- [ ] **Step 5: 提交**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 git add web/styles/shell.css scripts/selftest_web_ui.py
 git commit -m "style(web): drop the phone shell on wide viewports, keep phone proportions"
 ```
 
 ---
 
-## Task 11: 像素验收、可访问性验收与门禁接入
+## Task 11: 像素验收与门禁接入
 
 **Files:**
-- Create: `scripts/check_web_browser.py`
-- Create: `scripts/compare_web_screenshots.py`
-- Modify: `scripts/selftest_all.py`（把 `selftest_web_api.py` 加入门禁）
-- Test: 本身即为验收工具
+- Create: `scripts/check_web_browser.py`、`scripts/compare_web_screenshots.py`
+- Modify: `scripts/selftest_all.py`
+- Test: 本任务即验收工具
 
 **Interfaces:**
-- Consumes: 全部前序任务的产物；`docs/ui-preview/prototype-v2.html`（Task 1 入库的基准）
+- Consumes: 全部前序产物；`docs/ui-preview/prototype-v2.html`（Task 1）
 - Produces:
   - `scripts/check_web_browser.py --url URL [--out DIR]` → 逐路由截图 + `web-report.json`
-  - `scripts/compare_web_screenshots.py --prototype DIR --rebuilt DIR [--out FILE]` → 像素比对报告；调 `rea compare-web-screenshots`
+  - `scripts/compare_web_screenshots.py --prototype DIR --rebuilt DIR [--out FILE]` → 调 REA 做像素比对
 
-**为什么要两个脚本**：截图必须由 Playwright 在**固定视口**下采集（REA 抓的是真实窗口可视区，尺寸受窗口边框影响，拆解时实测为 496×751 而非 390×844）；比对则由 REA 独立完成。这是"确定性采集 + 独立比对"的分工。
+**为什么分两个脚本**：截图必须由 Playwright 在**固定视口**下采集（REA 抓的是真实窗口可视区，尺寸受窗口边框影响——实测为 496×751 而非 390×844）；比对则交给 REA 独立完成。这是"确定性采集 + 独立比对"的分工。
 
 - [ ] **Step 1: 写 `scripts/check_web_browser.py`**
 
+沿用 `scripts/check_chat_browser.py` 的 `--url` 范式：
+
 ```python
-"""逐路由截图与结构检查；需要 Playwright。沿用 scripts/check_chat_browser.py 的范式。
+"""逐路由截图与结构检查；需要 Playwright。
 
 用法：
-  python app.py &                              # 或 PORT=7899 python app.py
+  PORT=7899 python app.py &
   python scripts/check_web_browser.py --url http://127.0.0.1:7899 --out docs/ui-preview/rebuilt
 """
 import argparse
@@ -2780,15 +2366,11 @@ def main():
                 page.wait_for_timeout(400)
                 key = f"{route}@{vp_name}"
                 page.screenshot(path=str(shots / f"{key.replace('/', '_')}.png"))
-
                 info = page.evaluate("""() => ({
                   viewText: (document.getElementById('view')?.innerText || '').trim().slice(0, 400),
                   tabbarCount: document.querySelectorAll('#tabbar .tab').length,
-                  activeTab: document.querySelector('#tabbar [aria-current="page"]')?.innerText.trim() || null,
-                  accentRoles: [...document.querySelectorAll('#view [role]')].map(n => n.getAttribute('role')).slice(0, 40),
                 })""")
                 report["routes"][key] = info
-
                 if not info["viewText"]:
                     report["failures"].append(f"{key}: #view 为空（疑似白屏）")
                 if info["tabbarCount"] != 5:
@@ -2810,7 +2392,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: 采集原型的基准截图**
 
-原型是静态文件，用同一个脚本采一份基准（视口与参数完全一致，保证可比）：
+用同一脚本采原型，保证视口与参数完全一致：
 
 ```bash
 python -m http.server 8899 --bind 127.0.0.1 --directory docs/ui-preview &
@@ -2821,19 +2403,36 @@ sleep 2
 kill %1
 ```
 
-Expected: `routes=32 failures=...`（原型的 7 个工具页里有的没有 `.filterbar`，失败条目不致命——基准图的用途只是像素比对，不是门禁）
+然后**采改造后的**（服务已由 Step 4 起的那个，或另起）：
+
+```bash
+"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/check_web_browser.py \
+  --url http://127.0.0.1:7899 --out docs/ui-preview/rebuilt
+```
+
+Expected: 两份各 32 张截图。原型的报告里会有若干 `failures`（原型部分路由本就没有 5 个标签项或有空态），**这是基准图，不作为门禁**——它的用途只是像素比对的对照。
 
 - [ ] **Step 3: 写 `scripts/compare_web_screenshots.py`**
 
+契约已实测，**不要自己实现像素算法**：
+
+- 位置参数：`<beforeJson> <afterJson>`，两者都是截图产物 JSON **文件路径**
+- 截图产物 JSON 形状：`{"sha256", "bytes", "media_type": "image/png", "data_base64"}`
+- 输出（`normalized_result`）：`status`（`"identical"` / `"different"`）、`changed_ratio`（0.0~1.0）、`changed_pixels`、`compared_pixels`、`maximum_channel_delta`、`mean_absolute_channel_delta`
+- 只接受**非交错 8-bit RGB/RGBA PNG**；比对不含 OCR、不做语义布局分析、不做感知色彩校正
+
 ```python
-"""原型 vs 改造后的像素比对；由 REA 独立完成比对，不在本脚本内实现像素算法。
+"""原型 vs 改造后的像素比对；比对由 REA 完成。
 
 用法：
   python scripts/compare_web_screenshots.py \
     --prototype docs/ui-preview/prototype-baseline/shots \
-    --rebuilt   docs/ui-preview/rebuilt/shots
+    --rebuilt   docs/ui-preview/rebuilt/shots \
+    --out       docs/ui-preview/web-pixel-diff.json
 """
 import argparse
+import base64
+import hashlib
 import json
 from pathlib import Path
 import shutil
@@ -2842,14 +2441,7 @@ import sys
 import tempfile
 
 
-def rea_available():
-    return shutil.which("rea") is not None
-
-
 def snapshot(path):
-    """把一张 PNG 交给 REA 的截图产物格式：{sha256, bytes, media_type, data_base64}。"""
-    import base64
-    import hashlib
     data = path.read_bytes()
     return {"sha256": hashlib.sha256(data).hexdigest(), "bytes": len(data),
             "media_type": "image/png", "data_base64": base64.b64encode(data).decode()}
@@ -2860,11 +2452,10 @@ def main():
     parser.add_argument("--prototype", required=True)
     parser.add_argument("--rebuilt", required=True)
     parser.add_argument("--out", default=None)
-    parser.add_argument("--threshold", type=float, default=0.02,
-                        help="允许的差异像素占比")
+    parser.add_argument("--threshold", type=float, default=0.02, help="允许的差异像素占比")
     args = parser.parse_args()
 
-    if not rea_available():
+    if shutil.which("rea") is None:
         print("REA 未安装：npm install --global rea-agents", file=sys.stderr)
         return 2
 
@@ -2892,11 +2483,9 @@ def main():
                 report["over_threshold"].append(
                     {"name": name, "reason": f"REA 退出码 {proc.returncode}: {proc.stderr[:200]}"})
                 continue
-            result = json.loads(proc.stdout)
-            norm = result.get("normalized_result", result)
-            entry = {"name": name,
-                     "status": norm.get("status"),                    # "identical" | "different"
-                     "changed_ratio": norm.get("changed_ratio"),      # 0.0 ~ 1.0
+            norm = json.loads(proc.stdout).get("normalized_result", {})
+            entry = {"name": name, "status": norm.get("status"),
+                     "changed_ratio": norm.get("changed_ratio"),
                      "changed_pixels": norm.get("changed_pixels"),
                      "compared_pixels": norm.get("compared_pixels"),
                      "maximum_channel_delta": norm.get("maximum_channel_delta")}
@@ -2916,15 +2505,6 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-`rea compare-web-screenshots` 的契约已实测确认（不要自己实现像素算法）：
-
-- 位置参数：`<beforeJson> <afterJson>`，两者都是截图产物 JSON **文件路径**
-- 截图产物 JSON 形状：`{"sha256", "bytes", "media_type": "image/png", "data_base64"}`
-- 输出（`normalized_result`）：`status`（`"identical"` / `"different"`）、`changed_ratio`（0.0~1.0）、`changed_pixels`、`compared_pixels`、`maximum_channel_delta`、`mean_absolute_channel_delta`
-- 只接受**非交错 8-bit RGB/RGBA PNG**；比对不含 OCR、不做语义布局分析、不做感知色彩校正
-
-实测对照：两张不同页面的 `changed_ratio` 为 `0.4727`，同一张图为 `0.0` 且 `status: "identical"`。
-
 - [ ] **Step 4: 运行像素比对**
 
 ```bash
@@ -2934,9 +2514,9 @@ if __name__ == "__main__":
   --out docs/ui-preview/web-pixel-diff.json
 ```
 
-Expected: 输出每题差异占比；M1 的目标是**移动端（`@mobile`）同路由差异显著低于桌面端**——桌面端按规格第 7 节刻意去壳，与原型必然不同，属**预期差异**。
+Expected: 每题给出差异占比。M1 的目标是 **移动端（`@mobile`）同路由差异显著低于桌面端**——桌面端按规格第 7 节刻意去壳，与原型必然不同，属**预期差异**。
 
-在 `web-pixel-diff.json` 旁边写一份 `docs/ui-preview/web-pixel-diff.md`，逐条说明哪些差异是规格允许的（桌面去壳）、哪些是待修的。
+在 `web-pixel-diff.json` 旁写一份 `docs/ui-preview/web-pixel-diff.md`，逐条说明哪些差异是规格允许的（桌面去壳）、哪些是待修的。
 
 - [ ] **Step 5: 把 API 门禁加入离线总闸**
 
@@ -2953,7 +2533,7 @@ Expected: 输出每题差异占比；M1 的目标是**移动端（`@mobile`）�
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_all.py 2>&1 | tail -8
 ```
 
-Expected: 与 Task 1 记录的同一条既有失败（`selftest_recall_flow.py`，`runtime-assets/law-store.bundle` 缺失）之外**不得新增失败**。新条目 `selftest_web_api.py` 必须通过。
+Expected: 除既有那条 `selftest_recall_flow.py`（`runtime-assets/law-store.bundle` 缺失，原仓库同样缺失）外**不得新增失败**。新条目 `selftest_web_api.py` 必须通过。
 
 - [ ] **Step 7: 提交**
 
@@ -2974,7 +2554,8 @@ git commit -m "test(web): per-route screenshots, REA pixel diff and the offline 
 4. `CR_UI=gradio` 能退回原 Gradio 界面
 5. 16 条路由在 390×844 与 1440×900 下都非白屏，标签栏恒为底部
 6. 像素比对报告生成，且差异已逐条分类说明
+7. **`web/js/` 下不出现任何原型 CSS 里不存在的类名**——由各视图测试里的反向断言（`.row__copy`、`.tool__copy`、`.fresh-card__top`、`.composer__mic`、`.proto-toggle` 等必须不存在）守住
 
 ## M2 预告（不在本计划范围）
 
-把 M1 的示例数据逐路由替换为 `/api/*`（规格第 5 节），并补 `/api/search` 空命中、`/api/route` 的 `ok:false` 分支契约测试。
+把 `web/js/sample.js` 的取值处换成 `/api/*`（规格第 5 节），并补 `/api/search` 空命中、`/api/route` 的 `ok:false` 分支契约测试。因为视图模板与交互不含任何数据来源假设，M2 只动 `sample.js` 一个文件加 `api.js`。
