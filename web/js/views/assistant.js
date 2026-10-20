@@ -173,6 +173,16 @@ function exportBlock(result) {
   </div>`;
 }
 
+function modelNote(result) {
+  const llm = result.raw?.llm;
+  if (!llm) return "";
+  const conversational = ["about", "greeting", "thanks", "chat", "message"].includes(result.kind);
+  const model = (cache.boot && cache.boot.llm && cache.boot.llm.model) || "模型";
+  if (llm.cached) return ` · ${model} ${conversational ? "回复" : "润色"}（缓存）`;
+  if (llm.ok) return ` · ${model} 已${conversational ? "生成回复" : "参与润色"}`;
+  return llm.reason ? ` · 模型未参与：${String(llm.reason).slice(0, 60)}` : "";
+}
+
 function resultCard(result) {
   if (!result) return "";
   const cutoff = result.data_version?.cutoff || "";
@@ -184,14 +194,14 @@ function resultCard(result) {
       ${followUpBlock(result)}
       ${choiceButtons(result)}
       ${exportBlock(result)}
-      ${cutoff ? `<p class="fine" style="margin-top:8px">数据截止 ${esc(cutoff)} · ${esc(result.title || "")}</p>` : ""}
+      ${cutoff ? `<p class="fine" style="margin-top:8px">数据截止 ${esc(cutoff)} · ${esc(result.title || "")}${esc(modelNote(result))}</p>` : ""}
     </section>`;
 }
 
 export function assistantWelcomeView(state) {
   return `
       <section class="home">
-        <div class="radar-hero" aria-hidden="true"><div class="radar-avatar">合</div></div>
+        <div class="radar-hero" aria-hidden="true"><div class="radar-avatar">${ic("radar")}</div></div>
         <h1>我是合规雷达</h1>
         <p class="home__lead">告诉我你卖什么、卖到哪里。<br>我帮你查适用法规、看关键日期、列出下一步。</p>
 
@@ -258,7 +268,8 @@ export function chatView(state) {
 }
 
 export function render(state) {
-  const hasMessages = Boolean(conv.session?.messages?.length) || Boolean(conv.pending) || conv.loading;
+  const hasMessages = Boolean(conv.session?.messages?.length)
+    || Boolean(conv.pending) || conv.loading || Boolean(conv.error);
   return hasMessages ? chatView(state) : assistantWelcomeView(state);
 }
 

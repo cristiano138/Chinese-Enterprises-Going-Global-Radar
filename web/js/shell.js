@@ -5,6 +5,7 @@ import { esc } from "./dom.js";
 import { ic } from "./icons.js";
 import { TOOL_PAGES } from "./sample.js";
 import { cache, conditions } from "./data.js";
+import { conv } from "./conversation.js";
 
 const coverageLabel = () => {
   const laws = cache.boot && cache.boot.coverage && cache.boot.coverage.laws;
@@ -43,7 +44,7 @@ const llmLabel = () => {
         <button class="iconbtn" data-action="nav" data-to="home" aria-label="返回首页">${ic("back")}</button>
         <div class="bar-title">
           <button class="bar-title__btn" data-action="history" aria-label="打开对话历史">
-            <span class="bar-title__name">合规雷达 · 新对话</span>
+            <span class="bar-title__name">${esc(conv.title || "新对话")}</span>
             <span class="bar-title__caret">▾</span>
           </button>
           <div class="bar-title__sub"><span class="live-dot"></span>${esc(llmLabel())} · ${esc(conditions.market)} / ${esc(conditions.platform)}</div>

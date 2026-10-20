@@ -93,6 +93,33 @@ TOKEN = os.getenv("MODEL_API_TOKEN", "").strip()
 BASE = os.getenv("MODEL_API_BASE", "").strip().rstrip("/")
 MODEL = os.getenv("MODEL_NAME", "").strip()
 
+
+def _ensure_model_host_bypasses_proxy():
+    """让模型 API 直连，不继承开发机上指向本地代理的 HTTP(S)_PROXY。
+
+    启动脚本只保证 localhost 绕过代理；若 shell 里有全局 HTTPS_PROXY（例如
+    Clash 未启动时的 127.0.0.1:7897），模型请求会走已失效的代理并报
+    APIConnectionError。这里把 MODEL_API_BASE 的 host 补进 NO_PROXY。
+    """
+    if not BASE:
+        return
+    try:
+        from urllib.parse import urlsplit
+        host = urlsplit(BASE).hostname or ""
+    except ValueError:
+        host = ""
+    if not host:
+        return
+    for key in ("NO_PROXY", "no_proxy"):
+        entries = [part.strip() for part in os.getenv(key, "").split(",") if part.strip()]
+        if "*" in entries or host in entries:
+            continue
+        entries.append(host)
+        os.environ[key] = ",".join(entries)
+
+
+_ensure_model_host_bypasses_proxy()
+
 # 明确的「未就绪」标记，供上层做降级判断
 READY = bool(TOKEN and BASE and MODEL) and TOKEN != "your_token_here"
 

@@ -4,6 +4,8 @@ import { Api } from "./api.js";
 import { applyContext, conditions } from "./data.js";
 
 const KEY = "cr_conversation_v1";
+const HISTORY_KEY = "cr_conversations_v1";
+const HISTORY_LIMIT = 10;
 
 export const conv = {
   session: null,
@@ -11,6 +13,7 @@ export const conv = {
   loading: false,
   pending: null,
   error: "",
+  title: "新对话",
 };
 
 let notify = () => {};
@@ -34,10 +37,102 @@ export function restoreConversation() {
     if (session && Array.isArray(session.messages)) {
       conv.session = session;
       conv.result = activeResult(session);
+      const saved = readHistory().find((entry) => entry.id === session.id);
+      const firstUser = session.messages.find((message) => message.role === "user");
+      conv.title = saved?.title || String(firstUser?.content || "新对话").trim().slice(0, 50) || "新对话";
     }
   } catch (error) {
     conv.session = null;
   }
+}
+
+function readHistory() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(HISTORY_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+/** 保存当前会话到本地对话历史（同一 session id 覆盖，按更新时间排序）。 */
+function saveConversation() {
+  if (!conv.session || !(conv.session.messages || []).length) return;
+  const existing = readHistory().find((entry) => entry.id === conv.session.id);
+  const firstUser = conv.session.messages.find((message) => message.role === "user");
+  const derived = String(firstUser?.content || "新对话").trim().slice(0, 50) || "新对话";
+  const title = existing?.renamed ? existing.title : derived;
+  conv.title = title;
+  const entries = readHistory().filter((entry) => entry.id !== conv.session.id);
+  entries.unshift({
+    id: conv.session.id,
+    title,
+    renamed: Boolean(existing?.renamed),
+    updated_at: Date.now(),
+    message_count: conv.session.messages.length,
+    session: conv.session,
+  });
+  let keep = entries.slice(0, HISTORY_LIMIT);
+  while (keep.length) {
+    try {
+      window.localStorage.setItem(HISTORY_KEY, JSON.stringify(keep));
+      return;
+    } catch (error) {
+      keep = keep.slice(0, -1);   // 配额不足时丢掉最旧的会话
+    }
+  }
+}
+
+export function listConversations() {
+  return readHistory().sort((a, b) => (b.updated_at || 0) - (a.updated_at || 0));
+}
+
+export function loadConversation(id) {
+  const entry = readHistory().find((item) => item.id === id);
+  if (!entry || !entry.session) return false;
+  generation += 1;
+  conv.session = entry.session;
+  conv.result = activeResult(entry.session);
+  conv.loading = false;
+  conv.pending = null;
+  conv.error = "";
+  conv.title = entry.title || "新对话";
+  persist();
+  notify();
+  return true;
+}
+
+export function renameConversation(id, title) {
+  const value = String(title || "").trim().slice(0, 50);
+  if (!value) return false;
+  const entries = readHistory().map((entry) => entry.id === id
+    ? { ...entry, title: value, renamed: true }
+    : entry);
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+  } catch (error) {
+    return false;
+  }
+  if (conv.session && conv.session.id === id) {
+    conv.title = value;
+    notify();
+  }
+  return true;
+}
+
+export function deleteConversation(id) {
+  const entries = readHistory().filter((entry) => entry.id !== id);
+  try {
+    window.localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+  } catch (error) {
+    // 配额问题不影响删除当前内存状态
+  }
+  if (conv.session && conv.session.id === id) {
+    conversationReset();
+    return true;
+  }
+  notify();
+  return false;
 }
 
 function activeResult(session) {
@@ -98,6 +193,7 @@ export async function conversationSend(text, action = null) {
     conv.result = data.result;
     syncConditions(data.result);
     persist();
+    saveConversation();
   } catch (error) {
     if (current === generation) conv.error = error.message;
   } finally {
@@ -118,6 +214,7 @@ export async function conversationComplete(resultId, itemId) {
     conv.session = data.session;
     conv.result = data.result;
     persist();
+    saveConversation();
   } catch (error) {
     if (current === generation) conv.error = error.message;
   }
@@ -144,6 +241,7 @@ export function conversationReset() {
   conv.loading = false;
   conv.pending = null;
   conv.error = "";
+  conv.title = "新对话";
   persist();
   notify();
 }

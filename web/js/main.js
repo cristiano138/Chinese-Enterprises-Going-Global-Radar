@@ -35,9 +35,12 @@ import {
   bindRender, conditions, loadBootstrap, loadFreshness, reloadTool,
   restoreTodoSnapshot, routeData, search as runSearch, updateConditions,
 } from "./data.js";
-import { getHistory } from "./history.js";
+import { conversationHistorySheet, getHistory } from "./history.js";
 import { markDone } from "./progress.js";
-import { bindConversationRender, conv, restoreConversation } from "./conversation.js";
+import {
+  bindConversationRender, conv, deleteConversation, listConversations,
+  loadConversation, renameConversation, restoreConversation,
+} from "./conversation.js";
 import { Api } from "./api.js";
 
 // 路由到视图的分派表；工具组与工具名在下方按前缀解析。
@@ -59,7 +62,8 @@ export const HANDLED_ACTIONS = [
   "detail", "filter", "fresh-filter", "open-tool", "rerun",
   "example-query", "sheet", "open-history", "close-sheet", "export",
   "mark-done", "copy", "regenerate", "voice", "quick", "help",
-  "conv-action", "conv-option", "conv-complete", "conv-export", "conv-detail"
+  "conv-action", "conv-option", "conv-complete", "conv-export", "conv-detail",
+  "open-conversation", "delete-conversation", "rename-conversation"
 ];
 
 const loadingView = (route) => `
@@ -166,7 +170,10 @@ document.addEventListener("click", (event) => {
     newChat();
     render();
   } else if (action === "history") {
-    openSheet(PROFILE_SHEETS.history());
+    // 助手左上角下拉：只看对话管理；其他页仍看「对话 + 结果快照」。
+    openSheet(store.state.route === "assistant"
+      ? conversationHistorySheet(listConversations(), conv.session?.id || "")
+      : PROFILE_SHEETS.history(listConversations()));
   } else if (action === "quick") {
     const label = el.dataset.label;
     const prompts = {
@@ -218,6 +225,45 @@ document.addEventListener("click", (event) => {
     const entry = getHistory(el.dataset.id || "");
     if (entry) restoreTodoSnapshot(entry);
     go("result");
+  } else if (action === "open-conversation") {
+    closeSheet();
+    if (loadConversation(el.dataset.id || "")) {
+      store.state.messages = [];
+      store.state.typing = false;
+      store.state.choices = [];
+      go("assistant");
+      render();
+    } else {
+      showToast("这段对话已经不存在");
+    }
+  } else if (action === "rename-conversation") {
+    const id = el.dataset.id || "";
+    const entry = listConversations().find((item) => item.id === id);
+    const next = window.prompt("重命名这段对话", entry?.title || "");
+    if (next !== null) {
+      if (renameConversation(id, next)) {
+        openSheet(store.state.route === "assistant"
+          ? conversationHistorySheet(listConversations(), conv.session?.id || "")
+          : PROFILE_SHEETS.history(listConversations()));
+        showToast("已重命名");
+      } else {
+        showToast("名称不能为空");
+      }
+    }
+  } else if (action === "delete-conversation") {
+    const id = el.dataset.id || "";
+    const wasCurrent = Boolean(conv.session && conv.session.id === id);
+    deleteConversation(id);
+    if (wasCurrent) {
+      closeSheet();
+      newChat();
+      showToast("已删除当前对话");
+    } else {
+      openSheet(store.state.route === "assistant"
+        ? conversationHistorySheet(listConversations(), conv.session?.id || "")
+        : PROFILE_SHEETS.history(listConversations()));
+      showToast("已删除这段对话");
+    }
   } else if (action === "export") {
     exportCurrent();
   } else if (action === "mark-done") {

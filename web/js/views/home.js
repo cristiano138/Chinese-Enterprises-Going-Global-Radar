@@ -34,7 +34,6 @@ export function homeView(state) {
   const total = counts.total || 0;
   const reachable = counts.http_ok || counts.content_verified || 0;
   const pending = counts.pending || 0;
-  const changed = counts.changed || 0;
   const checkedAt = fresh ? timeLabel(fresh.checked_at) : "尚未检查";
   const cutoff = boot.data_cutoff || "";
   const error = !fresh && cache.errors.freshness;
@@ -76,24 +75,6 @@ export function homeView(state) {
          <span class="fresh-item__end">查看</span>
        </button>`;
 
-  const changedRow = changed > 0
-    ? `<button class="fresh-item" data-action="nav" data-to="freshness">
-         <span class="fresh-item__dot fresh-item__dot--warn"></span>
-         <span class="fresh-item__copy">
-           <b>${changed} 条内容有更新</b>
-           <span>页面内容哈希与上次核验不一致，需人工复核</span>
-         </span>
-         <span class="fresh-item__end">查看</span>
-       </button>`
-    : `<button class="fresh-item" data-action="nav" data-to="freshness">
-         <span class="fresh-item__dot"></span>
-         <span class="fresh-item__copy">
-           <b>0 条内容有更新</b>
-           <span>与上次核验的页面哈希一致</span>
-         </span>
-         <span class="fresh-item__end">查看</span>
-       </button>`;
-
   return `
       <section class="wb-head">
         <div class="wb-date">${todayLabel()} · ${escText(conditions.category)} / ${escText(conditions.market)} / ${escText(conditions.platform)}</div>
@@ -117,13 +98,9 @@ export function homeView(state) {
           <div class="fresh-count"><b>${total}</b><span>核验链接</span></div>
           <div class="fresh-count"><b>${reachable}</b><span>可访问</span></div>
           <div class="fresh-count ${pending > 0 ? "fresh-count--warn" : ""}"><b>${pending}</b><span>待复核</span></div>
-          <div class="fresh-count ${changed > 0 ? "fresh-count--warn" : ""}"><b>${changed}</b><span>内容更新</span></div>
         </div>
 
-        <div class="fresh-list">
-          ${pendingRow}
-          ${changedRow}
-        </div>
+        <div class="fresh-list">${pendingRow}</div>
 
         <div class="fresh-foot">
           <span>结果只读 · 无需手动操作</span>

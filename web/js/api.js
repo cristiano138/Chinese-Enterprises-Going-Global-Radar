@@ -36,11 +36,14 @@ export async function api(path, { method = "GET", body, params } = {}) {
   try {
     payload = await response.json();
   } catch (error) {
-    throw new ApiError(`服务返回了无法解析的内容（HTTP ${response.status}）。`,
+    throw new ApiError(`服务没有返回 JSON（HTTP ${response.status}）。如果是刚更新的版本，请重启应用后再试。`,
       { status: response.status });
   }
   if (!payload || payload.ok !== true) {
-    throw new ApiError((payload && payload.reason) || `请求失败（HTTP ${response.status}）`,
+    const fallback = response.status === 404
+      ? "接口不存在（HTTP 404）。如果是刚更新的版本，请重启应用后再试。"
+      : `请求失败（HTTP ${response.status}）`;
+    throw new ApiError((payload && payload.reason) || fallback,
       { payload, status: response.status });
   }
   return payload.data;
@@ -57,11 +60,14 @@ export async function upload(path, formData) {
   try {
     payload = await response.json();
   } catch (error) {
-    throw new ApiError(`服务返回了无法解析的内容（HTTP ${response.status}）。`,
+    throw new ApiError(`服务没有返回 JSON（HTTP ${response.status}）。如果是刚更新的版本，请重启应用后再试。`,
       { status: response.status });
   }
   if (!payload || payload.ok !== true) {
-    throw new ApiError((payload && payload.reason) || `请求失败（HTTP ${response.status}）`,
+    const fallback = response.status === 404
+      ? "接口不存在（HTTP 404）。如果是刚更新的版本，请重启应用后再试。"
+      : `请求失败（HTTP ${response.status}）`;
+    throw new ApiError((payload && payload.reason) || fallback,
       { payload, status: response.status });
   }
   return payload.data;

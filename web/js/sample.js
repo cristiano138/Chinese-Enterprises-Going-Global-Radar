@@ -236,7 +236,7 @@ import { historySheet } from "./history.js";
   ];
 
   export const PROFILE_SHEETS = {
-    history: historySheet,
+    history: (conversations) => historySheet(conversations),
     conditions: () => `
       <div class="sheet__grab"></div>
       <div class="sheet__body">

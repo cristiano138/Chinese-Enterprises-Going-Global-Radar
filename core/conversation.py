@@ -36,8 +36,32 @@ CAPABILITIES = [
 _TITLES = {item["action"]: item["label"] for item in CAPABILITIES}
 _TITLES.update(journey="从选品到售后的行动路线", question="补充一个条件",
                capabilities="你可以这样使用合规雷达", message="已更新业务情况",
+               about="关于合规雷达", greeting="你好", thanks="不客气", chat="合规雷达",
                unsupported="当前资料覆盖范围", error="本次查询未完成",
                recall="检索条文依据")
+
+_ABOUT_TEXT = (
+    "我是合规雷达，一个出海合规助手。你告诉我「卖什么 + 卖到哪个市场」，"
+    "我会从已核对的法规目录里整理适用法规、关键日期和下一步准备事项；"
+    "每条结论都带官方来源，拿不到来源的内容不会输出。"
+    "我不替你判断「一定合规」，也不构成法律意见。"
+)
+_GREETING_TEXT = (
+    "你好，我是合规雷达。告诉我你卖什么、卖到哪个市场，"
+    "我可以帮你查适用法规、看关键日期、整理下一步。"
+)
+_THANKS_TEXT = "不客气。需要继续查法规、看时间线或整理待办，直接说产品和市场就行。"
+_CHAT_SYSTEM = (
+    "你是「合规雷达」，面向中国出海卖家的合规助手。"
+    "你只介绍自己能做什么、引导用户补充产品或品类与目标市场；"
+    "不得编造法规名称、编号、日期或合规结论，涉及具体法规时提示用户使用查询功能。"
+    "用简体中文回答 2-4 句，语气自然，不要输出 Markdown 列表。"
+)
+_ABOUT_ACTIONS = [
+    {"label": "查看相关法规", "action": "map"},
+    {"label": "整理下一步", "action": "todo"},
+    {"label": "看全流程", "action": "journey"},
+]
 _CONTEXT_DEFAULTS = {
     "category": "", "product": "", "market": "", "country": "",
     "platform": "", "site": "", "fulfillment": "", "stage": "",
@@ -52,7 +76,21 @@ _FINGERPRINT_FIELDS = ("category", "product", "market", "country", "platform",
                        "markets", "window", "product_revision")
 _TASK_SCOPE_FIELDS = ("category", "product", "market", "country", "platform", "site",
                       "product_revision")
-_BUSINESS_ACTIONS = set(_TITLES) - {"question", "message", "unsupported", "error", "capabilities"}
+_CONVERSATIONAL = {"about", "greeting", "thanks", "chat"}
+
+
+def _conversational_reply(kind, text, context):
+    """闲聊/自我介绍交给模型生成；失败时由调用方回落到固定文案。"""
+    if not llm.is_ready():
+        return "", {"ok": False, "reason": "模型链路未配置", "cached": False}
+    prompt = f"{_CHAT_SYSTEM}\n\n用户：{text.strip()[:500]}\n助手："
+    reply, meta = llm.chat(prompt, max_tokens=220, temperature=0.4,
+                           timeout=12, thinking=False, use_cache=False)
+    if not meta.get("ok") or not (reply or "").strip():
+        return "", meta
+    return reply.strip()[:600], meta
+_BUSINESS_ACTIONS = set(_TITLES) - {"question", "message", "unsupported", "error",
+                                    "capabilities"} - _CONVERSATIONAL
 _NEW_PRODUCT_RE = re.compile(r"另一(?:个|款|种)?(?:产品|商品)|另一个(?:是|为)|换(?:一款|个|一种)(?:产品|商品)|新产品|产品改成")
 _REPORT_RE = re.compile(r"(?:已经|已有|有了?|拿到|做过|完成).{0,8}(?:检测报告|测试报告|认证报告|标签稿|包装稿|技术文件|符合性声明|CE证书)")
 _NEGATIVE_REPORT_RE = re.compile(r"(?:还没|没有|尚未|未做|没做|暂时没有).{0,8}(?:报告|标签|包装|文件|声明|证书)")
@@ -473,6 +511,12 @@ def _update_context(state, text, action, use_model=None):
 def _intent(text):
     if re.search(r"你(?:能|会|可以)做什么|全部功能|所有功能|更多功能|功能目录|能帮我什么", text):
         return "capabilities"
+    if re.search(r"你是谁|你叫什么|你是什么(?:助手|工具|产品)?|关于你|介绍.{0,4}你自己?|自我介绍", text):
+        return "about"
+    if re.fullmatch(r"\s*(?:你好|您好|hi|hello|hey|嗨|在吗)[!！。.？?\s]*", text, re.I):
+        return "greeting"
+    if re.fullmatch(r"\s*(?:谢谢|感谢|多谢|thanks|thank you)[!！。.\s]*", text, re.I):
+        return "thanks"
     if re.search(r"模型对照|模型比较|回答方法|可信|幻觉|为什么相信|来源差异", text):
         return "model"
     if re.search(r"对比|比较|差异|区别", text) and re.search(r"市场|区域|欧盟|德国|美国", text):
@@ -1036,6 +1080,26 @@ def respond(text, state=None, action=None):
         return _record(state, _result("capabilities", state["context"],
                                       "选择一项即可使用，也可以直接输入问题。已有条件会继续沿用。",
                                       actions=copy.deepcopy(CAPABILITIES)))
+    if intent in _CONVERSATIONAL:
+        fallback = {"about": _ABOUT_TEXT, "greeting": _GREETING_TEXT,
+                    "thanks": _THANKS_TEXT, "chat": _GREETING_TEXT}[intent]
+        generated, model_meta = _conversational_reply(intent, text, state["context"])
+        summary = generated or fallback
+        options = ([] if intent == "thanks" else [
+            {"label": "毛绒玩具卖到欧盟", "text": "我想把毛绒玩具卖到欧盟"},
+            {"label": "电子电器卖到美国", "text": "我想把电子电器卖到美国"},
+        ])
+        # 闲聊不抢占当前业务结果：只追加消息，不改变 active_result_id。
+        result = _result(intent, state["context"], summary,
+                         actions=([] if intent == "thanks"
+                                  else copy.deepcopy(_ABOUT_ACTIONS)),
+                         options=options, raw={"llm": model_meta})
+        if generated:
+            result["understanding"] = {"via": "模型", "model_used": True}
+        state["results"].append(result)
+        state["messages"].append({"role": "assistant", "content": result["summary"],
+                                  "result_id": result["id"]})
+        return state, result
     if intent and intent not in _BUSINESS_ACTIONS:
         return _record(state, _result("error", state["context"], "未识别这个操作，可从更多功能选择。"))
     active = _active(state)
@@ -1087,6 +1151,19 @@ def respond(text, state=None, action=None):
         elif active and context_fingerprint(context) != active.get("context_fingerprint"):
             intent = state.get("last_action") or "journey"
         else:
+            generated, model_meta = _conversational_reply("chat", text, context)
+            if generated:
+                result = _result("chat", context, generated,
+                                 actions=copy.deepcopy(_ABOUT_ACTIONS),
+                                 options=[{"label": "毛绒玩具卖到欧盟", "text": "我想把毛绒玩具卖到欧盟"},
+                                          {"label": "电子电器卖到美国", "text": "我想把电子电器卖到美国"}],
+                                 raw={"llm": model_meta})
+                result["understanding"] = {"via": "模型", "model_used": True}
+                state["results"].append(result)
+                state["messages"].append({"role": "assistant",
+                                          "content": result["summary"],
+                                          "result_id": result["id"]})
+                return state, result
             return _question(state, None, "你现在想了解相关法规、整理下一步，还是查看全流程？可以直接说，也可以点下面的入口。",
                              options=[{"label": "相关法规", "action": "map"},
                                       {"label": "下一步", "action": "todo"},
@@ -1235,7 +1312,8 @@ def export_result(state, result_id):
         raise ValueError("请选择当前结果导出。历史结果需先重新打开并确认条件。")
     if result.get("context_fingerprint") != context_fingerprint(state.get("context", {})):
         raise ValueError("业务条件已变化，不能静默导出旧结果。请先重新查询。")
-    if result.get("kind") in ("question", "capabilities", "unsupported", "message", "error"):
+    if result.get("kind") in ("question", "capabilities", "unsupported", "message", "error",
+                              "about", "greeting", "thanks", "chat"):
         raise ValueError("当前回答没有可导出的业务结果。")
     raw = copy.deepcopy(result.get("raw", {}))
     # SPA 会话会经 JSON 往返，date 会变成 ISO 字符串；导出层仍要求 date。

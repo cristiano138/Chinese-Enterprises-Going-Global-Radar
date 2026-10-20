@@ -611,7 +611,7 @@ class SearchViewTests(unittest.TestCase):
         _Browser.goto("regulations/search")
         # 标题在顶栏（原型 1225）；视图内是检索表单与正文指引。
         self.assertIn("条款检索", _Browser.page.locator("#appbar").inner_text())
-        self.assertIn("按法规编号精确定位", _Browser.page.locator("#view").inner_text())
+        self.assertIn("法规编号精确定位", _Browser.page.locator("#view").inner_text())
 
 
 class ProfileViewTests(unittest.TestCase):

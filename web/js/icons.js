@@ -30,7 +30,9 @@
     layers: '<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 16 9 5 9-5"/>',
     radar: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 12 18 6"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/>',
     help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9.2a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.4"/><circle cx="12" cy="17" r=".8" fill="currentColor" stroke="none"/>',
-    check: '<path d="m5 12 4.5 4.5L19 7"/>'
+    check: '<path d="m5 12 4.5 4.5L19 7"/>',
+    edit: '<path d="M4 20h4l10-10-4-4L4 16z"/><path d="m13 6 4 4"/><path d="M14 20h6"/>',
+    trash: '<path d="M4 7h16"/><path d="M9 7V4h6v3"/><path d="m6 7 1 13h10l1-13"/><path d="M10 11v6M14 11v6"/>'
   };
 
   export const ic = (name, cls) =>
