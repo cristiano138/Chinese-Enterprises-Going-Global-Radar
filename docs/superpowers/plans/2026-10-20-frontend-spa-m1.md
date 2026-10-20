@@ -444,54 +444,7 @@ git commit -m "feat(web): serve the SPA shell from Gradio's FastAPI instance"
 
 **本任务不做**：不建 `components.js`。原型的视图直接用模板字符串写标记，不需要组件抽象层——先前那版计划造的 `components.js` 引入了一套自创类名，是 26% 类名错误的来源。视图任务改为逐字搬运原型标记。
 
-- [ ] **Step 1: 搬运设计令牌与基础样式**
-
-| 目标 | 原型行号（含） |
-|---|---|
-| `web/styles/tokens.css` | 9–47 |
-| `web/styles/base.css` | 49–69 |
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-def take(a, b): return "".join(src[a-1:b])          # 1-based 闭区间
-Path("web/styles/tokens.css").write_text(take(9, 47), encoding="utf-8")
-Path("web/styles/base.css").write_text(take(49, 69), encoding="utf-8")
-PY
-grep -c -- "--brand:\|--paper:\|--r-xl:" web/styles/tokens.css
-grep -c "box-sizing\|\.ic {\|\.mono {" web/styles/base.css
-```
-
-Expected: 均 ≥ 3
-
-- [ ] **Step 2: 搬运图标表与转义函数**
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-def take(a, b): return "".join(src[a-1:b])
-
-icons = take(901, 936)
-icons = icons.replace("const ICONS = {", "export const ICONS = {", 1)
-icons = icons.replace("const ic = (name, cls) =>", "export const ic = (name, cls) =>", 1)
-Path("web/js/icons.js").write_text(
-    "// 搬运自 prototype.html:901-936。仅把两处 const 改为 export const，其余未动。\n" + icons,
-    encoding="utf-8")
-
-dom = take(1176, 1178)
-dom = dom.replace("const esc = (s) =>", "export const esc = (s) =>", 1)
-Path("web/js/dom.js").write_text(
-    "// 搬运自 prototype.html:1176-1178。仅把 const 改为 export const。\n" + dom,
-    encoding="utf-8")
-PY
-grep -c "export const ICONS\|export const ic\|export const esc" web/js/icons.js web/js/dom.js
-```
-
-Expected: `web/js/icons.js:2`、`web/js/dom.js:1`
-
-- [ ] **Step 3: 写失败的测试**
+- [ ] **Step 1: 写失败的测试**
 
 创建 `scripts/selftest_web_ui.py`。这是后续所有任务共用的浏览器测试骨架。
 
@@ -597,7 +550,7 @@ if __name__ == "__main__":
         _Browser.stop()
 ```
 
-- [ ] **Step 4: 起服务并运行测试确认失败**
+- [ ] **Step 2: 起服务并运行测试确认失败**
 
 ```bash
 PORT=7899 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py > /tmp/cr-ui.log 2>&1 &
@@ -606,6 +559,53 @@ sleep 12
 ```
 
 Expected: FAIL —— `/web/js/dom.js` 与 `icons.js` 尚不存在
+
+- [ ] **Step 3: 搬运设计令牌与基础样式**
+
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/styles/tokens.css` | 9–47 |
+| `web/styles/base.css` | 49–69 |
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])          # 1-based 闭区间
+Path("web/styles/tokens.css").write_text(take(9, 47), encoding="utf-8")
+Path("web/styles/base.css").write_text(take(49, 69), encoding="utf-8")
+PY
+grep -c -- "--brand:\|--paper:\|--r-xl:" web/styles/tokens.css
+grep -c "box-sizing\|\.ic {\|\.mono {" web/styles/base.css
+```
+
+Expected: 均 ≥ 3
+
+- [ ] **Step 4: 搬运图标表与转义函数**
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+
+icons = take(901, 936)
+icons = icons.replace("const ICONS = {", "export const ICONS = {", 1)
+icons = icons.replace("const ic = (name, cls) =>", "export const ic = (name, cls) =>", 1)
+Path("web/js/icons.js").write_text(
+    "// 搬运自 prototype.html:901-936。仅把两处 const 改为 export const，其余未动。\n" + icons,
+    encoding="utf-8")
+
+dom = take(1176, 1178)
+dom = dom.replace("const esc = (s) =>", "export const esc = (s) =>", 1)
+Path("web/js/dom.js").write_text(
+    "// 搬运自 prototype.html:1176-1178。仅把 const 改为 export const。\n" + dom,
+    encoding="utf-8")
+PY
+grep -c "export const ICONS\|export const ic\|export const esc" web/js/icons.js web/js/dom.js
+```
+
+Expected: `web/js/icons.js:2`、`web/js/dom.js:1`
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -638,80 +638,7 @@ git commit -m "feat(web): design tokens, icons and escaping ported from the prot
 
 **为什么有这一层**：原型的视图函数依赖这批数据表与四个渲染辅助。把它们逐字搬成模块，视图才能在 Task 6–9 里近乎逐字搬运；M2 接真数据时**只换 `sample.js` 的取值处**，视图模板与交互不动——这正是架构想要的接缝。
 
-- [ ] **Step 1: 搬运数据表**
-
-| 目标 | 原型行号（含） | 内容 |
-|---|---|---|
-| `web/js/sample.js` | 939–1148 | `ITEMS`、`RESULT_ITEMS`、`PRIORITIES`、`TOOL_PAGES`、`FRESH_ITEMS` |
-| `web/js/sample.js` | 1243–1248 | `START` |
-| `web/js/sample.js` | 1735–1747 | `CLAUSES` |
-| `web/js/sample.js` | 2187–2321 | `PROFILE_SHEETS` |
-
-```bash
-python - <<'PY'
-import re
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-def take(a, b): return "".join(src[a-1:b])
-body = take(939, 1148) + take(1243, 1248) + take(1735, 1747) + take(2187, 2321)
-# 顶层 const 改为 export const，逐个精确替换（不用全局替换，避免误伤对象内部的字面量）
-for name in ("ITEMS", "RESULT_ITEMS", "PRIORITIES", "TOOL_PAGES",
-             "FRESH_ITEMS", "START", "CLAUSES", "PROFILE_SHEETS"):
-    before = body
-    body = re.sub(rf"^(\s*)const {name} = ", rf"\1export const {name} = ",
-                  body, count=1, flags=re.M)
-    assert body != before, f"{name} 未被替换"
-header = ("// 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321。\n"
-          "// 仅把顶层 const 改为 export const，数据内容逐字未动。\n"
-          "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n")
-Path("web/js/sample.js").write_text(header + body, encoding="utf-8")
-PY
-grep -c "^export const" web/js/sample.js
-```
-
-Expected: `8`
-
-- [ ] **Step 2: 搬运渲染辅助**
-
-| 目标 | 原型行号（含） | 函数 |
-|---|---|---|
-| `web/js/render.js` | 1425–1441 | `rowHtml(id)` |
-| `web/js/render.js` | 1443–1447 | `filteredItems()` |
-| `web/js/render.js` | 1566–1571 | `toolCard(...)` |
-| `web/js/render.js` | 1627–1632 | `filteredFresh()` |
-
-三处增量（必须照做，否则后面视图搬不动）：
-
-1. `function rowHtml` / `function filteredItems` / `function filteredFresh` → `export function …`；`const toolCard =` → `export const toolCard =`。
-2. 本文件顶部加 `import { esc } from "./dom.js";` 与 `import { ic } from "./icons.js";`——原型里这两个是全局的，模块化后必须显式导入。
-3. 四个函数都引用 `ITEMS` / `RESULT_ITEMS` / `FRESH_ITEMS`，加 `import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";`。
-4. `filteredItems` 与 `filteredFresh` 读 `state.filter` / `state.freshFilter`。**本任务先把 `state` 作为参数传入**：签名改为 `filteredItems(state)` / `filteredFresh(state)`，函数体里的 `state.filter` 保持不变。Task 4 引入 store 后由调用方传入。
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-def take(a, b): return "".join(src[a-1:b])
-body = take(1425, 1441) + take(1443, 1447) + take(1566, 1571) + take(1627, 1632)
-body = body.replace("function rowHtml(id) {", "export function rowHtml(id) {", 1)
-body = body.replace("function filteredItems() {", "export function filteredItems(state) {", 1)
-body = body.replace("const toolCard = (", "export const toolCard = (", 1)
-body = body.replace("function filteredFresh() {", "export function filteredFresh(state) {", 1)
-header = ('// 搬运自 prototype.html:1425-1441, 1443-1447, 1566-1571, 1627-1632。\n'
-          '// 增量：顶层函数/常量改为 export；显式导入 esc/ic/数据表；\n'
-          '// filteredItems/filteredFresh 改吃 state 参数（Task 4 起由调用方传 store.state）。\n'
-          'import { esc } from "./dom.js";\n'
-          'import { ic } from "./icons.js";\n'
-          'import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";\n\n')
-Path("web/js/render.js").write_text(header + body, encoding="utf-8")
-PY
-grep -c "^export function\|^export const" web/js/render.js
-grep -c "^import" web/js/render.js
-```
-
-Expected: `4`；`3`
-
-- [ ] **Step 3: 写失败的测试**
+- [ ] **Step 1: 写失败的测试**
 
 在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。追加到文件末尾会让新测试类定义晚于 `unittest.main()`，这些用例会被**静默跳过**——输出仍显示 PASS，实际一个都没跑。追加后务必确认运行输出里出现了本任务新增的用例名。
 
@@ -791,13 +718,86 @@ class RenderHelperTests(unittest.TestCase):
         self.assertEqual(got["warn"] + got["ok"] + got["muted"], 4)
 ```
 
-- [ ] **Step 4: 运行测试确认失败**
+- [ ] **Step 2: 运行测试确认失败**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SampleDataTests RenderHelperTests
 ```
 
 Expected: FAIL —— `/web/js/sample.js` 尚不存在
+
+- [ ] **Step 3: 搬运数据表**
+
+| 目标 | 原型行号（含） | 内容 |
+|---|---|---|
+| `web/js/sample.js` | 939–1148 | `ITEMS`、`RESULT_ITEMS`、`PRIORITIES`、`TOOL_PAGES`、`FRESH_ITEMS` |
+| `web/js/sample.js` | 1243–1248 | `START` |
+| `web/js/sample.js` | 1735–1747 | `CLAUSES` |
+| `web/js/sample.js` | 2187–2321 | `PROFILE_SHEETS` |
+
+```bash
+python - <<'PY'
+import re
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+body = take(939, 1148) + take(1243, 1248) + take(1735, 1747) + take(2187, 2321)
+# 顶层 const 改为 export const，逐个精确替换（不用全局替换，避免误伤对象内部的字面量）
+for name in ("ITEMS", "RESULT_ITEMS", "PRIORITIES", "TOOL_PAGES",
+             "FRESH_ITEMS", "START", "CLAUSES", "PROFILE_SHEETS"):
+    before = body
+    body = re.sub(rf"^(\s*)const {name} = ", rf"\1export const {name} = ",
+                  body, count=1, flags=re.M)
+    assert body != before, f"{name} 未被替换"
+header = ("// 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321。\n"
+          "// 仅把顶层 const 改为 export const，数据内容逐字未动。\n"
+          "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n")
+Path("web/js/sample.js").write_text(header + body, encoding="utf-8")
+PY
+grep -c "^export const" web/js/sample.js
+```
+
+Expected: `8`
+
+- [ ] **Step 4: 搬运渲染辅助**
+
+| 目标 | 原型行号（含） | 函数 |
+|---|---|---|
+| `web/js/render.js` | 1425–1441 | `rowHtml(id)` |
+| `web/js/render.js` | 1443–1447 | `filteredItems()` |
+| `web/js/render.js` | 1566–1571 | `toolCard(...)` |
+| `web/js/render.js` | 1627–1632 | `filteredFresh()` |
+
+三处增量（必须照做，否则后面视图搬不动）：
+
+1. `function rowHtml` / `function filteredItems` / `function filteredFresh` → `export function …`；`const toolCard =` → `export const toolCard =`。
+2. 本文件顶部加 `import { esc } from "./dom.js";` 与 `import { ic } from "./icons.js";`——原型里这两个是全局的，模块化后必须显式导入。
+3. 四个函数都引用 `ITEMS` / `RESULT_ITEMS` / `FRESH_ITEMS`，加 `import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";`。
+4. `filteredItems` 与 `filteredFresh` 读 `state.filter` / `state.freshFilter`。**本任务先把 `state` 作为参数传入**：签名改为 `filteredItems(state)` / `filteredFresh(state)`，函数体里的 `state.filter` 保持不变。Task 4 引入 store 后由调用方传入。
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+body = take(1425, 1441) + take(1443, 1447) + take(1566, 1571) + take(1627, 1632)
+body = body.replace("function rowHtml(id) {", "export function rowHtml(id) {", 1)
+body = body.replace("function filteredItems() {", "export function filteredItems(state) {", 1)
+body = body.replace("const toolCard = (", "export const toolCard = (", 1)
+body = body.replace("function filteredFresh() {", "export function filteredFresh(state) {", 1)
+header = ('// 搬运自 prototype.html:1425-1441, 1443-1447, 1566-1571, 1627-1632。\n'
+          '// 增量：顶层函数/常量改为 export；显式导入 esc/ic/数据表；\n'
+          '// filteredItems/filteredFresh 改吃 state 参数（Task 4 起由调用方传 store.state）。\n'
+          'import { esc } from "./dom.js";\n'
+          'import { ic } from "./icons.js";\n'
+          'import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";\n\n')
+Path("web/js/render.js").write_text(header + body, encoding="utf-8")
+PY
+grep -c "^export function\|^export const" web/js/render.js
+grep -c "^import" web/js/render.js
+```
+
+Expected: `4`；`3`
 
 - [ ] **Step 5: 运行测试确认通过**
 
@@ -1152,76 +1152,7 @@ git commit -m "feat(web): state, routing, appbar and tabbar ported from the prot
 
 **原型对照**：抽屉 `prototype.html:2322-2333`；轻提示 `2147-2152`。动画全在 CSS（`.sheet` 默认 `translateY(103%)`、`.is-on` 归零），JS 只管类名与 aria——与原型一致，本任务不写动画。
 
-- [ ] **Step 1: 搬运抽屉与轻提示**
-
-| 目标 | 原型行号（含） |
-|---|---|
-| `web/js/ui/sheet.js` | 2322–2333 |
-| `web/js/ui/toast.js` | 2147–2152 |
-
-增量（三条）：
-
-1. `function openSheet` / `function closeSheet` / `function showToast` → `export function …`。
-2. 原型用模块顶层常量 `sheet` / `backdrop` / `toast` 持有 DOM 句柄（原型 1172–1174）。模块化后**不要在导入期取 DOM**（导入可能早于解析到这些节点）；改为在函数内 `document.getElementById(...)`。
-3. `showToast` 里的 `toast._t`（原型把计时器挂在 DOM 节点上）改为模块内的 `let timer`。
-
-先把原文看清楚：
-
-```bash
-python - <<'PY'
-from pathlib import Path
-src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
-def take(a, b): return "".join(src[a-1:b])
-Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js").write_text(take(2322, 2333), encoding="utf-8")
-Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js").write_text(take(2147, 2152), encoding="utf-8")
-PY
-cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js
-echo '--- toast ---'
-cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js
-```
-
-然后按上面三条增量改写为：
-
-```js
-// web/js/ui/sheet.js —— 搬运自 prototype.html:2322-2333。
-// 增量：导出；DOM 句柄改为函数内查找（不在导入期取）。
-const sheetEl = () => document.getElementById("sheet");
-const backdropEl = () => document.getElementById("backdrop");
-
-export function openSheet(html) {
-  const sheet = sheetEl();
-  sheet.innerHTML = html;
-  backdropEl().classList.add("is-on");
-  sheet.classList.add("is-on");
-  sheet.setAttribute("aria-hidden", "false");
-}
-
-export function closeSheet() {
-  const sheet = sheetEl();
-  backdropEl().classList.remove("is-on");
-  sheet.classList.remove("is-on");
-  sheet.setAttribute("aria-hidden", "true");
-}
-```
-
-```js
-// web/js/ui/toast.js —— 搬运自 prototype.html:2147-2152。
-// 增量：导出；计时器从挂在 DOM 节点上的 toast._t 改为模块内变量。
-const DURATION = 2400;
-let timer = null;
-
-export function showToast(text) {
-  const toast = document.getElementById("toast");
-  toast.textContent = text;
-  toast.classList.add("is-on");
-  if (timer) clearTimeout(timer);
-  timer = setTimeout(() => toast.classList.remove("is-on"), DURATION);
-}
-```
-
-**关键**：改写时必须保持原型那三行**赋值顺序**（先 `backdrop` 后 `sheet`）与 `aria-hidden` 的取值，测试会核对。
-
-- [ ] **Step 2: 写失败的测试**
+- [ ] **Step 1: 写失败的测试**
 
 在 `scripts/selftest_web_ui.py` 的 `if __name__ == "__main__":` 块**之前**追加。追加到末尾会让新测试类定义晚于 `unittest.main()`，用例被**静默跳过**（输出仍显 PASS）。追加后确认运行输出里出现了本任务新增的用例名。
 
@@ -1302,13 +1233,82 @@ class ToastTests(unittest.TestCase):
         self.assertTrue(got, "第二次提示必须重新计时，而不是沿用第一次留下的定时器")
 ```
 
-- [ ] **Step 3: 运行测试确认失败**
+- [ ] **Step 2: 运行测试确认失败**
 
 ```bash
 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SheetTests ToastTests
 ```
 
 Expected: FAIL —— `/web/js/ui/sheet.js` 尚不存在
+
+- [ ] **Step 3: 搬运抽屉与轻提示**
+
+| 目标 | 原型行号（含） |
+|---|---|
+| `web/js/ui/sheet.js` | 2322–2333 |
+| `web/js/ui/toast.js` | 2147–2152 |
+
+增量（三条）：
+
+1. `function openSheet` / `function closeSheet` / `function showToast` → `export function …`。
+2. 原型用模块顶层常量 `sheet` / `backdrop` / `toast` 持有 DOM 句柄（原型 1172–1174）。模块化后**不要在导入期取 DOM**（导入可能早于解析到这些节点）；改为在函数内 `document.getElementById(...)`。
+3. `showToast` 里的 `toast._t`（原型把计时器挂在 DOM 节点上）改为模块内的 `let timer`。
+
+先把原文看清楚：
+
+```bash
+python - <<'PY'
+from pathlib import Path
+src = Path("docs/ui-preview/prototype-v2.html").read_text(encoding="utf-8").splitlines(keepends=True)
+def take(a, b): return "".join(src[a-1:b])
+Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js").write_text(take(2322, 2333), encoding="utf-8")
+Path(".superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js").write_text(take(2147, 2152), encoding="utf-8")
+PY
+cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_sheet_raw.js
+echo '--- toast ---'
+cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js
+```
+
+然后按上面三条增量改写为：
+
+```js
+// web/js/ui/sheet.js —— 搬运自 prototype.html:2322-2333。
+// 增量：导出；DOM 句柄改为函数内查找（不在导入期取）。
+const sheetEl = () => document.getElementById("sheet");
+const backdropEl = () => document.getElementById("backdrop");
+
+export function openSheet(html) {
+  const sheet = sheetEl();
+  sheet.innerHTML = html;
+  backdropEl().classList.add("is-on");
+  sheet.classList.add("is-on");
+  sheet.setAttribute("aria-hidden", "false");
+}
+
+export function closeSheet() {
+  const sheet = sheetEl();
+  backdropEl().classList.remove("is-on");
+  sheet.classList.remove("is-on");
+  sheet.setAttribute("aria-hidden", "true");
+}
+```
+
+```js
+// web/js/ui/toast.js —— 搬运自 prototype.html:2147-2152。
+// 增量：导出；计时器从挂在 DOM 节点上的 toast._t 改为模块内变量。
+const DURATION = 2400;
+let timer = null;
+
+export function showToast(text) {
+  const toast = document.getElementById("toast");
+  toast.textContent = text;
+  toast.classList.add("is-on");
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => toast.classList.remove("is-on"), DURATION);
+}
+```
+
+**关键**：改写时必须保持原型那三行**赋值顺序**（先 `backdrop` 后 `sheet`）与 `aria-hidden` 的取值，测试会核对。
 
 - [ ] **Step 4: 在 `main.js` 接入 `close-sheet` 与 Escape**
 
