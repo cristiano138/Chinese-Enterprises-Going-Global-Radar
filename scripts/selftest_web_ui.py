@@ -108,7 +108,7 @@ class SampleDataTests(unittest.TestCase):
         self.assertEqual(got["fresh"], 4)
         self.assertEqual(got["start"], 4)
         self.assertEqual(got["sheets"], 7)
-        self.assertGreaterEqual(got["items"], 20)
+        self.assertEqual(got["items"], 14, "原型 ITEMS 恰好 14 个顶层键（939-1094 行）")
 
 
 class RenderHelperTests(unittest.TestCase):
