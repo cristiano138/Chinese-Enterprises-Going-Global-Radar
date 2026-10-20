@@ -631,6 +631,13 @@ class ProfileViewTests(unittest.TestCase):
         current = _Browser.page.locator('#tabbar [aria-current="page"]')
         self.assertIn("我的", current.inner_text())
 
+    def test_profile_shows_the_radar_mark_once(self):
+        """我的页同时有顶栏 brand 与 hero 两处雷达标记，视觉上重复。
+        产品决定：保留 hero 的品牌标记，顶栏在 profile 路由不画标记。"""
+        _Browser.goto("profile")
+        self.assertEqual(_Browser.page.locator("#appbar .brand__mark").count(), 0)
+        self.assertEqual(_Browser.page.locator("#view .profile__mark").count(), 1)
+
 
 class DetailSheetTests(unittest.TestCase):
     @classmethod
