@@ -1,3 +1,39 @@
-:root{
-  --brand:#0e4d3a;
-}
+  /* ============================================================
+     出海合规雷达 · 可点击原型 v2
+     设计方向：法规卷宗 / 雷达信号
+     墨绿主色 + 纸白底 + 琥珀待确认；等宽仅用于法规编号
+     ============================================================ */
+
+  :root {
+    --paper:        #fafaf7;
+    --surface:      #ffffff;
+    --ink:          #12211b;
+    --ink-2:        #35473e;
+    --muted:        #65756c;
+    --faint:        #8a978f;
+    --line:         #dfe5df;
+    --line-strong:  #cbd6cd;
+    --brand:        #0e4d3a;
+    --brand-bright: #177a57;
+    --brand-soft:   #e8f2ec;
+    --brand-mist:   #f2f8f4;
+    --amber:        #e8a33d;
+    --amber-ink:    #8a5a12;
+    --amber-soft:   #fbf0dd;
+    --danger:       #a94a3f;
+    --danger-soft:  #f8eae8;
+    --desk:         #e7ece8;
+
+    --r-sm: 9px;
+    --r-md: 13px;
+    --r-lg: 18px;
+    --r-xl: 26px;
+
+    --shadow-sm: 0 1px 2px rgba(18, 33, 27, .05);
+    --shadow-lift: 0 10px 30px rgba(18, 33, 27, .12);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+
+    --font: "PingFang SC", "HarmonyOS Sans SC", "MiSans", "Noto Sans SC",
+            "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", "SF Mono", ui-monospace, Consolas, "Liberation Mono", monospace;
+  }
