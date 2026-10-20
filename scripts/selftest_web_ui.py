@@ -277,6 +277,82 @@ class StoreTests(unittest.TestCase):
         self.assertEqual(got, 1)
 
 
+class SheetTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def setUp(self):
+        _Browser.goto("home")
+        _Browser.page.evaluate(
+            "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
+
+    def _open(self, html='<div class="sheet__body"><h2>详情</h2></div>'):
+        _Browser.page.evaluate(
+            "async (h) => { const s = await import('/web/js/ui/sheet.js'); s.openSheet(h); }", html)
+
+    def test_open_and_close_toggle_the_prototype_classes(self):
+        self._open()
+        self.assertIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
+        self.assertIn("is-on", _Browser.page.locator("#backdrop").get_attribute("class"))
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-hidden"), "false")
+        _Browser.page.evaluate(
+            "async () => { const s = await import('/web/js/ui/sheet.js'); s.closeSheet(); }")
+        self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
+        self.assertNotIn("is-on", _Browser.page.locator("#backdrop").get_attribute("class"))
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-hidden"), "true")
+
+    def test_sheet_is_marked_dialog_and_modal_from_the_markup(self):
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("role"), "dialog")
+        self.assertEqual(_Browser.page.locator("#sheet").get_attribute("aria-modal"), "true")
+
+    def test_escape_closes_the_sheet(self):
+        self._open()
+        _Browser.page.keyboard.press("Escape")
+        _Browser.page.wait_for_timeout(200)
+        self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
+
+    def test_backdrop_click_closes_the_sheet(self):
+        """backdrop 自带 data-action="close-sheet"（原型 891 行），走事件委托关闭。"""
+        self._open()
+        _Browser.page.locator("#backdrop").click(force=True)
+        _Browser.page.wait_for_timeout(250)
+        self.assertNotIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
+
+    def test_sheet_content_is_escaped_by_the_caller(self):
+        """Review Focus 1：esc 之后再注入的内容不得被解析成元素。"""
+        _Browser.page.evaluate(
+            "async () => { const d = await import('/web/js/dom.js');"
+            "const s = await import('/web/js/ui/sheet.js');"
+            "s.openSheet('<div class=\"sheet__body\"><p id=probe>' + d.esc('<b>x</b>') + '</p></div>'); }")
+        self.assertEqual(_Browser.page.locator("#probe").locator("b").count(), 0)
+
+
+class ToastTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_toast_shows_then_hides_after_2400ms(self):
+        _Browser.page.evaluate(
+            "async () => { const t = await import('/web/js/ui/toast.js'); t.showToast('先写一句你的产品'); }")
+        self.assertIn("is-on", _Browser.page.locator("#toast").get_attribute("class"))
+        self.assertEqual(_Browser.page.locator("#toast").inner_text(), "先写一句你的产品")
+        _Browser.page.wait_for_timeout(2600)
+        self.assertNotIn("is-on", _Browser.page.locator("#toast").get_attribute("class"))
+
+    def test_second_toast_restarts_the_timer(self):
+        got = _Browser.page.evaluate("""async () => {
+          const t = await import('/web/js/ui/toast.js');
+          t.showToast('第一条');
+          await new Promise(r => setTimeout(r, 1800));
+          t.showToast('第二条');
+          await new Promise(r => setTimeout(r, 1200));
+          return document.getElementById('toast').classList.contains('is-on');
+        }""")
+        self.assertTrue(got, "第二次提示必须重新计时，而不是沿用第一次留下的定时器")
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

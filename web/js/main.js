@@ -4,6 +4,7 @@ import { ic } from "./icons.js";
 import { store } from "./store.js";
 import { routeOf, go } from "./router.js";
 import { renderAppbar, renderTabbar } from "./shell.js";
+import { closeSheet } from "./ui/sheet.js";
 
 const els = {
   appbar: document.getElementById("appbar"),
@@ -52,11 +53,20 @@ document.addEventListener("click", (event) => {
   if (!el) return;
   const action = el.dataset.action;
   if (action === "nav") {
+    closeSheet();                              // 原型 2357：抽屉里的 nav 也要先关抽屉
     go(el.dataset.to || "assistant");          // 原型 2358：nav 默认去 assistant
   } else if (action === "open-tool") {
     go((el.dataset.group || "regulations") + "/" + el.dataset.tool);
+  } else if (action === "close-sheet") {
+    closeSheet();
   }
   // 其余 action 由 Task 5 起的任务逐个接入。
+});
+
+// 与原型 2443 一致：带 is-on 判断，无关的 Escape 不触发关闭。
+document.addEventListener("keydown", (event) => {
+  const sheet = document.getElementById("sheet");
+  if (event.key === "Escape" && sheet.classList.contains("is-on")) closeSheet();
 });
 
 store.state.route = routeOf();
