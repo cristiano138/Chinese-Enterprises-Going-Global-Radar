@@ -21,6 +21,7 @@
 - 中文文案**逐字照抄原型**，不得改写、意译或"优化"
 - 提交时**逐个指定路径**，禁止 `git add -A` / `git add .`（本仓库有并行会话）
 - 参考文件 `prototype.html` 在仓库根目录之外；Task 1 会把它入库为只读参考资产
+- 【搬运】保留原型的 2 空格缩进，因此**校验用的 grep 一律不要锚定行首**（`^export` 会返回 0）。用 `^[[:space:]]*export` 或干脆不加锚。
 - 所有 `python.exe` 调用前都带 `PYTHONIOENCODING=utf-8`。**不要删掉它**：Windows 下子进程的 stdout 默认是 gbk，测试文件里的中文 docstring/用例名会以乱码输出，污染每一次运行结果。
 
 ### 关于"从原型搬运"的约定
@@ -664,7 +665,7 @@ class SampleDataTests(unittest.TestCase):
         self.assertEqual(got["fresh"], 4)
         self.assertEqual(got["start"], 4)
         self.assertEqual(got["sheets"], 7)
-        self.assertGreaterEqual(got["items"], 20)
+        self.assertEqual(got["items"], 14, "原型 ITEMS 恰好 14 个顶层键（939-1094 行）")
 
 
 class RenderHelperTests(unittest.TestCase):
@@ -755,7 +756,7 @@ header = ("// 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321
           "// M2 接入真数据时只改本文件的取值处，视图模板不动。\n")
 Path("web/js/sample.js").write_text(header + body, encoding="utf-8")
 PY
-grep -c "^export const" web/js/sample.js
+grep -cE "^[[:space:]]*export const [A-Z_]+ = " web/js/sample.js
 ```
 
 Expected: `8`
@@ -794,7 +795,7 @@ header = ('// 搬运自 prototype.html:1425-1441, 1443-1447, 1566-1571, 1627-163
           'import { ITEMS, RESULT_ITEMS, FRESH_ITEMS } from "./sample.js";\n\n')
 Path("web/js/render.js").write_text(header + body, encoding="utf-8")
 PY
-grep -c "^export function\|^export const" web/js/render.js
+grep -cE "^[[:space:]]*export (function|const)" web/js/render.js
 grep -c "^import" web/js/render.js
 ```
 
@@ -910,7 +911,7 @@ Path("web/js/router.js").write_text(
     "// 搬运自 prototype.html:1181-1182。hashchange 的绑定在 main.js（原型的 1183 行）。\n"
     + body, encoding="utf-8")
 PY
-grep -c "^export const" web/js/router.js
+grep -cE "^[[:space:]]*export const (routeOf|go)" web/js/router.js
 ```
 
 Expected: `2`
@@ -947,7 +948,7 @@ header = ('// 搬运自 prototype.html:1186-1240, 1970-2003。\n'
           'import { TOOL_PAGES } from "./sample.js";\n\n')
 Path("web/js/shell.js").write_text(header + body, encoding="utf-8")
 PY
-grep -c "^export function renderAppbar\|^export function renderTabbar\|^export const TABS" web/js/shell.js
+grep -cE "^[[:space:]]*export (function (renderAppbar|renderTabbar)|const TABS)" web/js/shell.js
 ```
 
 Expected: `3`
