@@ -1,0 +1,6 @@
+{
+  "timezone": "Asia/Shanghai",
+  "times": ["19:00", "22:00"],
+  "grace_minutes": 120,
+  "note": "北京时间每天两次；Windows 计划任务与 GitHub Actions 均按此配置。"
+}

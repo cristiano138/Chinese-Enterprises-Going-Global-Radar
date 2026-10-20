@@ -530,16 +530,22 @@ def _freshness_footer():
     d = _freshness_latest()
     if not d:
         return ""
-    ok, total = d.get("ok", 0), d.get("total", 0)
-    # 三分口径（与 check_freshness.py 一致）：
-    #   link_error = 连上了但 4xx/5xx，链接可能失效；net_error = 本机网络没连通，不判死链
+    total = d.get("total", 0)
+    # 新版口径：content_verified 才叫“取得内容”；HTTP 可达不等于拿到内容。
+    verified = d.get("content_verified", d.get("ok", 0))
+    empty = d.get("empty_content", 0)
+    limited = d.get("rate_limited", 0)
     link_bad = d.get("link_error", 0)
     net_bad = d.get("net_error", 0)
     changed = d.get("changed", 0)
     style = ("background:#eaf4ee;border-color:#cfe4d6" if link_bad == 0
              else "background:#f7f1e2;border-color:#e5d9bd")
     parts = (f"官方链接最近核验：{_e(d.get('checked_at', ''))}（北京时间）· "
-             f"{ok}/{total} 可访问")
+             f"{total} 个链接，{verified} 条取得内容")
+    if empty:
+        parts += f" · {empty} 条官方空响应（未取得内容）"
+    if limited:
+        parts += f" · {limited} 条被官方限流（待下次重试）"
     if link_bad:
         parts += f" · ⚠️ {link_bad} 条链接异常（待人工复核）"
     if net_bad:

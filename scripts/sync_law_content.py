@@ -13,7 +13,7 @@ from core import law_content, law_store
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--law', help='CELEX 或 US:编:Part；新法规同样使用此入口')
-    parser.add_argument('--signals', help='check_metadata_freshness 生成的 metadata_check_latest.json')
+    parser.add_argument('--signals', help='check_metadata_freshness 生成的 data/metadata_check_latest.json')
     parser.add_argument('--db', help='正式条款库路径；必须已存在')
     parser.add_argument('--staging', default=str(ROOT / 'data/content_staging'))
     parser.add_argument('--apply', help='经审阅的候选 JSON 文件')

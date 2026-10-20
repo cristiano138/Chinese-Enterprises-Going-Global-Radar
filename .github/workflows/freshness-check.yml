@@ -1,0 +1,54 @@
+name: Freshness Check
+
+# 北京时间每天 19:00、22:00 = UTC 11:00、14:00
+# GitHub Actions 的 cron 使用 UTC，且高峰期可能延迟数分钟。
+on:
+  schedule:
+    - cron: "0 11,14 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: freshness-check
+  cancel-in-progress: false
+
+jobs:
+  link-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Check official links
+        run: python scripts/check_freshness.py --proxy direct
+
+      - name: Metadata check (optional, needs bundled database)
+        run: |
+          if [ -f sqlite/regulations.sqlite3 ]; then
+            python scripts/check_metadata_freshness.py --proxy direct --backup daily
+          else
+            echo "skipped: sqlite/regulations.sqlite3 is not in the repository"
+          fi
+
+      - name: Commit freshness data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/freshness_latest.json data/freshness_log.jsonl data/freshness_runs.jsonl
+          if [ -f data/metadata_check_latest.json ]; then
+            git add data/metadata_check_latest.json data/metadata_check_log.jsonl
+          fi
+          if git diff --cached --quiet; then
+            echo "No freshness data changes"
+          else
+            git commit -m "chore(freshness): scheduled check [skip ci]"
+            git push
+          fi
