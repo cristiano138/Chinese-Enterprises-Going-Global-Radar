@@ -1998,7 +1998,9 @@ class ToolViewTests(unittest.TestCase):
         for group, tool, title in self.TOOLS:
             with self.subTest(tool=tool):
                 _Browser.goto(f"{group}/{tool}")
-                self.assertIn(title, _Browser.page.locator("#view").inner_text())
+                # 原型的工具标题在顶栏（1226-1233）；视图内是副标题与工具内容。
+                self.assertIn(title, _Browser.page.locator("#appbar").inner_text())
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip())
 
     def test_tool_pages_keep_the_bottom_tabbar_active(self):
         for group, tool, _ in self.TOOLS:
@@ -2022,7 +2024,9 @@ class SearchViewTests(unittest.TestCase):
 
     def test_search_route_renders_the_prototype_clauses(self):
         _Browser.goto("regulations/search")
-        self.assertIn("条款检索", _Browser.page.locator("#view").inner_text())
+        # 标题在顶栏（原型 1225）；视图内是检索表单与正文指引。
+        self.assertIn("条款检索", _Browser.page.locator("#appbar").inner_text())
+        self.assertIn("按法规编号精确定位", _Browser.page.locator("#view").inner_text())
 ```
 
 - [ ] **Step 3: 运行测试确认失败**
