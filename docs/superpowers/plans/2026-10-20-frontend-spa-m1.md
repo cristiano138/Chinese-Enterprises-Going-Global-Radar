@@ -21,6 +21,7 @@
 - 中文文案**逐字照抄原型**，不得改写、意译或"优化"
 - 提交时**逐个指定路径**，禁止 `git add -A` / `git add .`（本仓库有并行会话）
 - 参考文件 `prototype.html` 在仓库根目录之外；Task 1 会把它入库为只读参考资产
+- 所有 `python.exe` 调用前都带 `PYTHONIOENCODING=utf-8`。**不要删掉它**：Windows 下子进程的 stdout 默认是 gbk，测试文件里的中文 docstring/用例名会以乱码输出，污染每一次运行结果。
 
 ### 关于"从原型搬运"的约定
 
@@ -251,7 +252,7 @@ if __name__ == "__main__":
 - [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_api.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_api.py
 ```
 
 Expected: FAIL —— `ModuleNotFoundError: No module named 'web_app'`
@@ -381,7 +382,7 @@ if __name__ == "__main__":
 - [ ] **Step 7: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_api.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_api.py
 ```
 
 Expected: PASS（StaticHostTests 4 + ReferenceAssetTests 1 = 5 个用例）
@@ -555,7 +556,7 @@ if __name__ == "__main__":
 ```bash
 PORT=7899 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" app.py > /tmp/cr-ui.log 2>&1 &
 sleep 12
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: FAIL —— `/web/js/dom.js` 与 `icons.js` 尚不存在
@@ -610,7 +611,7 @@ Expected: `web/js/icons.js:2`、`web/js/dom.js:1`
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（4 个用例）
@@ -721,7 +722,7 @@ class RenderHelperTests(unittest.TestCase):
 - [ ] **Step 2: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SampleDataTests RenderHelperTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SampleDataTests RenderHelperTests
 ```
 
 Expected: FAIL —— `/web/js/sample.js` 尚不存在
@@ -802,7 +803,7 @@ Expected: `4`；`3`
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（TokenTests 4 + SampleDataTests 1 + RenderHelperTests 5）
@@ -1123,7 +1124,7 @@ render();
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（ShellTests 7 + StoreTests 3 全通过，既有类无回归）
@@ -1236,7 +1237,7 @@ class ToastTests(unittest.TestCase):
 - [ ] **Step 2: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SheetTests ToastTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py SheetTests ToastTests
 ```
 
 Expected: FAIL —— `/web/js/ui/sheet.js` 尚不存在
@@ -1339,7 +1340,7 @@ document.addEventListener("keydown", (event) => {
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（SheetTests 5 + ToastTests 2 全通过，既有类无回归）
@@ -1511,7 +1512,7 @@ class FreshnessViewTests(unittest.TestCase):
 - [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py HomeViewTests ResultViewTests FreshnessViewTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py HomeViewTests ResultViewTests FreshnessViewTests
 ```
 
 Expected: FAIL —— 三个视图尚未注册
@@ -1545,7 +1546,7 @@ const VIEWS = {
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（HomeViewTests 5 + ResultViewTests 2 + FreshnessViewTests 3 全通过，既有类无回归）
@@ -1719,7 +1720,7 @@ class AssistantViewTests(unittest.TestCase):
 - [ ] **Step 5: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py AssistantViewTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py AssistantViewTests
 ```
 
 Expected: FAIL —— assistant 视图尚未注册
@@ -1782,7 +1783,7 @@ import { PROFILE_SHEETS } from "./sample.js";
 - [ ] **Step 7: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（AssistantViewTests 7 全通过，既有类无回归）
@@ -1904,7 +1905,7 @@ class SearchViewTests(unittest.TestCase):
 - [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py RegulationsHubTests ActionHubTests ToolViewTests SearchViewTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py RegulationsHubTests ActionHubTests ToolViewTests SearchViewTests
 ```
 
 Expected: FAIL —— 四个视图尚未注册
@@ -1966,7 +1967,7 @@ document.addEventListener("submit", (event) => {
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（RegulationsHubTests 2 + ActionHubTests 1 + ToolViewTests 3 + SearchViewTests 1 全通过，既有类无回归）
@@ -2115,7 +2116,7 @@ export const HANDLED_ACTIONS = [ /* 事件委托里实际处理的所有 action 
 - [ ] **Step 3: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ProfileViewTests DetailSheetTests DelegationCompletenessTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ProfileViewTests DetailSheetTests DelegationCompletenessTests
 ```
 
 Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
@@ -2166,7 +2167,7 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 - [ ] **Step 5: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（ProfileViewTests 2 + DetailSheetTests 4 + DelegationCompletenessTests 1 全通过，既有类无回归）
@@ -2249,7 +2250,7 @@ class ResponsiveTests(unittest.TestCase):
 - [ ] **Step 2: 运行测试确认失败**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ResponsiveTests
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py ResponsiveTests
 ```
 
 Expected: FAIL —— 搬来的原型规则仍带边框、圆角、阴影
@@ -2284,7 +2285,7 @@ Expected: FAIL —— 搬来的原型规则仍带边框、圆角、阴影
 - [ ] **Step 4: 运行测试确认通过**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
 Expected: PASS（ResponsiveTests 4 全通过，既有类无回归）
@@ -2397,7 +2398,7 @@ if __name__ == "__main__":
 ```bash
 python -m http.server 8899 --bind 127.0.0.1 --directory docs/ui-preview &
 sleep 2
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/check_web_browser.py \
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/check_web_browser.py \
   --url http://127.0.0.1:8899/prototype-v2.html \
   --out docs/ui-preview/prototype-baseline
 kill %1
@@ -2406,7 +2407,7 @@ kill %1
 然后**采改造后的**（服务已由 Step 4 起的那个，或另起）：
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/check_web_browser.py \
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/check_web_browser.py \
   --url http://127.0.0.1:7899 --out docs/ui-preview/rebuilt
 ```
 
@@ -2508,7 +2509,7 @@ if __name__ == "__main__":
 - [ ] **Step 4: 运行像素比对**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/compare_web_screenshots.py \
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/compare_web_screenshots.py \
   --prototype docs/ui-preview/prototype-baseline/shots \
   --rebuilt docs/ui-preview/rebuilt/shots \
   --out docs/ui-preview/web-pixel-diff.json
@@ -2530,7 +2531,7 @@ Expected: 每题给出差异占比。M1 的目标是 **移动端（`@mobile`）�
 - [ ] **Step 6: 跑完整门禁**
 
 ```bash
-"C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_all.py 2>&1 | tail -8
+PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_all.py 2>&1 | tail -8
 ```
 
 Expected: 除既有那条 `selftest_recall_flow.py`（`runtime-assets/law-store.bundle` 缺失，原仓库同样缺失）外**不得新增失败**。新条目 `selftest_web_api.py` 必须通过。
