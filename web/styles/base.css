@@ -1,0 +1,21 @@
+  * { box-sizing: border-box; }
+  html { height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--desk);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 15px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior: none;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { border: 0; background: none; padding: 0; cursor: pointer; }
+  a { color: var(--brand-bright); text-decoration: none; }
+  h1, h2, h3, p { margin: 0; }
+  .ic { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8;
+        stroke-linecap: round; stroke-linejoin: round; flex: none; }
+  .mono { font-family: var(--mono); font-size: 11px; letter-spacing: .01em; }

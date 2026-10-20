@@ -1,0 +1,390 @@
+{
+ "pairs": [
+  {
+   "name": "action@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7777949459876543,
+   "changed_pixels": 4032089,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "action_compare@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.779471836419753,
+   "changed_pixels": 4040782,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_compare@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "action_journey@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7744139660493827,
+   "changed_pixels": 4014562,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_journey@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "action_multi@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7774342206790124,
+   "changed_pixels": 4030219,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_multi@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "action_readiness@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7743315972222222,
+   "changed_pixels": 4014135,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_readiness@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "action_todo@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7812945601851852,
+   "changed_pixels": 4050231,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_todo@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "assistant@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7943998842592592,
+   "changed_pixels": 4118169,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "assistant@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "freshness@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.8121876929012346,
+   "changed_pixels": 4210381,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "freshness@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "home@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.8210925925925926,
+   "changed_pixels": 4256544,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "home@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "profile@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.795470100308642,
+   "changed_pixels": 4123717,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "profile@mobile.png",
+   "status": "different",
+   "changed_ratio": 0.011199720500668368,
+   "changed_pixels": 14746,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 238
+  },
+  {
+   "name": "profile_tutorial@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7769743441358025,
+   "changed_pixels": 4027835,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "profile_tutorial@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "regulations@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7980962577160494,
+   "changed_pixels": 4137331,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "regulations_map@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7804712577160494,
+   "changed_pixels": 4045963,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_map@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "regulations_search@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.760269675925926,
+   "changed_pixels": 3941238,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_search@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "regulations_timeline@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7622901234567901,
+   "changed_pixels": 3951712,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_timeline@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  },
+  {
+   "name": "result@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7781965663580247,
+   "changed_pixels": 4034171,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "result@mobile.png",
+   "status": "identical",
+   "changed_ratio": 0,
+   "changed_pixels": 0,
+   "compared_pixels": 1316640,
+   "maximum_channel_delta": 0
+  }
+ ],
+ "over_threshold": [
+  {
+   "name": "action@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7777949459876543,
+   "changed_pixels": 4032089,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_compare@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.779471836419753,
+   "changed_pixels": 4040782,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_journey@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7744139660493827,
+   "changed_pixels": 4014562,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_multi@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7774342206790124,
+   "changed_pixels": 4030219,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_readiness@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7743315972222222,
+   "changed_pixels": 4014135,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "action_todo@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7812945601851852,
+   "changed_pixels": 4050231,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "assistant@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7943998842592592,
+   "changed_pixels": 4118169,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "freshness@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.8121876929012346,
+   "changed_pixels": 4210381,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "home@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.8210925925925926,
+   "changed_pixels": 4256544,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "profile@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.795470100308642,
+   "changed_pixels": 4123717,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "profile_tutorial@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7769743441358025,
+   "changed_pixels": 4027835,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7980962577160494,
+   "changed_pixels": 4137331,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_map@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7804712577160494,
+   "changed_pixels": 4045963,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_search@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.760269675925926,
+   "changed_pixels": 3941238,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "regulations_timeline@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7622901234567901,
+   "changed_pixels": 3951712,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  },
+  {
+   "name": "result@desktop.png",
+   "status": "different",
+   "changed_ratio": 0.7781965663580247,
+   "changed_pixels": 4034171,
+   "compared_pixels": 5184000,
+   "maximum_channel_delta": 242
+  }
+ ]
+}
