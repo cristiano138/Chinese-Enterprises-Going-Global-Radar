@@ -13,7 +13,7 @@ import {
 } from "../conversation.js";
 
 const state = store.state;
-const BUSINESS_KINDS = new Set(["map", "todo", "timeline", "compare", "multi", "readiness", "model", "journey"]);
+const BUSINESS_KINDS = new Set(["map", "todo", "timeline", "compare", "multi", "readiness", "model", "journey", "recall"]);
 
 /** 开场建议由后端支持的品类/市场生成。 */
 function startSuggestions() {

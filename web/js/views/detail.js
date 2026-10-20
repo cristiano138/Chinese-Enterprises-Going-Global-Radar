@@ -132,7 +132,7 @@ export function conversationSheet(resultId, itemId) {
       </div>`;
 }
 
-const BUSINESS_KINDS = new Set(["map", "todo", "timeline", "compare", "multi", "readiness", "model", "journey"]);
+const BUSINESS_KINDS = new Set(["map", "todo", "timeline", "compare", "multi", "readiness", "model", "journey", "recall"]);
 
 export function detailSheet(id) {
   const it = index.records[id] ? recordToItem(index.records[id])
