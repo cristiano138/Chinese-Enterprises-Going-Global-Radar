@@ -35,11 +35,14 @@ def install(demo) -> bool:
         app = getattr(demo, "app", None)
         if app is None:
             return False
+        # 安装期就把外壳读进来：若留到请求期再读，读不到时根路由已被遮蔽，
+        # 调用方拿不到 False、无从回退，只会在 "/" 上得到一个 500。
+        shell = index_html()
         # 静态资源挂在 /web：Gradio 自己占用 /static，挂在那里会 404。
         app.mount("/web", StaticFiles(directory=WEB_DIR), name="web")
         # 抢在 Gradio 首页之前接管 "/"。Gradio 的 /gradio_api/* 不受影响。
         app.router.routes.insert(
-            0, Route("/", lambda request: HTMLResponse(index_html())))
+            0, Route("/", lambda request: HTMLResponse(shell)))
         return True
     except Exception:  # noqa: BLE001
         return False

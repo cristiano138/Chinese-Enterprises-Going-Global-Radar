@@ -10,9 +10,11 @@ import json
 import os
 from pathlib import Path
 import sys
+import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 import urllib.request
 
 PROJECT = Path(__file__).resolve().parent.parent
@@ -106,6 +108,59 @@ class StaticHostTests(unittest.TestCase):
         status, body = _Server.get("/web/js/main.js")
         self.assertEqual(status, 200)
         self.assertIn("export", body)
+
+    # ---- install() 的失败契约：任何失败都必须返回 False 且不抛异常，
+    # ---- 因为调用方正是靠这个布尔值决定回退到 CR_UI=gradio。
+
+    def test_install_returns_false_without_a_demo(self):
+        self.assertIs(web_app.install(None), False)
+
+    def test_install_returns_false_when_the_demo_has_no_app_attribute(self):
+        self.assertIs(web_app.install(object()), False)
+
+    def test_install_returns_false_when_reading_the_app_attribute_raises(self):
+        class _HostileDemo:
+            @property
+            def app(self):
+                raise RuntimeError("app unavailable")
+
+        self.assertIs(web_app.install(_HostileDemo()), False)
+
+    def test_install_returns_false_when_mounting_static_files_fails(self):
+        class _RefusingApp:
+            def mount(self, *args, **kwargs):
+                raise RuntimeError("mount refused")
+
+        class _Demo:
+            app = _RefusingApp()
+
+        self.assertIs(web_app.install(_Demo()), False)
+
+    def test_install_returns_false_and_mounts_nothing_when_the_shell_is_unreadable(self):
+        # 外壳读不到时必须在安装期就回退：此时 Gradio 的根路由还没被遮蔽，
+        # 调用方还能退回 Gradio 界面；若晚到请求期，"/" 只会 500。
+        class _StubRouter:
+            def __init__(self):
+                self.routes = []
+
+        class _StubApp:
+            def __init__(self):
+                self.router = _StubRouter()
+                self.mounted = []
+
+            def mount(self, path, *args, **kwargs):
+                self.mounted.append(path)
+
+        class _Demo:
+            def __init__(self, app):
+                self.app = app
+
+        app = _StubApp()
+        with tempfile.TemporaryDirectory() as empty_dir:
+            # 目录存在但没有 index.html
+            with mock.patch.object(web_app, "WEB_DIR", empty_dir):
+                self.assertIs(web_app.install(_Demo(app)), False)
+        self.assertEqual(app.mounted, [], "读不到外壳时必须什么都没挂")
 
     def test_styles_are_served(self):
         status, body = _Server.get("/web/styles/tokens.css")
