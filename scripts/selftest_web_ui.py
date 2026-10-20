@@ -110,6 +110,23 @@ class SampleDataTests(unittest.TestCase):
         self.assertEqual(got["sheets"], 7)
         self.assertEqual(got["items"], 14, "原型 ITEMS 恰好 14 个顶层键（939-1094 行）")
 
+    def test_profile_sheets_are_actually_callable(self):
+        """只数键名是假绿：七个函数体各自调用 ic()，缺导入则全抛 ReferenceError。"""
+        got = _Browser.page.evaluate("""async () => {
+          const s = await import('/web/js/sample.js');
+          const out = {};
+          for (const k of Object.keys(s.PROFILE_SHEETS)) {
+            try { out[k] = s.PROFILE_SHEETS[k](); }
+            catch (e) { out[k] = 'THREW: ' + e.message; }
+          }
+          return out;
+        }""")
+        self.assertEqual(len(got), 7)
+        for key, html in got.items():
+            with self.subTest(key=key):
+                self.assertFalse(str(html).startswith("THREW"), f"{key} 抛异常：{html}")
+                self.assertIn('class="sheet__body"', str(html))
+
 
 class RenderHelperTests(unittest.TestCase):
     @classmethod
@@ -131,8 +148,10 @@ class RenderHelperTests(unittest.TestCase):
         got = _Browser.page.evaluate(
             "async () => { const r = await import('/web/js/render.js');"
             "const s = await import('/web/js/sample.js');"
-            "s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
-            "return r.rowHtml('toy'); }")
+            "const saved = s.ITEMS.toy.title;"
+            "try { s.ITEMS.toy.title = '<img src=x onerror=alert(1)>';"
+            "      return r.rowHtml('toy'); }"
+            "finally { s.ITEMS.toy.title = saved; } }")
         self.assertNotIn("<img", got)
         self.assertIn("&lt;img", got)
 
@@ -160,7 +179,9 @@ class RenderHelperTests(unittest.TestCase):
                    ok: ids('已最新').length, muted: ids('无法确认').length };
         }""")
         self.assertEqual(got["all"], 4)
-        self.assertEqual(got["warn"] + got["ok"] + got["muted"], 4)
+        self.assertEqual(got["warn"], 2, "原型 freshGpsr / freshToy 为 warn")
+        self.assertEqual(got["ok"], 1, "原型 freshEn71 为 ok")
+        self.assertEqual(got["muted"], 1, "原型 freshAmazon 为 muted")
 
 
 def _stop_browser():

@@ -1,6 +1,8 @@
 // 搬运自 prototype.html:939-1148, 1243-1248, 1735-1747, 2187-2321。
-// 仅把顶层 const 改为 export const，数据内容逐字未动。
+// 增量：顶层 const → export const；并补 ic 导入（见下）。数据内容逐字未动。
 // M2 接入真数据时只改本文件的取值处，视图模板不动。
+import { ic } from "./icons.js";
+
   export const ITEMS = {
     toy: {
       type: "法律法规", typeClass: "", rail: "ok",
