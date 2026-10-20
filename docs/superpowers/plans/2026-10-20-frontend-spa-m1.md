@@ -1463,7 +1463,7 @@ git commit -m "feat(web): bottom sheet and toast ported from the prototype"
 
 | 目标 | 原型行号（含） | 内容 |
 |---|---|---|
-| `web/js/views/home.js` | 1295–1373 | `homeView()` 的 `return` 主体 |
+| `web/js/views/home.js` | 1295–1372 | `homeView()` 的 `return` 主体；**须剔掉第 1372 行末尾那个 `<button class="proto-toggle" data-action="toggle-freshness">`**，并在第 1370 行的 `</div>` 处闭合模板（**不要取到 1373 行**——那是原函数的闭合 `}`，叠加 wrapper 的 `}` 会使花括号不配平） |
 | `web/js/views/result.js` | 1449–1491 | `resultView()` 全文 |
 | `web/js/views/freshness.js` | 1494–1563 | `freshnessView()` 全文 |
 
@@ -1481,7 +1481,10 @@ IMPORTS = ('import { esc } from "../dom.js";\n'
            'import { rowHtml, filteredFresh, filteredItems } from "../render.js";\n\n')
 
 specs = [
-    ("home.js",      1295, 1373, "export function homeView(state) {\n" + take(1295, 1373) + "}\n"),
+    ("home.js",      1295, 1372, "export function homeView(state) {\n"
+        + take(1295, 1372).replace(
+            '      <button class="proto-toggle" data-action="toggle-freshness">原型：查看首次使用态</button>`;',
+            "    `;") + "}\n"),
     ("result.js",    1449, 1491, None),
     ("freshness.js", 1494, 1563, None),
 ]
@@ -1542,31 +1545,9 @@ class HomeViewTests(unittest.TestCase):
         self.assertIn("无需手动操作", text)
         self.assertIn("不等于法规条文变更", text)
 
-    def test_unknown_route_redirects_home(self):
-        """原型 2068-2071：未知路由 go("home")。首页视图存在后此行为才可观测。"""
-        for bad in ["完全瞎写", "zzz", "foo/bar"]:
-            with self.subTest(bad=bad):
-                _Browser.goto(bad)
-                self.assertTrue(_Browser.page.url.endswith("#/home"),
-                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
-
-    def test_unknown_route_renders_the_home_view(self):
-        for bad in ["完全瞎写", "foo/bar"]:
-            with self.subTest(bad=bad):
-                _Browser.goto(bad)
-                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
-                                "回落首页后必须渲染出内容，而不是白屏")
-
     def test_first_run_toggle_is_not_shipped(self):
         _Browser.goto("home")
         self.assertEqual(_Browser.page.locator("#view .proto-toggle").count(), 0)
-
-    def test_tapping_a_row_opens_the_detail_sheet(self):
-        _Browser.goto("result")
-        _Browser.page.locator("#view [data-action='detail']").first.click()
-        _Browser.page.wait_for_timeout(300)
-        self.assertIn("is-on", _Browser.page.locator("#sheet").get_attribute("class"))
-
 
 class ResultViewTests(unittest.TestCase):
     @classmethod
@@ -1664,19 +1645,10 @@ const VIEWS = {
 };
 ```
 
-**同时装上原型 2068-2071 的未知路由回落**——首页视图现在存在，它才有可观测性：
-
-```js
-  const view = VIEWS[r];
-  if (!view) {
-    go("home");
-    return;
-  }
-  els.view.className = "view";
-  els.view.innerHTML = view(state);
-```
-
-并在导入区确认有 `import { go } from "./router.js";`。
+**本任务不装未知路由回落**——判据是"**当且仅当所有其它路由都已有视图时**，回落才可观测"。
+Task 6 时 12 条路由仍有 9 条无视图（assistant / regulations(/*) / action(/*) / profile(/*)），
+回落会对它们一视同仁地触发，外壳行为的断言会因"每条路由都变成首页"而集体失真——
+这正是当初把它从 Task 4 挪走的原因，而它在此处**依然成立**。它落在 Task 9（最后一个视图任务）。
 
 事件委托里，在 `open-tool` 分支之后加：
 
@@ -1694,7 +1666,7 @@ const VIEWS = {
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（HomeViewTests 7 + ResultViewTests 2 + FreshnessViewTests 7 全通过，既有类无回归）
+Expected: PASS（HomeViewTests 4 + ResultViewTests 2 + FreshnessViewTests 7 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
@@ -2244,6 +2216,27 @@ class DetailSheetTests(unittest.TestCase):
         self.assertFalse(str(got).startswith("THREW"), "未知 id 不得抛异常")
 
 
+class UnknownRouteTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_unknown_route_redirects_home(self):
+        """原型 2068-2071：未知路由 go("home")。所有视图就位后此行为才可观测。"""
+        for bad in ["完全瞎写", "zzz", "foo/bar"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.url.endswith("#/home"),
+                                f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
+
+    def test_unknown_route_renders_the_home_view(self):
+        for bad in ["完全瞎写", "foo/bar"]:
+            with self.subTest(bad=bad):
+                _Browser.goto(bad)
+                self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
+                                "回落首页后必须渲染出内容，而不是白屏")
+
+
 class DelegationCompletenessTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -2285,6 +2278,20 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 - [ ] **Step 4: 在 `main.js` 注册并补全剩余 action**
 
 `VIEWS` 加 `profile: profileView`、`"profile/tutorial": tutorialView`。
+
+**本任务装上未知路由回落**（原型 2068-2071）——到这一步所有路由都已有视图，回落才首次可观测：
+
+```js
+  const view = VIEWS[r];
+  if (!view) {
+    go("home");
+    return;
+  }
+  els.view.className = "view";
+  els.view.innerHTML = view(state);
+```
+
+并在导入区确认有 `import { go } from "./router.js";`。
 
 导入：`import { detailSheet } from "./views/detail.js";` 与 `import { toggleFreshness } from "./views/home.js";`（`toggle-freshness` 若你想要该开关；**M1 默认不接**，见下）。
 
@@ -2331,7 +2338,7 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（ProfileViewTests 2 + DetailSheetTests 4 + DelegationCompletenessTests 1 全通过，既有类无回归）
+Expected: PASS（ProfileViewTests 2 + DetailSheetTests 4 + UnknownRouteTests 2 + DelegationCompletenessTests 1 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
