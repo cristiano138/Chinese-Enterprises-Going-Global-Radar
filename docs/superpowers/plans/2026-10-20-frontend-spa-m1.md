@@ -2383,13 +2383,18 @@ class ResponsiveTests(unittest.TestCase):
     def setUpClass(cls):
         _Browser.start()
 
+    @classmethod
+    def tearDownClass(cls):
+        # 共享 page 的视口必须恢复，否则字母序在其后的浏览器测试会在桌面宽度下运行。
+        _Browser.page.set_viewport_size({"width": 390, "height": 844})
+
     def _at(self, width, prop):
         _Browser.page.set_viewport_size({"width": width, "height": 900})
         _Browser.page.goto(f"{BASE}#/home", wait_until="load")
         _Browser.page.wait_for_timeout(350)
         return _Browser.page.evaluate(
             "() => { const el = document.querySelector('.app-shell'); const cs = getComputedStyle(el);"
-            "return { prop: cs.getPropertyValue(%r), rect: el.getBoundingClientRect().toJSON() };"
+            "return { prop: cs.getPropertyValue(%r), rect: el.getBoundingClientRect().toJSON() }; }"
             % prop)
 
     def test_wide_viewport_has_no_phone_shell_decoration(self):
