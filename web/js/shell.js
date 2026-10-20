@@ -7,9 +7,9 @@ import { TOOL_PAGES } from "./sample.js";
 
   export function renderAppbar(state) {
     const r = state.route;
-    const brand = (title, sub, showMark = true) => `
+    const brand = (title, sub) => `
       <div class="brand">
-        ${showMark ? `<span class="brand__mark">${ic("radar")}</span>` : ""}
+        <span class="brand__mark">${ic("radar")}</span>
         <div>
           <div class="brand__name">${esc(title)}</div>
           <div class="brand__sub"><span class="live-dot"></span>${esc(sub)}</div>
@@ -55,7 +55,7 @@ import { TOOL_PAGES } from "./sample.js";
       return back("action", tool ? tool.title : "行动", "当前筛选会随结果保留") + history;
     }
     if (r === "profile/tutorial") return back("profile", "教程", "企业用户使用指引 · 约 3 分钟") + history;
-    if (r === "profile") return brand("我的", "教程、历史与设置", false) +
+    if (r === "profile") return brand("我的", "教程、历史与设置") +
       `<button class="iconbtn" data-action="nav" data-to="profile/tutorial" aria-label="教程">${ic("help")}</button>`;
 
     return brand("合规雷达", "在线 · 法规库 86 部") + history + plus;

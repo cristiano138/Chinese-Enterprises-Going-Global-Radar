@@ -80,6 +80,10 @@ export const render = () => {
   els.view.className = r === "assistant" ? "view view--chat" : "view";
   els.view.innerHTML = view(state);
   els.view.scrollTop = 0;
+  // 原型 2074-2076：对话页有新消息时滚到最新一条，而不是停在顶部。
+  if (r === "assistant" && state.messages.length) {
+    requestAnimationFrame(() => { els.view.scrollTop = els.view.scrollHeight; });
+  }
   els.dock.innerHTML = r === "assistant" ? composerDock(state) : "";
   if (r === "assistant") {
     bindComposer((text) => {

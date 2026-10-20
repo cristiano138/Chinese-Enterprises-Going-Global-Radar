@@ -1,4 +1,4 @@
-// 搬运自 prototype.html:1880-1943。函数体逐字未动，仅补 export 与头部导入。
+// 搬运自 prototype.html:1880-1943。函数体除 hero 大标记外逐字未动（产品决定：顶栏已有小标记，hero 不重复）。
 import { ic } from "../icons.js";
 
   /* ================= 我的 ================= */
@@ -6,7 +6,6 @@ import { ic } from "../icons.js";
     return `
       <div class="profile">
         <div class="profile__hero">
-          <div class="profile__mark">${ic("radar")}</div>
           <div>
             <h1>合规雷达</h1>
             <p>出海合规助手 · 构建 2026.10.19-chat1.6</p>
