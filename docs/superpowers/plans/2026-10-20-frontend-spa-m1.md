@@ -1153,7 +1153,7 @@ render();
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（ShellTests 7 + StoreTests 3 全通过，既有类无回归）
+Expected: PASS（ShellTests 6 + StoreTests 3 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
@@ -1604,7 +1604,7 @@ const VIEWS = {
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（HomeViewTests 5 + ResultViewTests 2 + FreshnessViewTests 3 全通过，既有类无回归）
+Expected: PASS（HomeViewTests 7 + ResultViewTests 2 + FreshnessViewTests 3 全通过，既有类无回归）
 
 - [ ] **Step 6: 提交**
 
@@ -1847,7 +1847,7 @@ import { PROFILE_SHEETS } from "./sample.js";
 PYTHONIOENCODING=utf-8 "C:/Users/ymc/Desktop/agent/_recon/probe-venv/Scripts/python.exe" scripts/selftest_web_ui.py
 ```
 
-Expected: PASS（AssistantViewTests 7 全通过，既有类无回归）
+Expected: PASS（AssistantViewTests 6 全通过，既有类无回归）
 
 - [ ] **Step 8: 提交**
 
