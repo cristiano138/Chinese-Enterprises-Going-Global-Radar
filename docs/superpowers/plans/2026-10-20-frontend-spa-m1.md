@@ -1279,7 +1279,7 @@ Expected: FAIL —— `/web/js/ui/sheet.js` 尚不存在
 
 1. `function openSheet` / `function closeSheet` / `function showToast` → `export function …`。
 2. 原型用模块顶层常量 `sheet` / `backdrop` / `toast` 持有 DOM 句柄（原型 1172–1174）。模块化后**不要在导入期取 DOM**（导入可能早于解析到这些节点）；改为在函数内 `document.getElementById(...)`。
-3. `showToast` 里的 `toast._t`（原型把计时器挂在 DOM 节点上）改为模块内的 `let timer`。
+3. `showToast` 里的**函数属性** `showToast._t`（原型 2150-2151 把计时器挂在函数对象上，不是挂在 DOM 节点上）改为模块内的 `let timer`。`window.clearTimeout(showToast._t)` → `if (timer) clearTimeout(timer)`，`showToast._t = window.setTimeout(...)` → `timer = setTimeout(...)`。
 
 先把原文看清楚：
 
@@ -1296,7 +1296,7 @@ echo '--- toast ---'
 cat .superpowers/sdd/2026-10-20-frontend-spa-m1/_toast_raw.js
 ```
 
-然后按上面三条增量改写为：
+**下面两段代码是"搬运后应有的结果"，用来对照——但优先做法是逐字搬运 2322-2333 / 2147-2152，再只应用上述三条增量。** 手写替换会丢行：上一版计划手写 `closeSheet` 时就漏了原型 2332 的 300ms 清理语句。若你选择逐字搬运（推荐），务必用 diff 确认除枚举增量外与原型逐字节一致。
 
 ```js
 // web/js/ui/sheet.js —— 搬运自 prototype.html:2322-2333。
@@ -1317,6 +1317,11 @@ export function closeSheet() {
   backdropEl().classList.remove("is-on");
   sheet.classList.remove("is-on");
   sheet.setAttribute("aria-hidden", "true");
+  // 原型 2332：关闭动画（.28s）走完后清空抽屉内容。
+  // 这一句容易在"手写替换"时丢掉——上一版计划就丢了。
+  window.setTimeout(() => {
+    if (!sheet.classList.contains("is-on")) sheet.innerHTML = "";
+  }, 300);
 }
 ```
 
