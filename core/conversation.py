@@ -36,7 +36,8 @@ CAPABILITIES = [
 _TITLES = {item["action"]: item["label"] for item in CAPABILITIES}
 _TITLES.update(journey="从选品到售后的行动路线", question="补充一个条件",
                capabilities="你可以这样使用合规雷达", message="已更新业务情况",
-               unsupported="当前资料覆盖范围", error="本次查询未完成")
+               unsupported="当前资料覆盖范围", error="本次查询未完成",
+               recall="检索条文依据")
 _CONTEXT_DEFAULTS = {
     "category": "", "product": "", "market": "", "country": "",
     "platform": "", "site": "", "fulfillment": "", "stage": "",
@@ -484,6 +485,9 @@ def _intent(text):
         return "readiness"
     if re.search(r"待办|下一步|做什么|怎么做|需要做|准备什么|准备哪些|缺什么|行动清单|材料清单", text):
         return "todo"
+    # 条文级问题走两层召回（路由 LLM + 检索 LLM），不要退化成目录清单。
+    if re.search(r"原文|条文|条款|第\s*[0-9一二三四五六七八九十百]+\s*条|具体规定|怎么规定|法条", text):
+        return "recall"
     if re.search(r"法规|法律|依据|准入|相关要求|哪些要求|什么要求|适用(?!年龄)|标签|标识|警告语", text):
         return "map"
     if re.search(r"全流程|全过程|从.*到|六个阶段|路线|开始做|怎么开始|如何开始|从哪(?:里)?开始", text):
@@ -491,16 +495,23 @@ def _intent(text):
     return None
 
 
-def _call(action, context):
+def _call(action, context, query=""):
     category, market = context["category"], context["market"]
     today = date.fromisoformat(snapshot.now_bjt())
+    # 三类结果都支持可选的模型润色；没有配置模型时模块层会立即降级，
+    # 不会因为这里传 True 而阻塞确定性结果。
+    use_llm = bool(context.get("use_llm")) and llm.is_ready()
+    if action == "recall":
+        from modules import recall_flow
+        text = (query or context.get("product") or "").strip()
+        return recall_flow.run(text, context.get("product", ""), use_llm=use_llm)
     if action == "map":
-        return m1_map.query(category, market, use_llm=False)
+        return m1_map.query(category, market, use_llm=use_llm)
     if action == "todo":
-        return m3_todo.query(category, market, use_llm=False, today=today)
+        return m3_todo.query(category, market, use_llm=use_llm, today=today)
     if action == "timeline":
         return m2_timeline.query(category, market, window=context.get("window", "近 12 个月"),
-                                 use_llm=False, today=today)
+                                 use_llm=use_llm, today=today)
     markets = context.get("markets") or ([market] if market else [])
     if action == "compare":
         if len(markets) < 2:
@@ -838,7 +849,51 @@ def _normalize(action, context, raw):
                       gaps=[raw.get("reason", "当前范围未覆盖")])
         return result
     items = []
-    if action == "map":
+    if action == "recall":
+        route = raw.get("route") or {}
+        retrieval = raw.get("retrieval") or {}
+        selected = retrieval.get("selected") or []
+        for index, snippet in enumerate(selected):
+            body = str(snippet.get("body") or "")
+            heading = snippet.get("heading") or snippet.get("path") or snippet.get("law_id") or "条文片段"
+            source_url = _safe_url(snippet.get("locator") or "")
+            row = {
+                "key": snippet.get("node_id") or snippet.get("citation_id") or str(index),
+                "法规中文名": heading,
+                "官方编号": snippet.get("law_id") or "",
+                "证据摘录": body[:1200] + ("…" if len(body) > 1200 else ""),
+                "官方链接": source_url,
+                "locator": source_url or snippet.get("node_id") or "",
+                "核验状态": "条款片段，未逐条审核适用性",
+            }
+            item = _item(row, context, group="相关条文片段", index=index)
+            item["title"] = heading
+            item["summary"] = (body[:280] + "…") if len(body) > 280 else body
+            item["details"] = dict(copy.deepcopy(snippet),
+                                   证据说明="条款正文片段；适用性仍需按产品条件核对。")
+            item["sources"] = [{
+                "title": heading,
+                "url": source_url,
+                "excerpt": body[:600],
+                "locator": source_url or snippet.get("node_id") or "",
+                "status": "条款片段，未逐条审核适用性",
+            }]
+            items.append(item)
+        laws = route.get("laws") or []
+        result["summary"] = (
+            f"从条款库检索到 {len(items)} 个相关片段（路由 {len(laws)} 部法规）。"
+            "先核对条文与产品条件，再决定是否落到待办；片段不等于逐条适用性审核。")
+        result["gaps"].append("条文检索只负责找依据；片段不等于逐条适用性审核，不判断你的具体产品是否满足义务。")
+        for gap in (route.get("catalog_gaps") or []) + (retrieval.get("gaps") or []):
+            if gap:
+                result["gaps"].append(str(gap))
+        coverage = retrieval.get("coverage")
+        if coverage:
+            result["gaps"].append("检索覆盖状态：" + str(coverage))
+        if route.get("invalid_refs") or retrieval.get("invalid_refs"):
+            result["gaps"].append("模型返回的部分引用超出候选范围，已丢弃，未作为依据。")
+        result["data_version"]["recall_tree"] = raw.get("tree_version")
+    elif action == "map":
         for field, group in (("primary", "产品法规候选"), ("cross", "关联法规，需核对适用条件")):
             items.extend(_item(row, context, group=group, index=i) for i, row in enumerate(raw.get(field, [])))
         result["summary"] = "已整理相关法规目录。点击条目查看原始信息与官方来源；目录命中不等于每条要求均适用。"
@@ -1042,6 +1097,26 @@ def respond(text, state=None, action=None):
         result = _normalize("model", context, m4_compare.query())
         result["gaps"].append("模型对照的固定样本背景为儿童玩具×欧盟；未修改你的业务条件。")
         return _record(state, result)
+    if intent == "recall":
+        if not text.strip():
+            return _question(state, "recall",
+                             "请用一句话描述要查的法规问题，例如「毛绒玩具出口欧盟要做哪些安全测试」；我会先找法规，再取相关原文片段。")
+        state["pending_action"] = None
+        state["last_action"] = "recall"
+        try:
+            raw = _call("recall", context, query=text)
+            result = _normalize("recall", context, raw)
+        except Exception:
+            result = _result("error", context,
+                             "条文检索暂时没有完成。已保留你的问题，可以重试，或改为查看法规目录。",
+                             gaps=["未生成新的法律结论。"],
+                             actions=[{"label": "重试", "action": "recall"},
+                                      {"label": "查看相关法规", "action": "map"}])
+        if parse_meta:
+            result["understanding"] = parse_meta
+            if parse_meta.get("note"):
+                result["gaps"].append(parse_meta["note"])
+        return _record(state, result)
     if not context.get("category"):
         return _question(state, intent, "你准备卖什么产品？例如毛绒玩具、蓝牙耳机或儿童服装。")
     if not context.get("market") and intent not in ("compare", "multi"):
@@ -1058,7 +1133,7 @@ def respond(text, state=None, action=None):
     state["pending_action"] = None
     state["last_action"] = intent
     try:
-        raw = _call(intent, context)
+        raw = _call(intent, context, query=text)
         result = _normalize(intent, context, raw)
     except Exception:
         # No stack traces, credentials, endpoints or business input in UI/errors.

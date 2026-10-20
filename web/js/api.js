@@ -76,10 +76,12 @@ export const Api = {
     return upload("/api/transcribe", form);
   },
   tool: (name, params = {}) => api(`/api/tool/${name}`, { method: "POST", body: params }),
-  route: (text, context = "", useLLM = false) =>
+  route: (text, context = "", useLLM = true) =>
     api("/api/route", { method: "POST", body: { text, context, use_llm: useLLM } }),
-  conversationMessage: (session, text, action = null) =>
-    api("/api/conversation/message", { method: "POST", body: { session, text, action } }),
+  conversationMessage: (session, text, action = null, useLLM = true) =>
+    api("/api/conversation/message", {
+      method: "POST", body: { session, text, action, use_llm: useLLM },
+    }),
   conversationComplete: (session, resultId, itemId) =>
     api("/api/conversation/complete", {
       method: "POST", body: { session, result_id: resultId, item_id: itemId },

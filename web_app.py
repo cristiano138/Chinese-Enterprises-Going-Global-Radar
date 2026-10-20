@@ -112,6 +112,17 @@ def _link_title(url: str) -> str:
     return host or "官方链接"
 
 
+def _safe_url(url) -> str:
+    """Only allow absolute http(s) URLs without embedded credentials."""
+    try:
+        parsed = urlparse(str(url))
+        if parsed.scheme in ("http", "https") and parsed.hostname and not parsed.username:
+            return str(url)
+    except (ValueError, TypeError):
+        pass
+    return ""
+
+
 def _normalize_record(row: dict) -> dict:
     """M1 记录 → 前端稳定字段。"""
     key = row.get("key") or row.get("官方编号") or ""
@@ -153,6 +164,7 @@ def _normalize_action(action: dict) -> dict:
         "url": action.get("来源条款链接") or (links[0] if links else ""),
         "excerpt": action.get("证据摘录") or "",
         "status": action.get("状态") or action.get("现行效力") or "",
+        "source": action.get("动作来源") or "",
     }
 
 
@@ -171,6 +183,8 @@ def _normalize_event(event: dict) -> dict:
         "seq": event.get("同类序号") or 1,
         "total": event.get("同类计数") or 1,
         "validity": event.get("现行效力") or "",
+        "summary_source": event.get("摘要来源") or "",
+        "impact_source": event.get("影响来源") or "",
     }
 
 
@@ -191,6 +205,7 @@ def _records_from_map(result: dict) -> dict:
         "cross": cross,
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 
@@ -369,6 +384,7 @@ def _tool_todo(body: dict) -> dict:
         "history": result.get("历史关联") or [],
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 
@@ -389,6 +405,7 @@ def _tool_timeline(body: dict) -> dict:
         "upcoming": [_normalize_event(e) for e in result.get("即将发生", [])],
         "stats": result.get("stats") or {},
         "header": result.get("header") or {},
+        "llm": result.get("llm") or {},
     }
 
 
@@ -575,9 +592,62 @@ def _search_payload(identifier: str, heading: str) -> dict:
             "kind": unit.get("kind") or "",
             "source_url": unit.get("source_url") or "",
         })
+    if result.get("ok") and units:
+        return {
+            "ok": True,
+            "reason": "",
+            "mode": "identifier",
+            "identifier": result.get("law_id") or identifier,
+            "units": units,
+        }
+
+    # 编号定位失败时，把输入当作自然语言问题走两层召回
+    # （路由 LLM 选法规 → 检索 LLM 选片段），与 Gradio 会话的「检索条文依据」同一条链路。
+    identifier = (identifier or "").strip()
+    if len(identifier) >= 4:
+        try:
+            from modules import recall_flow
+            recalled = recall_flow.run(identifier, use_llm=True)
+        except Exception:  # noqa: BLE001
+            LOG.exception("recall fallback failed")
+            recalled = {"ok": False, "reason": "智能检索暂不可用，请稍后重试"}
+        retrieval = (recalled.get("retrieval") or {})
+        selected = retrieval.get("selected") or []
+        if recalled.get("ok") and selected:
+            route = recalled.get("route") or {}
+            return {
+                "ok": True,
+                "reason": "",
+                "mode": "recall",
+                "identifier": identifier,
+                "route_via": route.get("route_via") or "",
+                "coverage": retrieval.get("coverage") or "",
+                "units": [{
+                    "heading": snippet.get("heading") or snippet.get("path") or "条文片段",
+                    "locator": _safe_url(snippet.get("locator") or ""),
+                    "document_id": snippet.get("law_id") or "",
+                    "parse_status": "智能检索",
+                    "body": snippet.get("body") or "",
+                    "truncated": False,
+                    "version_date": "",
+                    "kind": "recall",
+                    "source_url": _safe_url(snippet.get("locator") or ""),
+                } for snippet in selected],
+            }
+        recall_reason = recalled.get("reason") or retrieval.get("reason") or ""
+        if recall_reason:
+            return {
+                "ok": False,
+                "reason": (result.get("reason") or "没有检索到条款") + "；智能检索：" + recall_reason,
+                "mode": "recall",
+                "identifier": identifier,
+                "units": [],
+            }
+
     return {
         "ok": bool(result.get("ok")),
         "reason": result.get("reason") or "",
+        "mode": "identifier",
         "identifier": result.get("law_id") or identifier,
         "units": units,
     }
@@ -760,10 +830,18 @@ def _install_routes(app, shell: str):
         text = str(body.get("text") or "").strip()[:6000]
         action = body.get("action")
         action = str(action).strip() if action else None
+        session = body.get("session")
+        use_llm = body.get("use_llm")
+        if use_llm is not None:
+            from core import llm as llm_core
+            if not isinstance(session, dict):
+                from core import conversation as conv_core
+                session = conv_core.new_session()
+            session.setdefault("context", {})["use_llm"] = bool(use_llm) and llm_core.is_ready()
         try:
             from core import conversation
             state, result = await run_in_threadpool(
-                conversation.respond, text, body.get("session"), action)
+                conversation.respond, text, session, action)
         except Exception:  # noqa: BLE001
             LOG.exception("conversation respond failed")
             return _json(_envelope(None, False, "本次对话暂时没有完成，请稍后再试。", _meta()), 500)

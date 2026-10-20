@@ -11,6 +11,11 @@ const coverageLabel = () => {
   return laws ? `在线 · 法规库 ${laws} 部` : "在线 · 法规库";
 };
 
+const llmLabel = () => {
+  const info = cache.boot && cache.boot.llm;
+  return (info && info.ready && info.model) ? info.model : "本地规则";
+};
+
   export function renderAppbar(state) {
     const r = state.route;
     const brand = (title, sub) => `
@@ -31,8 +36,8 @@ const coverageLabel = () => {
     const history = `<button class="iconbtn" data-action="history" aria-label="历史结果">${ic("history")}</button>`;
     const plus = `<button class="iconbtn" data-action="new-chat" aria-label="新对话">${ic("plus")}</button>`;
 
-    if (r === "home") return brand("合规雷达", "每天 09:00 / 21:00 自动核验") + history + plus;
-    if (r === "freshness") return back("home", "检查记录", "每天 09:00 / 21:00 自动核验") + history;
+    if (r === "home") return brand("合规雷达", "每天 19:00 / 22:00 自动核验") + history + plus;
+    if (r === "freshness") return back("home", "检查记录", "每天 19:00 / 22:00 自动核验") + history;
     if (r === "assistant") {
       return `
         <button class="iconbtn" data-action="nav" data-to="home" aria-label="返回首页">${ic("back")}</button>
@@ -41,7 +46,7 @@ const coverageLabel = () => {
             <span class="bar-title__name">合规雷达 · 新对话</span>
             <span class="bar-title__caret">▾</span>
           </button>
-          <div class="bar-title__sub"><span class="live-dot"></span>deepseek-chat · ${esc(conditions.market)} / ${esc(conditions.platform)}</div>
+          <div class="bar-title__sub"><span class="live-dot"></span>${esc(llmLabel())} · ${esc(conditions.market)} / ${esc(conditions.platform)}</div>
         </div>
         <button class="iconbtn" data-action="new-chat" aria-label="新对话">${ic("plus")}</button>`;
     }
