@@ -2231,14 +2231,14 @@ class UnknownRouteTests(unittest.TestCase):
 
     def test_unknown_route_redirects_home(self):
         """原型 2068-2071：未知路由 go("home")。所有视图就位后此行为才可观测。"""
-        for bad in ["完全瞎写", "zzz", "foo/bar"]:
+        for bad in ["完全瞎写", "zzz", "foo/bar", "__proto__"]:
             with self.subTest(bad=bad):
                 _Browser.goto(bad)
                 self.assertTrue(_Browser.page.url.endswith("#/home"),
                                 f"未知路由必须回落到 #/home，实际 {_Browser.page.url}")
 
     def test_unknown_route_renders_the_home_view(self):
-        for bad in ["完全瞎写", "foo/bar"]:
+        for bad in ["完全瞎写", "foo/bar", "__proto__"]:
             with self.subTest(bad=bad):
                 _Browser.goto(bad)
                 self.assertTrue(_Browser.page.locator("#view").inner_text().strip(),
@@ -2290,8 +2290,9 @@ Expected: FAIL —— 三个视图尚未注册，`HANDLED_ACTIONS` 不存在
 **本任务装上未知路由回落**（原型 2068-2071）——到这一步所有路由都已有视图，回落才首次可观测：
 
 ```js
-  const view = VIEWS[r]
-    || ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
+  const view = Object.hasOwn(VIEWS, r)
+    ? VIEWS[r]
+    : ((r.startsWith("regulations/") || r.startsWith("action/")) ? toolView : null);
   if (!view) {
     go("home");
     return;
