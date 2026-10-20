@@ -353,6 +353,113 @@ class ToastTests(unittest.TestCase):
         self.assertTrue(got, "第二次提示必须重新计时，而不是沿用第一次留下的定时器")
 
 
+class HomeViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_headline_and_context_match_the_prototype(self):
+        _Browser.goto("home")
+        view = _Browser.page.locator("#view")
+        self.assertIn("最近检查", view.inner_text())
+        for label in ["儿童玩具", "德国", "亚马逊"]:
+            with self.subTest(label=label):
+                self.assertIn(label, view.inner_text())
+
+    def test_freshness_card_uses_the_prototype_classes(self):
+        _Browser.goto("home")
+        for sel in [".fresh-card", ".fresh-card__head", ".fresh-card__title",
+                    ".monitor-pill", ".fresh-card__time"]:
+            with self.subTest(sel=sel):
+                self.assertEqual(_Browser.page.locator(f"#view {sel}").count(), 1,
+                                 f"{sel} 必须存在（原型类名）")
+        for wrong in [".fresh-card__top", ".fresh-card__at", ".pill"]:
+            with self.subTest(wrong=wrong):
+                self.assertEqual(_Browser.page.locator(f"#view {wrong}").count(), 0,
+                                 f"{wrong} 是自创类名，必须不存在")
+
+    def test_readonly_card_states_its_own_scope(self):
+        _Browser.goto("home")
+        text = _Browser.page.locator("#view").inner_text()
+        self.assertIn("无需手动操作", text)
+        self.assertIn("不等于法规条文变更", text)
+
+    def test_first_run_toggle_is_not_shipped(self):
+        _Browser.goto("home")
+        self.assertEqual(_Browser.page.locator("#view .proto-toggle").count(), 0)
+
+class ResultViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_priority_block_and_rows_are_present(self):
+        _Browser.goto("result")
+        self.assertIn("现在先做", _Browser.page.locator("#view").inner_text())
+        self.assertGreaterEqual(_Browser.page.locator("#view .row").count(), 1)
+
+    def test_rows_carry_the_prototype_inner_markup(self):
+        _Browser.goto("result")
+        for sel in [".row__rail", ".row__body", ".row__top", ".row__title",
+                    ".row__sub", ".row__status", ".row__end"]:
+            with self.subTest(sel=sel):
+                self.assertGreaterEqual(_Browser.page.locator(f"#view {sel}").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .row__copy").count(), 0,
+                         "row__copy 是自创类名，必须不存在")
+
+
+class FreshnessViewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        _Browser.start()
+
+    def test_page_head_and_meta_match_the_prototype(self):
+        _Browser.goto("freshness")
+        view = _Browser.page.locator("#view")
+        self.assertIn("09:00 / 21:00", view.inner_text())
+        self.assertEqual(_Browser.page.locator("#view .page-head__meta.mono").count(), 1)
+
+    def test_fresh_card_uses_the_prototype_classes(self):
+        _Browser.goto("freshness")
+        for sel in [".fresh-card", ".fresh-card__head", ".fresh-card__title",
+                    ".monitor-pill", ".fresh-card__time", ".fresh-card__sub"]:
+            with self.subTest(sel=sel):
+                self.assertEqual(_Browser.page.locator(f"#view {sel}").count(), 1)
+        self.assertEqual(_Browser.page.locator("#view .fresh-count").count(), 4)
+        self.assertEqual(_Browser.page.locator("#view .fresh-count--warn").count(), 1)
+
+    def test_check_history_rows_are_plain_not_buttons(self):
+        """这两行是只读的检查记录，原型用 div.row，不是可点的 button.row。"""
+        _Browser.goto("freshness")
+        self.assertGreaterEqual(_Browser.page.locator("#view div.row").count(), 2)
+
+    def test_pending_links_are_real_anchors_with_external_icons(self):
+        _Browser.goto("freshness")
+        links = _Browser.page.locator("#view a.row")
+        self.assertGreaterEqual(links.count(), 1)
+        for i in range(links.count()):
+            with self.subTest(i=i):
+                self.assertTrue(links.nth(i).get_attribute("href"))
+                self.assertEqual(links.nth(i).get_attribute("target"), "_blank")
+
+    def test_scope_note_is_present(self):
+        _Browser.goto("freshness")
+        self.assertEqual(_Browser.page.locator("#view .fresh-note").count(), 1)
+
+    def test_this_route_has_no_filter_buttons(self):
+        """筛选属于 toolView 的 freshness 定制页（原型里无可达入口），不在本路由。"""
+        _Browser.goto("freshness")
+        self.assertEqual(
+            _Browser.page.locator("#view button[data-action='fresh-filter']").count(), 0,
+            "freshnessView 是静态页，不应有筛选按钮")
+
+    def test_invented_classes_are_absent(self):
+        _Browser.goto("freshness")
+        for wrong in [".fresh-card__top", ".fresh-card__at", ".pill", ".row__copy"]:
+            with self.subTest(wrong=wrong):
+                self.assertEqual(_Browser.page.locator(f"#view {wrong}").count(), 0)
+
+
 if __name__ == "__main__":
     try:
         unittest.main(verbosity=2)

@@ -13,8 +13,16 @@ const els = {
   tabbar: document.getElementById("tabbar"),
 };
 
-// Task 5 起逐个接入真实视图；在此之前视图为空，路由与外壳行为已可完整验证。
-const VIEWS = {};
+import { homeView } from "./views/home.js";
+import { resultView } from "./views/result.js";
+import { freshnessView } from "./views/freshness.js";
+
+// Task 6 起逐个接入真实视图；尚无视图的路由渲染空白（回落见下方说明）。
+const VIEWS = {
+  home: homeView,
+  result: resultView,
+  freshness: freshnessView,
+};
 
 export const render = () => {
   const state = store.state;
@@ -36,9 +44,10 @@ export const render = () => {
   els.appbar.innerHTML = renderAppbar(state);
   els.tabbar.innerHTML = renderTabbar(state);
 
-  // 本任务还没有任何视图，未知或无视图的路由渲染空白即可。
-  // 原型 2068-2071 的未知路由回落（go("home")）**不在这里**：它要等首页视图存在
-  // 才有可观测性，且若在此处生效，每条路由都会回落，外壳行为全部失真。见 Task 6。
+  // 原型 2068-2071 的未知路由回落（go("home")）**不在这里**：判据是"当且仅当所有其它路由
+  // 都已有视图时，回落才可观测"。Task 6 时 12 条路由仍有 9 条无视图（assistant /
+  // regulations(/*) / action(/*) / profile(/*)），回落会对它们一视同仁地触发，
+  // 外壳行为的断言会因"每条路由都变成首页"而集体失真。它落在 Task 9。
   const view = VIEWS[r];
   els.view.className = "view";
   els.view.innerHTML = view ? view(state) : "";
@@ -57,6 +66,9 @@ document.addEventListener("click", (event) => {
     go(el.dataset.to || "assistant");          // 原型 2358：nav 默认去 assistant
   } else if (action === "open-tool") {
     go((el.dataset.group || "regulations") + "/" + el.dataset.tool);
+  } else if (action === "fresh-filter") {
+    store.set({ freshFilter: el.dataset.filter || "全部" });
+    render();
   } else if (action === "close-sheet") {
     closeSheet();
   }
